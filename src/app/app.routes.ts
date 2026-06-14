@@ -23,7 +23,7 @@ const MODULE_TITLES: Record<string, string> = {
 };
 
 /** Modules admin déjà implémentés (vraies pages, hors générateur de placeholders). */
-const IMPLEMENTED = new Set(['students', 'teachers', 'parents', 'classes']);
+const IMPLEMENTED = new Set(['students', 'teachers', 'parents', 'classes', 'payments']);
 
 /**
  * Génère une route placeholder par module non implémenté, protégée par rôle.
@@ -61,6 +61,12 @@ const adminRoutes: Routes = [
     path: 'classes',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/classes/classes-list').then((m) => m.ClassesList),
+  },
+  {
+    path: 'payments',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/payments/payments-list').then((m) => m.PaymentsList),
   },
 ];
 

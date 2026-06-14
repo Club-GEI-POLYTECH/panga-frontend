@@ -63,6 +63,35 @@ export interface ClassInstance {
   [key: string]: unknown;
 }
 
+export interface FeeStructure {
+  id: string;
+  name?: string;
+  displayName?: string;
+  feeType?: string;
+  amount?: number;
+  currency?: string;
+  schoolYear?: string;
+  classId?: string;
+  feeFrequency?: string;
+  isMandatory?: boolean;
+  status?: string;
+  [key: string]: unknown;
+}
+
+export interface Payment {
+  id: string;
+  studentId?: string;
+  studentName?: string;
+  feeStructureId?: string;
+  amountPaid?: number;
+  currency?: string;
+  paymentDate?: string;
+  paymentMethod?: string;
+  status?: string;
+  notes?: string;
+  [key: string]: unknown;
+}
+
 /* ----------------------------- DTOs d'écriture ---------------------------- */
 
 export interface CreateStudentDto {
@@ -99,4 +128,27 @@ export interface CreateClassTemplateDto {
 export interface CreateClassInstanceDto {
   templateId: string;
   schoolYear: string;
+}
+
+export interface CreateFeeStructureDto {
+  name: string;
+  displayName?: string;
+  feeType: string;
+  amount: number;
+  currency: string;
+  schoolYear: string;
+  classId?: string;
+  feeFrequency?: string;
+  isMandatory?: boolean;
+  status?: string;
+}
+
+export interface CreatePaymentDto {
+  studentId: string;
+  feeStructureId: string;
+  amountPaid: number;
+  currency: string;
+  paymentDate: string;
+  paymentMethod: string;
+  notes?: string;
 }
