@@ -60,6 +60,11 @@
   },
   "nav": {
     "dashboard": "Dashboard",
+    "platform": "Platform",
+    "schools": "Schools",
+    "platformUsers": "Users",
+    "billing": "Billing",
+    "curriculum": "Curriculum",
     "students": "Students",
     "teachers": "Teachers",
     "parents": "Parents",

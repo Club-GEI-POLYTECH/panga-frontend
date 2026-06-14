@@ -15,6 +15,32 @@ const ALL: Role[] = ['super_admin', 'admin', 'teacher', 'parent', 'student'];
 /** Navigation principale, filtrée par rôle. */
 export const NAV_ITEMS: NavItem[] = [
   { labelKey: 'nav.dashboard', icon: 'dashboard', path: 'dashboard', roles: ALL },
+  // Espace plateforme (super_admin) — vraies pages sous /platform/*.
+  {
+    labelKey: 'nav.platform',
+    icon: 'insights',
+    path: 'platform/overview',
+    roles: ['super_admin'],
+  },
+  { labelKey: 'nav.schools', icon: 'apartment', path: 'platform/schools', roles: ['super_admin'] },
+  {
+    labelKey: 'nav.platformUsers',
+    icon: 'group',
+    path: 'platform/users',
+    roles: ['super_admin'],
+  },
+  {
+    labelKey: 'nav.billing',
+    icon: 'receipt_long',
+    path: 'platform/billing',
+    roles: ['super_admin'],
+  },
+  {
+    labelKey: 'nav.curriculum',
+    icon: 'menu_book',
+    path: 'platform/curriculum',
+    roles: ['super_admin'],
+  },
   { labelKey: 'nav.students', icon: 'school', path: 'students', roles: ['admin'] },
   { labelKey: 'nav.teachers', icon: 'badge', path: 'teachers', roles: ['admin'] },
   { labelKey: 'nav.parents', icon: 'family_restroom', path: 'parents', roles: ['admin'] },

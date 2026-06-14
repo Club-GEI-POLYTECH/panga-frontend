@@ -22,8 +22,13 @@ const MODULE_TITLES: Record<string, string> = {
   communications: 'Communications',
 };
 
-/** Génère une route placeholder par module, protégée par rôle. */
-const moduleRoutes: Routes = NAV_ITEMS.filter((i) => i.path !== 'dashboard').map((i) => ({
+/**
+ * Génère une route placeholder par module non implémenté, protégée par rôle.
+ * Les chemins `platform/*` (super_admin) ont de vraies pages : on les exclut.
+ */
+const moduleRoutes: Routes = NAV_ITEMS.filter(
+  (i) => i.path !== 'dashboard' && !i.path.startsWith('platform/'),
+).map((i) => ({
   path: i.path,
   component: PlaceholderPage,
   canActivate: [roleGuard(...i.roles)],
@@ -50,6 +55,12 @@ export const routes: Routes = [
       {
         path: 'profile',
         loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
+      },
+      {
+        path: 'platform',
+        canActivate: [roleGuard('super_admin')],
+        loadChildren: () =>
+          import('./features/super-admin/super-admin.routes').then((m) => m.SUPER_ADMIN_ROUTES),
       },
       ...moduleRoutes,
     ],

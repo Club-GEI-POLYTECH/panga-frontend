@@ -60,6 +60,11 @@
   },
   "nav": {
     "dashboard": "Tableau de bord",
+    "platform": "Plateforme",
+    "schools": "Écoles",
+    "platformUsers": "Utilisateurs",
+    "billing": "Facturation",
+    "curriculum": "Curriculum",
     "students": "Élèves",
     "teachers": "Enseignants",
     "parents": "Parents",
