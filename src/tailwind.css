@@ -1,0 +1,49 @@
+/*
+ * Tailwind v4 — chargé en CSS pur (traité par @tailwindcss/postcss).
+ * On importe uniquement les couches `theme` et `utilities` : le `preflight`
+ * (reset de base) est volontairement omis pour ne PAS écraser les styles
+ * d'Angular Material. Les resets de base nécessaires vivent dans styles.scss.
+ */
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+/* Mode sombre piloté par la classe `.dark` sur <html> (ThemeService),
+   et non par la préférence système seule. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Tokens de marque « bleu turquoise ». L'échelle de marque est fixe ;
+ * les tokens sémantiques (surface/background/contenu) pointent vers des
+ * variables CSS qui basculent en mode sombre (définies dans styles.scss).
+ */
+@theme {
+  --color-brand-50: #ecfeff;
+  --color-brand-100: #cffafe;
+  --color-brand-200: #a5f3fc;
+  --color-brand-300: #67e8f9;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0fb5ba;
+  --color-brand-700: #0e7490;
+  --color-brand-800: #155e75;
+  --color-brand-900: #134e4a;
+
+  --color-brand: var(--brand-500);
+  --color-brand-deep: var(--brand-deep);
+  --color-secondary: var(--brand-secondary);
+
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-content: var(--text);
+  --color-muted: var(--text-muted);
+  --color-line: var(--border);
+
+  --color-success: #16a34a;
+  --color-warning: #f59e0b;
+  --color-danger: #dc2626;
+
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --font-sans: 'Inter', 'Poppins', ui-sans-serif, system-ui, sans-serif;
+}

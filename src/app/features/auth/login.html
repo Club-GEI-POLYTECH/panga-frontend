@@ -1,0 +1,63 @@
+<panga-auth-layout>
+  <ng-container *transloco="let t">
+    <div class="brand">
+      <div class="brand-badge">P</div>
+      <div>
+        <h1 class="brand-title">{{ t('app.name') }}</h1>
+        <p class="brand-tag">{{ t('app.tagline') }}</p>
+      </div>
+    </div>
+
+    <h2 class="title">{{ t('auth.login.title') }}</h2>
+    <p class="subtitle">{{ t('auth.login.subtitle') }}</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="form">
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>{{ t('auth.login.identifier') }}</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">person</mat-icon>
+        <input matInput formControlName="identifier" autocomplete="username" />
+        @if (form.controls.identifier.touched && form.controls.identifier.invalid) {
+          <mat-error>{{ t('auth.errors.required') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>{{ t('auth.login.password') }}</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">lock</mat-icon>
+        <input
+          matInput
+          [type]="hidePassword() ? 'password' : 'text'"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        <button
+          type="button"
+          mat-icon-button
+          matSuffix
+          (click)="hidePassword.set(!hidePassword())"
+          [attr.aria-label]="hidePassword() ? 'Afficher' : 'Masquer'"
+        >
+          <mat-icon fontSet="material-symbols-outlined">
+            {{ hidePassword() ? 'visibility' : 'visibility_off' }}
+          </mat-icon>
+        </button>
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <mat-error>{{ t('auth.errors.required') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="row-between">
+        <a routerLink="/auth/forgot-password" class="link">{{ t('auth.login.forgot') }}</a>
+      </div>
+
+      <button type="submit" mat-flat-button class="submit" [disabled]="submitting()">
+        @if (submitting()) {
+          <mat-spinner diameter="20" class="inline-spinner"></mat-spinner>
+          <span>{{ t('auth.login.signingIn') }}</span>
+        } @else {
+          <span>{{ t('auth.login.submit') }}</span>
+        }
+      </button>
+    </form>
+  </ng-container>
+</panga-auth-layout>

@@ -1,0 +1,113 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+.brand-badge {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 0.9rem;
+  color: #fff;
+  font-weight: 700;
+  background: var(--brand-gradient);
+}
+.brand-title {
+  font-family: Poppins, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+.brand-tag {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+}
+.subtitle {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+}
+.field {
+  width: 100%;
+}
+
+/* Décalage d'entrée des champs (effet en cascade) */
+.field,
+.row-between,
+.submit {
+  animation: field-in 0.5s ease both;
+}
+.field:nth-of-type(1) {
+  animation-delay: 0.12s;
+}
+.field:nth-of-type(2) {
+  animation-delay: 0.2s;
+}
+.row-between {
+  animation-delay: 0.28s;
+}
+.submit {
+  animation-delay: 0.34s;
+}
+
+@keyframes field-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.row-between {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+}
+.link {
+  color: var(--brand-500);
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.link:hover {
+  text-decoration: underline;
+}
+
+.submit {
+  height: 48px;
+  border-radius: 0.85rem !important;
+  font-weight: 600;
+  background: var(--brand-gradient) !important;
+  color: #fff !important;
+}
+.inline-spinner {
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field,
+  .row-between,
+  .submit {
+    animation: none;
+  }
+}

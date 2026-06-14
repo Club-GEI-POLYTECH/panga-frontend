@@ -1,1 +1,183 @@
-/* You can add global styles to this file, and also import other style files */
+@use '@angular/material' as mat;
+
+/* ============================================================================
+   Panga — Design system (Material 3 + tokens turquoise)
+   ========================================================================== */
+
+html {
+  color-scheme: light;
+
+  // Thème Material 3 : palette turquoise (cyan) en primaire.
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$cyan-palette,
+        tertiary: mat.$azure-palette,
+      ),
+      typography: (
+        plain-family: 'Inter',
+        brand-family: 'Poppins',
+      ),
+      density: 0,
+    )
+  );
+
+  // Couleurs de fond de l'app pilotées par nos tokens de marque.
+  background-color: var(--background);
+  color: var(--text);
+}
+
+/* Mode sombre : bascule de la classe `.dark` (ThemeService).
+   `color-scheme: dark` fait basculer les tokens système Material. */
+html.dark {
+  color-scheme: dark;
+}
+
+/* ----------------------------------------------------------------------------
+   Tokens de marque — échelle turquoise fixe + sémantiques clair/sombre
+   -------------------------------------------------------------------------- */
+:root {
+  --brand-50: #ecfeff;
+  --brand-100: #cffafe;
+  --brand-200: #a5f3fc;
+  --brand-300: #67e8f9;
+  --brand-400: #2dd4bf;
+  --brand-500: #14b8a6;
+  --brand-600: #0fb5ba;
+  --brand-700: #0e7490;
+  --brand-800: #155e75;
+  --brand-900: #134e4a;
+
+  --brand-deep: #0e7490;
+  --brand-secondary: #0fb5ba;
+
+  // Sémantiques — mode clair
+  --surface: #ffffff;
+  --background: #f4fbfb;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border: rgb(15 23 42 / 8%);
+
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
+
+  // Dégradé turquoise (auth, en-têtes de dashboard)
+  --brand-gradient: linear-gradient(135deg, #0e7490 0%, #14b8a6 55%, #2dd4bf 100%);
+}
+
+html.dark {
+  --brand-deep: #155e75;
+  --brand-secondary: #22d3ee;
+
+  // Sémantiques — mode sombre
+  --surface: #0b1220;
+  --background: #0a0f1a;
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --border: rgb(226 232 240 / 10%);
+
+  --brand-gradient: linear-gradient(135deg, #155e75 0%, #0e7490 55%, #14b8a6 100%);
+}
+
+/* ----------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: var(--background);
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Accessibilité : respect de prefers-reduced-motion (anime rien si demandé). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Carte de marque réutilisable (glassmorphism léger). */
+.panga-card {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl, 1rem);
+  backdrop-filter: blur(8px);
+}
+
+/* Élément de navigation actif (sidebar). */
+.panga-nav-active {
+  background: color-mix(in srgb, var(--brand-500) 14%, transparent) !important;
+  color: var(--brand-700) !important;
+
+  .mat-mdc-list-item-icon,
+  .mdc-list-item__primary-text {
+    color: var(--brand-700) !important;
+  }
+}
+
+html.dark .panga-nav-active {
+  color: var(--brand-400) !important;
+}
+
+/* Tons des toasts (NotificationService). */
+.panga-toast {
+  --mdc-snackbar-container-color: var(--surface);
+  --mdc-snackbar-supporting-text-color: var(--text);
+  border-left: 4px solid var(--brand-500);
+}
+.panga-toast--success {
+  border-left-color: var(--success);
+}
+.panga-toast--error {
+  border-left-color: var(--danger);
+}
+.panga-toast--warning {
+  border-left-color: var(--warning);
+}
+.panga-toast--info {
+  border-left-color: var(--brand-500);
+}
+
+/* Bouton principal à dégradé turquoise (formulaires auth, CTA). */
+.panga-btn-primary {
+  height: 48px;
+  border-radius: 0.85rem !important;
+  font-weight: 600;
+  background: var(--brand-gradient) !important;
+  color: #fff !important;
+}
+
+/* En-tête de marque réutilisable (écrans auth). */
+.panga-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+
+  .badge {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 0.9rem;
+    color: #fff;
+    font-weight: 700;
+    background: var(--brand-gradient);
+  }
+}

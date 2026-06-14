@@ -1,0 +1,88 @@
+{
+  "app": {
+    "name": "Panga",
+    "tagline": "Gestion scolaire simplifiée"
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Accédez à votre espace Panga",
+      "identifier": "E-mail ou identifiant",
+      "password": "Mot de passe",
+      "submit": "Se connecter",
+      "forgot": "Mot de passe oublié ?",
+      "signingIn": "Connexion en cours…"
+    },
+    "forgot": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Saisissez votre e-mail pour recevoir un lien de réinitialisation.",
+      "email": "Adresse e-mail",
+      "submit": "Envoyer le lien",
+      "sentTitle": "E-mail envoyé",
+      "sentBody": "Si un compte correspond à cette adresse, vous recevrez un lien de réinitialisation."
+    },
+    "reset": {
+      "title": "Nouveau mot de passe",
+      "subtitle": "Choisissez un nouveau mot de passe sécurisé.",
+      "password": "Nouveau mot de passe",
+      "confirm": "Confirmer le mot de passe",
+      "submit": "Réinitialiser",
+      "minLength": "8 caractères minimum",
+      "mismatch": "Les mots de passe ne correspondent pas",
+      "invalidToken": "Lien de réinitialisation invalide ou expiré."
+    },
+    "backToLogin": "Retour à la connexion",
+    "errors": {
+      "required": "Ce champ est requis",
+      "email": "Adresse e-mail invalide",
+      "invalid": "Identifiants invalides"
+    }
+  },
+  "roles": {
+    "super_admin": "Super administrateur",
+    "admin": "Administrateur",
+    "teacher": "Enseignant",
+    "parent": "Parent",
+    "student": "Élève"
+  },
+  "profile": {
+    "title": "Mon profil",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "loginHistory": "Historique de connexion",
+    "noHistory": "Aucune connexion enregistrée",
+    "date": "Date",
+    "device": "Appareil",
+    "status": "Statut",
+    "success": "Réussie",
+    "failed": "Échouée"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "students": "Élèves",
+    "teachers": "Enseignants",
+    "parents": "Parents",
+    "classes": "Classes",
+    "grades": "Notes",
+    "bulletins": "Bulletins",
+    "attendance": "Présences",
+    "payments": "Paiements",
+    "discipline": "Discipline",
+    "reports": "Rapports",
+    "communications": "Communications",
+    "settings": "Paramètres",
+    "profile": "Mon profil",
+    "logout": "Déconnexion"
+  },
+  "common": {
+    "search": "Rechercher…",
+    "loading": "Chargement…",
+    "empty": "Aucune donnée",
+    "retry": "Réessayer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "selectSchool": "Choisir une école"
+  }
+}

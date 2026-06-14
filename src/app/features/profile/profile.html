@@ -1,0 +1,131 @@
+<ng-container *transloco="let t">
+  <header class="mb-6">
+    <h1 class="text-2xl font-semibold text-[var(--text)]">{{ t('profile.title') }}</h1>
+  </header>
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Informations -->
+    <section class="panga-card p-6">
+      <div class="flex items-center gap-4">
+        <div
+          class="flex h-16 w-16 items-center justify-center rounded-2xl text-white text-xl font-semibold"
+          style="background: var(--brand-gradient)"
+        >
+          {{ store.fullName().charAt(0) || 'U' }}
+        </div>
+        <div class="min-w-0">
+          <p class="text-lg font-semibold text-[var(--text)] truncate">{{ store.fullName() }}</p>
+          <p class="text-sm text-[var(--text-muted)] truncate">{{ store.user()?.email }}</p>
+          <span
+            class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium"
+            style="
+              background: color-mix(in srgb, var(--brand-500) 14%, transparent);
+              color: var(--brand-700);
+            "
+          >
+            {{ t('roles.' + (store.role() ?? 'student')) }}
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Changement de mot de passe -->
+    <section class="panga-card p-6">
+      <h2 class="text-lg font-semibold text-[var(--text)] mb-4">
+        {{ t('profile.changePassword') }}
+      </h2>
+      <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ t('profile.currentPassword') }}</mat-label>
+          <input
+            matInput
+            type="password"
+            formControlName="currentPassword"
+            autocomplete="current-password"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ t('profile.newPassword') }}</mat-label>
+          <input
+            matInput
+            type="password"
+            formControlName="newPassword"
+            autocomplete="new-password"
+          />
+          @if (form.controls.newPassword.touched && form.controls.newPassword.invalid) {
+            <mat-error>{{ t('auth.reset.minLength') }}</mat-error>
+          }
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ t('auth.reset.confirm') }}</mat-label>
+          <input matInput type="password" formControlName="confirm" autocomplete="new-password" />
+          @if (form.errors?.['mismatch'] && form.controls.confirm.touched) {
+            <mat-error>{{ t('auth.reset.mismatch') }}</mat-error>
+          }
+        </mat-form-field>
+        <button
+          type="submit"
+          mat-flat-button
+          class="panga-btn-primary mt-1 self-start px-6"
+          [disabled]="submitting()"
+        >
+          @if (submitting()) {
+            <mat-spinner diameter="20" class="inline-block align-middle mr-2"></mat-spinner>
+          }
+          <span>{{ t('common.save') }}</span>
+        </button>
+      </form>
+    </section>
+  </div>
+
+  <!-- Historique de connexion -->
+  <section class="mt-6">
+    <h2 class="text-lg font-semibold text-[var(--text)] mb-3">{{ t('profile.loginHistory') }}</h2>
+    @if (loadingHistory()) {
+      <panga-skeleton-table [rows]="5" [cols]="[1, 2, 3]" />
+    } @else if (history().length === 0) {
+      <div class="panga-card">
+        <panga-empty-state icon="history" [title]="t('profile.noHistory')" />
+      </div>
+    } @else {
+      <div class="panga-card overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-[var(--text-muted)] border-b border-[var(--border)]">
+              <th class="px-4 py-3 font-medium">{{ t('profile.date') }}</th>
+              <th class="px-4 py-3 font-medium">{{ t('profile.device') }}</th>
+              <th class="px-4 py-3 font-medium">IP</th>
+              <th class="px-4 py-3 font-medium">{{ t('profile.status') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of history(); track $index) {
+              <tr class="border-b border-[var(--border)] last:border-0">
+                <td class="px-4 py-3 text-[var(--text)]">
+                  {{ entry.createdAt ? (entry.createdAt | date: 'short') : '—' }}
+                </td>
+                <td class="px-4 py-3 text-[var(--text-muted)] max-w-[20rem] truncate">
+                  {{ entry.device || entry.userAgent || '—' }}
+                </td>
+                <td class="px-4 py-3 text-[var(--text-muted)]">{{ entry.ipAddress || '—' }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    class="px-2 py-0.5 rounded-full text-xs font-medium"
+                    [style.background]="
+                      entry.success === false
+                        ? 'color-mix(in srgb, var(--danger) 14%, transparent)'
+                        : 'color-mix(in srgb, var(--success) 14%, transparent)'
+                    "
+                    [style.color]="entry.success === false ? 'var(--danger)' : 'var(--success)'"
+                  >
+                    {{ entry.success === false ? t('profile.failed') : t('profile.success') }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</ng-container>

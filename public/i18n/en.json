@@ -1,0 +1,88 @@
+{
+  "app": {
+    "name": "Panga",
+    "tagline": "School management made simple"
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Access your Panga workspace",
+      "identifier": "Email or username",
+      "password": "Password",
+      "submit": "Sign in",
+      "forgot": "Forgot password?",
+      "signingIn": "Signing in…"
+    },
+    "forgot": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email to receive a reset link.",
+      "email": "Email address",
+      "submit": "Send link",
+      "sentTitle": "Email sent",
+      "sentBody": "If an account matches this address, you'll receive a reset link."
+    },
+    "reset": {
+      "title": "New password",
+      "subtitle": "Choose a new secure password.",
+      "password": "New password",
+      "confirm": "Confirm password",
+      "submit": "Reset",
+      "minLength": "Minimum 8 characters",
+      "mismatch": "Passwords do not match",
+      "invalidToken": "Invalid or expired reset link."
+    },
+    "backToLogin": "Back to sign in",
+    "errors": {
+      "required": "This field is required",
+      "email": "Invalid email address",
+      "invalid": "Invalid credentials"
+    }
+  },
+  "roles": {
+    "super_admin": "Super administrator",
+    "admin": "Administrator",
+    "teacher": "Teacher",
+    "parent": "Parent",
+    "student": "Student"
+  },
+  "profile": {
+    "title": "My profile",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "loginHistory": "Login history",
+    "noHistory": "No login recorded",
+    "date": "Date",
+    "device": "Device",
+    "status": "Status",
+    "success": "Success",
+    "failed": "Failed"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "teachers": "Teachers",
+    "parents": "Parents",
+    "classes": "Classes",
+    "grades": "Grades",
+    "bulletins": "Report cards",
+    "attendance": "Attendance",
+    "payments": "Payments",
+    "discipline": "Discipline",
+    "reports": "Reports",
+    "communications": "Communications",
+    "settings": "Settings",
+    "profile": "My profile",
+    "logout": "Log out"
+  },
+  "common": {
+    "search": "Search…",
+    "loading": "Loading…",
+    "empty": "No data",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "selectSchool": "Select a school"
+  }
+}

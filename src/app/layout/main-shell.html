@@ -1,0 +1,104 @@
+<div class="h-full">
+  <!-- Barre de chargement globale -->
+  @if (loading.isLoading()) {
+    <mat-progress-bar
+      mode="indeterminate"
+      class="!fixed top-0 left-0 right-0 z-50"
+    ></mat-progress-bar>
+  }
+
+  <mat-sidenav-container class="h-full" style="background: var(--background)">
+    <mat-sidenav
+      [opened]="opened()"
+      mode="side"
+      class="w-64 border-0"
+      style="background: var(--surface); border-right: 1px solid var(--border)"
+    >
+      <!-- Marque -->
+      <div class="flex items-center gap-3 px-5 h-16">
+        <div
+          class="flex h-9 w-9 items-center justify-center rounded-xl text-white font-bold"
+          style="background: var(--brand-gradient)"
+        >
+          P
+        </div>
+        <span class="text-lg font-semibold" style="font-family: Poppins, sans-serif">Panga</span>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="px-3 py-2">
+        <mat-nav-list>
+          @for (item of navItems(); track item.path) {
+            <a
+              mat-list-item
+              [routerLink]="['/', item.path]"
+              routerLinkActive="panga-nav-active"
+              class="!rounded-xl !mb-1"
+            >
+              <mat-icon matListItemIcon fontSet="material-symbols-outlined">{{
+                item.icon
+              }}</mat-icon>
+              <span matListItemTitle>{{ item.labelKey | transloco }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      </nav>
+    </mat-sidenav>
+
+    <mat-sidenav-content style="background: var(--background)">
+      <!-- Topbar -->
+      <mat-toolbar
+        class="!sticky top-0 z-40 gap-2"
+        style="background: var(--surface); border-bottom: 1px solid var(--border)"
+      >
+        <button mat-icon-button (click)="toggleSidenav()" aria-label="Basculer le menu">
+          <mat-icon fontSet="material-symbols-outlined">menu</mat-icon>
+        </button>
+
+        <panga-school-switcher />
+
+        <span class="flex-1"></span>
+
+        <button
+          mat-icon-button
+          (click)="toggleLang()"
+          matTooltip="Changer de langue"
+          aria-label="Changer de langue"
+        >
+          <mat-icon fontSet="material-symbols-outlined">translate</mat-icon>
+        </button>
+
+        <button
+          mat-icon-button
+          (click)="theme.toggle()"
+          matTooltip="Mode clair/sombre"
+          aria-label="Mode clair/sombre"
+        >
+          <mat-icon fontSet="material-symbols-outlined">
+            {{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}
+          </mat-icon>
+        </button>
+
+        <button mat-button [matMenuTriggerFor]="userMenu" class="!rounded-xl">
+          <mat-icon fontSet="material-symbols-outlined">account_circle</mat-icon>
+          <span class="hidden sm:inline ml-1">{{ store.fullName() }}</span>
+        </button>
+        <mat-menu #userMenu="matMenu">
+          <a mat-menu-item routerLink="/profile">
+            <mat-icon fontSet="material-symbols-outlined">person</mat-icon>
+            <span>{{ 'nav.profile' | transloco }}</span>
+          </a>
+          <button mat-menu-item (click)="logout()">
+            <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>
+            <span>{{ 'nav.logout' | transloco }}</span>
+          </button>
+        </mat-menu>
+      </mat-toolbar>
+
+      <!-- Contenu -->
+      <main class="p-4 sm:p-6 max-w-[1400px] mx-auto">
+        <router-outlet />
+      </main>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>
