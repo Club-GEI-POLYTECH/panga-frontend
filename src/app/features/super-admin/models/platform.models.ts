@@ -83,6 +83,68 @@ export interface BulletinProgram {
   [key: string]: unknown;
 }
 
+/* --------------------------- Dashboard normalisé -------------------------- */
+
+export interface NamedValue {
+  name: string;
+  value: number;
+}
+
+/** Vue d'ensemble plateforme normalisée (GET /dashboard/overview). */
+export interface OverviewData {
+  activeSchools: number | null;
+  totalStudents: number | null;
+  totalTeachers: number | null;
+  monthlyRevenue: number | null;
+  revenueDelta: number | null;
+  topSchools: NamedValue[];
+  primary: number | null;
+  secondary: number | null;
+}
+
+/** Point de série mensuelle (GET /dashboard/stats/trends). */
+export interface TrendPoint {
+  month: string;
+  newStudents: number;
+  revenue: number;
+  newSchools: number;
+}
+
+/** Métriques business SaaS (GET /billing/metrics). */
+export interface BillingMetrics {
+  mrr: number | null;
+  arr: number | null;
+  activeSubscriptions: number | null;
+  pastDue: number | null;
+  trial: number | null;
+  mrrByPlan: NamedValue[];
+  schoolsByPlan: NamedValue[];
+  outstanding: number | null;
+  invoicesByStatus: NamedValue[];
+}
+
+/** Entrée du journal d'audit (GET /audit-logs). */
+export interface AuditLog {
+  id?: string;
+  action?: string;
+  actor?: string;
+  actorEmail?: string;
+  entity?: string;
+  entityType?: string;
+  ip?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+/** Statut de santé système (GET /health). */
+export interface HealthStatus {
+  status?: string;
+  uptime?: number;
+  info?: Record<string, unknown>;
+  details?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 /* ----------------------------- DTOs d'écriture ---------------------------- */
 
 export interface CreateSchoolDto {

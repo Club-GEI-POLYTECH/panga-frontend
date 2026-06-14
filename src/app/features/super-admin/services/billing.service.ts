@@ -12,6 +12,13 @@ export class BillingService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/billing`;
 
+  /** Métriques business SaaS : MRR/ARR, abonnements, encours… */
+  metrics(): Observable<StatBlock> {
+    return this.http
+      .get<unknown>(`${this.base}/metrics`)
+      .pipe(map((r) => unwrapEnvelope<StatBlock>(r)));
+  }
+
   /** Abonnement d'une école (schoolId requis). */
   schoolSubscription(schoolId: string): Observable<StatBlock> {
     return this.http

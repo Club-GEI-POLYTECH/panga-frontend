@@ -11,6 +11,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTransloco } from '@jsverse/transloco';
+import { provideEchartsCore } from 'ngx-echarts';
 import { catchError, firstValueFrom, of } from 'rxjs';
 
 import { routes } from './app.routes';
@@ -42,6 +43,9 @@ export const appConfig: ApplicationConfig = {
     ),
 
     provideAnimationsAsync(),
+
+    // Graphiques ECharts (chargés à la demande).
+    provideEchartsCore({ echarts: () => import('echarts') }),
 
     provideTransloco({
       config: {
