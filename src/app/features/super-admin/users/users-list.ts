@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
@@ -6,14 +7,18 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { PlatformUsersService } from '../services/platform-users.service';
 import type { PlatformUser, StatBlock } from '../models/platform.models';
+import type { PaginationMeta } from '../../../core/models/api.models';
 import { ROLES } from '../../../core/models/auth.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
-import { KeyValue } from '../../../shared/ui/key-value';
 import { KpiCard } from '../../../shared/ui/kpi-card';
+import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
@@ -25,11 +30,37 @@ const ROLE_TONE: Record<string, BadgeTone> = {
   student: 'success',
 };
 
+const ROLE_LABEL: Record<string, string> = {
+  super_admin: 'Super administrateur',
+  admin: 'Administrateur',
+  teacher: 'Enseignant',
+  parent: 'Parent',
+  student: 'Élève',
+};
+
+interface StatTile {
+  label: string;
+  value: string;
+}
+
+function humanize(key: string): string {
+  return key
+    .replace(/[_.]/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+function isActive(u: PlatformUser): boolean {
+  return u.isActive !== false;
+}
+
 /** Comptes plateforme : liste, stats, filtre par rôle, création. */
 @Component({
   selector: 'panga-users-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatButtonToggleModule,
@@ -37,31 +68,25 @@ const ROLE_TONE: Record<string, BadgeTone> = {
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatTooltipModule,
     Avatar,
     EmptyState,
-    KeyValue,
     KpiCard,
+    PageHeader,
+    Paginator,
+    SectionHeader,
     StatusBadge,
     SkeletonTable,
   ],
   template: `
-    <header class="flex flex-wrap items-end justify-between gap-4 mb-6">
-      <div>
-        <h1
-          class="text-2xl font-semibold text-[var(--text)]"
-          style="font-family: Poppins, sans-serif"
-        >
-          Utilisateurs
-        </h1>
-        <p class="text-sm text-[var(--text-muted)] mt-0.5">Comptes de toute la plateforme</p>
-      </div>
+    <panga-page-header icon="group" title="Utilisateurs" subtitle="Comptes de toute la plateforme">
       <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Créer un compte' }}
       </button>
-    </header>
+    </panga-page-header>
 
     <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Comptes" [value]="total()" icon="group" />
@@ -72,10 +97,7 @@ const ROLE_TONE: Record<string, BadgeTone> = {
 
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="register()" class="panga-card p-6 mb-6">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">person_add</span>
-          Nouveau compte
-        </h2>
+        <panga-section-header icon="person_add" title="Nouveau compte" />
         <div class="grid gap-4 sm:grid-cols-2">
           <mat-form-field appearance="outline">
             <mat-label>Prénom</mat-label>
@@ -114,13 +136,19 @@ const ROLE_TONE: Record<string, BadgeTone> = {
       </form>
     }
 
-    @if (stats()) {
+    @if (statTiles().length) {
       <div class="panga-card p-5 mb-6">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">bar_chart</span>
-          Statistiques
-        </h2>
-        <panga-key-value [data]="stats()" />
+        <panga-section-header icon="bar_chart" title="Statistiques" />
+        <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
+          @for (tile of statTiles(); track tile.label) {
+            <div class="rounded-2xl border border-[var(--border)] p-3.5">
+              <p class="text-xs text-[var(--text-muted)] truncate" [title]="tile.label">
+                {{ tile.label }}
+              </p>
+              <p class="text-xl font-semibold text-[var(--text)] mt-0.5">{{ tile.value }}</p>
+            </div>
+          }
+        </div>
       </div>
     }
 
@@ -133,7 +161,7 @@ const ROLE_TONE: Record<string, BadgeTone> = {
       >
         <mat-button-toggle value="">Tous</mat-button-toggle>
         @for (r of roles; track r) {
-          <mat-button-toggle [value]="r">{{ r }}</mat-button-toggle>
+          <mat-button-toggle [value]="r">{{ roleLabel(r) }}</mat-button-toggle>
         }
       </mat-button-toggle-group>
     </div>
@@ -152,22 +180,51 @@ const ROLE_TONE: Record<string, BadgeTone> = {
       <div class="panga-card divide-y divide-[var(--border)]">
         @for (u of users(); track u.id) {
           <div class="flex items-center gap-4 px-4 sm:px-5 py-3.5">
-            <panga-avatar [name]="fullName(u)" [size]="44" />
+            <panga-avatar [name]="fullName(u)" [size]="46" />
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-[var(--text)] truncate">{{ fullName(u) || '—' }}</p>
-              <p class="text-xs text-[var(--text-muted)] truncate">{{ u.email || '—' }}</p>
-            </div>
-            @if (u.schoolId) {
-              <span
-                class="hidden md:inline text-xs text-[var(--text-muted)] truncate max-w-[160px]"
+              <div class="flex items-center gap-2">
+                <p class="font-medium text-[var(--text)] truncate">{{ fullName(u) || '—' }}</p>
+                @if (u.username) {
+                  <span class="text-xs text-[var(--text-muted)] truncate">{{
+                    '@' + u.username
+                  }}</span>
+                }
+              </div>
+              <div
+                class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
               >
-                {{ u.schoolId }}
-              </span>
-            }
-            @if (u.role) {
-              <panga-status-badge [label]="u.role" [tone]="roleTone(u.role)" />
-            }
+                <span class="inline-flex items-center gap-1 truncate">
+                  <span class="material-symbols-outlined text-[14px]">mail</span>
+                  {{ u.email || '—' }}
+                </span>
+                @if (u.schoolId) {
+                  <span class="inline-flex items-center gap-1 truncate max-w-[200px]">
+                    <span class="material-symbols-outlined text-[14px]">apartment</span>
+                    {{ u.schoolId }}
+                  </span>
+                }
+                @if (u.createdAt) {
+                  <span class="inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[14px]">schedule</span>
+                    {{ u.createdAt | date: 'dd/MM/yyyy' }}
+                  </span>
+                }
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span
+                class="hidden sm:inline-flex h-2 w-2 rounded-full"
+                [style.background]="active(u) ? 'var(--success)' : 'var(--text-muted)'"
+                [matTooltip]="active(u) ? 'Actif' : 'Inactif'"
+              ></span>
+              @if (u.role) {
+                <panga-status-badge [label]="roleLabel(u.role)" [tone]="roleTone(u.role)" />
+              }
+            </div>
           </div>
+        }
+        @if (pagination()) {
+          <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
         }
       </div>
     }
@@ -182,6 +239,8 @@ export class UsersList {
   protected readonly users = signal<PlatformUser[]>([]);
   protected readonly stats = signal<StatBlock | null>(null);
   protected readonly total = signal(0);
+  protected readonly pagination = signal<PaginationMeta | null>(null);
+  protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -197,12 +256,41 @@ export class UsersList {
   });
 
   constructor() {
-    this.loadAll();
+    this.load();
     this.usersApi.stats().subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
   }
 
+  protected readonly active = isActive;
+
+  /** Stats backend → tuiles lisibles (libellés humanisés, valeurs primitives). */
+  protected readonly statTiles = computed<StatTile[]>(() => {
+    const data = this.stats();
+    if (!data || typeof data !== 'object') {
+      return [];
+    }
+    const tiles: StatTile[] = [];
+    for (const [key, value] of Object.entries(data)) {
+      if (value === null || value === undefined || typeof value === 'object') {
+        continue;
+      }
+      const num = Number(value);
+      tiles.push({
+        label: humanize(key),
+        value:
+          Number.isFinite(num) && typeof value !== 'boolean'
+            ? num.toLocaleString('fr-FR')
+            : String(value),
+      });
+    }
+    return tiles;
+  });
+
   protected fullName(u: PlatformUser): string {
     return `${u.firstName || ''} ${u.lastName || ''}`.trim();
+  }
+
+  protected roleLabel(role: string): string {
+    return ROLE_LABEL[role] ?? humanize(role);
   }
 
   protected roleTone(role: string): BadgeTone {
@@ -221,11 +309,15 @@ export class UsersList {
     ).size;
   }
 
-  private loadAll(): void {
+  private load(): void {
     this.loading.set(true);
-    this.usersApi.list({ page: 1, limit: 50 }).subscribe({
+    const role = this.activeRole();
+    const query = { page: this.page(), limit: 10 };
+    const req$ = role ? this.usersApi.byRole(role, query) : this.usersApi.list(query);
+    req$.subscribe({
       next: (res) => {
         this.users.set(res.items);
+        this.pagination.set(res.pagination ?? null);
         this.total.set(res.pagination?.total ?? res.items.length);
         this.loading.set(false);
       },
@@ -235,19 +327,13 @@ export class UsersList {
 
   filterByRole(role: string): void {
     this.activeRole.set(role);
-    if (!role) {
-      this.loadAll();
-      return;
-    }
-    this.loading.set(true);
-    this.usersApi.byRole(role).subscribe({
-      next: (res) => {
-        this.users.set(res.items);
-        this.total.set(res.items.length);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.page.set(1);
+    this.load();
+  }
+
+  onPage(page: number): void {
+    this.page.set(page);
+    this.load();
   }
 
   register(): void {
@@ -263,7 +349,7 @@ export class UsersList {
         this.notify.success('Compte créé.');
         this.form.reset({ role: 'admin' });
         this.showForm.set(false);
-        this.loadAll();
+        this.load();
       },
       error: () => this.submitting.set(false),
     });

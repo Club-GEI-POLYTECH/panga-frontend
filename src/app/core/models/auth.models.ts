@@ -7,6 +7,8 @@ export interface School {
   id: string;
   name: string;
   code?: string;
+  /** Sous-titre fourni par /schools/public (ex. « CODE · Ville »). */
+  subtitle?: string;
   logoUrl?: string | null;
 }
 

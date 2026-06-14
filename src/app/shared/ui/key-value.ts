@@ -5,6 +5,23 @@ interface Entry {
   value: string;
 }
 
+/** `totalGrades` / `total_grades` → « Total Grades ». */
+function humanize(key: string): string {
+  return key
+    .replace(/[_.]/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
+function format(value: number | string): string {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (typeof value === 'number' || (value !== '' && Number.isFinite(num))) {
+    return num.toLocaleString('fr-FR');
+  }
+  return String(value);
+}
+
 /** Formate récursivement un objet en liste clé → valeur lisible. */
 function toEntries(data: unknown, prefix = ''): Entry[] {
   if (!data || typeof data !== 'object') {
@@ -12,13 +29,17 @@ function toEntries(data: unknown, prefix = ''): Entry[] {
   }
   const out: Entry[] = [];
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
-    const label = prefix ? `${prefix}.${key}` : key;
+    const label = prefix ? `${prefix} · ${humanize(key)}` : humanize(key);
     if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
       out.push(...toEntries(value, label));
     } else if (Array.isArray(value)) {
       out.push({ key: label, value: `${value.length} élément(s)` });
+    } else if (value === null || value === undefined) {
+      out.push({ key: label, value: '—' });
+    } else if (typeof value === 'boolean') {
+      out.push({ key: label, value: value ? 'Oui' : 'Non' });
     } else {
-      out.push({ key: label, value: value === null || value === undefined ? '—' : String(value) });
+      out.push({ key: label, value: format(value as number | string) });
     }
   }
   return out;

@@ -9,6 +9,8 @@ import { CurriculumService } from '../services/curriculum.service';
 import type { BulletinProgram, NationalProgram } from '../models/platform.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { KpiCard } from '../../../shared/ui/kpi-card';
+import { PageHeader } from '../../../shared/ui/page-header';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
 const IMPORT_TEMPLATE = `{
@@ -64,20 +66,16 @@ const BULLETIN_TEMPLATE = `{
     MatProgressSpinnerModule,
     MatSlideToggleModule,
     KpiCard,
+    PageHeader,
+    SectionHeader,
     StatusBadge,
   ],
   template: `
-    <header class="mb-6">
-      <h1
-        class="text-2xl font-semibold text-[var(--text)]"
-        style="font-family: Poppins, sans-serif"
-      >
-        Curriculum national
-      </h1>
-      <p class="text-sm text-[var(--text-muted)] mt-0.5">
-        Programmes nationaux et référentiels bulletin
-      </p>
-    </header>
+    <panga-page-header
+      icon="menu_book"
+      title="Curriculum national"
+      subtitle="Programmes nationaux et référentiels bulletin"
+    />
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -94,10 +92,11 @@ const BULLETIN_TEMPLATE = `{
 
       <!-- Programmes nationaux publiés -->
       <section class="panga-card p-5 mb-6">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">verified</span>
-          Programmes nationaux publiés
-        </h2>
+        <panga-section-header
+          icon="verified"
+          title="Programmes nationaux publiés"
+          [count]="published().length"
+        />
         @if (published().length) {
           <div class="grid gap-3 sm:grid-cols-2">
             @for (p of published(); track p.id) {
@@ -137,13 +136,11 @@ const BULLETIN_TEMPLATE = `{
       <!-- Référentiels -->
       <div class="grid gap-6 lg:grid-cols-2 mb-6">
         <section class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">grid_view</span>
-            Référentiels bulletin
-            <span class="text-sm font-normal text-[var(--text-muted)]"
-              >({{ bulletins().length }})</span
-            >
-          </h2>
+          <panga-section-header
+            icon="grid_view"
+            title="Référentiels bulletin"
+            [count]="bulletins().length"
+          />
           @for (b of bulletins(); track b.code) {
             <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
               <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
@@ -157,11 +154,11 @@ const BULLETIN_TEMPLATE = `{
         </section>
 
         <section class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">flag</span>
-            Référentiels RDC embarqués
-            <span class="text-sm font-normal text-[var(--text-muted)]">({{ rdc().length }})</span>
-          </h2>
+          <panga-section-header
+            icon="flag"
+            title="Référentiels RDC embarqués"
+            [count]="rdc().length"
+          />
           @for (b of rdc(); track b.code) {
             <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
               <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
@@ -178,10 +175,7 @@ const BULLETIN_TEMPLATE = `{
       <!-- Imports (JSON) -->
       <div class="grid gap-6 lg:grid-cols-2">
         <section class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">upload_file</span>
-            Importer un programme national
-          </h2>
+          <panga-section-header icon="upload_file" title="Importer un programme national" />
           <textarea
             [formControl]="importJson"
             rows="12"
@@ -201,10 +195,7 @@ const BULLETIN_TEMPLATE = `{
         </section>
 
         <section class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">add_chart</span>
-            Créer un référentiel bulletin
-          </h2>
+          <panga-section-header icon="add_chart" title="Créer un référentiel bulletin" />
           <textarea
             [formControl]="bulletinJson"
             rows="12"

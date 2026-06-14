@@ -18,9 +18,12 @@ export class PlatformUsersService {
       .pipe(map((r) => unwrapList<PlatformUser>(r)));
   }
 
-  byRole(role: string): Observable<ListResult<PlatformUser>> {
+  byRole(
+    role: string,
+    query: PageQuery = { page: 1, limit: 10 },
+  ): Observable<ListResult<PlatformUser>> {
     return this.http
-      .get<unknown>(`${this.base}/users/by-role/${role}`)
+      .get<unknown>(`${this.base}/users/by-role/${role}`, { params: toHttpParams(query) })
       .pipe(map((r) => unwrapList<PlatformUser>(r)));
   }
 

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthStore } from '../core/auth/auth.store';
 import { KpiCard } from '../shared/ui/kpi-card';
 import type { Role } from '../core/models/auth.models';
@@ -71,6 +72,15 @@ const KPIS: Record<Role, Kpi[]> = {
 })
 export class Dashboard {
   protected readonly store = inject(AuthStore);
+
+  constructor() {
+    // Le super_admin dispose d'un vrai tableau de bord plateforme (KPIs, courbes,
+    // business SaaS) : on l'y redirige plutôt que d'afficher les KPIs de démo.
+    if (this.store.role() === 'super_admin') {
+      inject(Router).navigateByUrl('/platform/overview', { replaceUrl: true });
+    }
+  }
+
   protected readonly kpis = computed<Kpi[]>(() => {
     const role = this.store.role();
     return role ? KPIS[role] : [];

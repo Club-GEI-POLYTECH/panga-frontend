@@ -28,7 +28,9 @@ export function unwrapList<T = unknown>(res: unknown): ListResult<T> {
   }
   if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>;
-    const items = (obj['data'] ?? obj['items'] ?? obj['results']) as T[] | undefined;
+    const items = (obj['data'] ?? obj['items'] ?? obj['results'] ?? obj['schools']) as
+      | T[]
+      | undefined;
     if (Array.isArray(items)) {
       return { items, pagination: obj['pagination'] as PaginationMeta | undefined };
     }

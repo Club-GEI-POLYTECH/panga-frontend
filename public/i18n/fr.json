@@ -11,7 +11,9 @@
       "password": "Mot de passe",
       "submit": "Se connecter",
       "forgot": "Mot de passe oublié ?",
-      "signingIn": "Connexion en cours…"
+      "signingIn": "Connexion en cours…",
+      "school": "École",
+      "schoolHint": "Rechercher votre école (si plusieurs comptes)"
     },
     "forgot": {
       "title": "Mot de passe oublié",
@@ -59,6 +61,12 @@
     "failed": "Échouée"
   },
   "nav": {
+    "groups": {
+      "main": "Pilotage",
+      "gestion": "Gestion",
+      "pedagogie": "Pédagogie",
+      "communication": "Communication"
+    },
     "dashboard": "Tableau de bord",
     "platform": "Plateforme",
     "schools": "Écoles",
@@ -79,6 +87,12 @@
     "settings": "Paramètres",
     "profile": "Mon profil",
     "logout": "Déconnexion"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification pour le moment",
+    "markAll": "Tout marquer comme lu",
+    "clear": "Effacer"
   },
   "common": {
     "search": "Rechercher…",

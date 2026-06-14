@@ -6,11 +6,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { BillingService } from '../services/billing.service';
 import type { SaasInvoice, StatBlock } from '../models/platform.models';
+import type { PaginationMeta } from '../../../core/models/api.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KeyValue } from '../../../shared/ui/key-value';
 import { KpiCard } from '../../../shared/ui/kpi-card';
+import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
@@ -32,19 +36,18 @@ function isPaid(inv: SaasInvoice): boolean {
     EmptyState,
     KeyValue,
     KpiCard,
+    PageHeader,
+    Paginator,
+    SectionHeader,
     StatusBadge,
     SkeletonTable,
   ],
   template: `
-    <header class="mb-6">
-      <h1
-        class="text-2xl font-semibold text-[var(--text)]"
-        style="font-family: Poppins, sans-serif"
-      >
-        Facturation SaaS
-      </h1>
-      <p class="text-sm text-[var(--text-muted)] mt-0.5">Abonnements et factures plateforme</p>
-    </header>
+    <panga-page-header
+      icon="receipt_long"
+      title="Facturation SaaS"
+      subtitle="Abonnements et factures plateforme"
+    />
 
     <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Factures" [value]="invoices().length" icon="receipt_long" />
@@ -55,10 +58,7 @@ function isPaid(inv: SaasInvoice): boolean {
 
     <div class="grid gap-4 lg:grid-cols-2 mb-6">
       <section class="panga-card p-5">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">workspace_premium</span>
-          Abonnement d'une école
-        </h2>
+        <panga-section-header icon="workspace_premium" title="Abonnement d'une école" />
         <form [formGroup]="subForm" (ngSubmit)="loadSubscription()" class="flex items-start gap-3">
           <mat-form-field appearance="outline" class="flex-1">
             <mat-label>School ID</mat-label>
@@ -72,10 +72,7 @@ function isPaid(inv: SaasInvoice): boolean {
       </section>
 
       <section class="panga-card p-5">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">add_card</span>
-          Nouvelle facture
-        </h2>
+        <panga-section-header icon="add_card" title="Nouvelle facture" />
         <form [formGroup]="form" (ngSubmit)="create()" class="grid gap-3 sm:grid-cols-2">
           <mat-form-field appearance="outline">
             <mat-label>School ID</mat-label>
@@ -106,7 +103,7 @@ function isPaid(inv: SaasInvoice): boolean {
       </section>
     </div>
 
-    <h2 class="text-base font-semibold text-[var(--text)] mb-3">Factures SaaS</h2>
+    <panga-section-header icon="receipt_long" title="Factures SaaS" [count]="invoices().length" />
     @if (loading()) {
       <panga-skeleton-table />
     } @else if (invoices().length === 0) {
@@ -145,6 +142,9 @@ function isPaid(inv: SaasInvoice): boolean {
             }
           </div>
         }
+        @if (pagination()) {
+          <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
+        }
       </div>
     }
   `,
@@ -156,6 +156,8 @@ export class Billing {
 
   protected readonly invoices = signal<SaasInvoice[]>([]);
   protected readonly subscription = signal<StatBlock | null>(null);
+  protected readonly pagination = signal<PaginationMeta | null>(null);
+  protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
 
@@ -191,13 +193,19 @@ export class Billing {
 
   private load(): void {
     this.loading.set(true);
-    this.billing.listInvoices({ page: 1, limit: 50 }).subscribe({
+    this.billing.listInvoices({ page: this.page(), limit: 10 }).subscribe({
       next: (res) => {
         this.invoices.set(res.items);
+        this.pagination.set(res.pagination ?? null);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  onPage(page: number): void {
+    this.page.set(page);
+    this.load();
   }
 
   loadSubscription(): void {

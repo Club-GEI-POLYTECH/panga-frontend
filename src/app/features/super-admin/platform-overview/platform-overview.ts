@@ -9,6 +9,7 @@ import { PlatformService } from '../services/platform.service';
 import { BillingService } from '../services/billing.service';
 import { AuditService } from '../services/audit.service';
 import { SystemService } from '../services/system.service';
+import { TenantService } from '../../../core/tenant/tenant.service';
 import type {
   AuditLog,
   BillingMetrics,
@@ -24,6 +25,7 @@ import {
 } from '../models/dashboard.mappers';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { KeyValue } from '../../../shared/ui/key-value';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { Avatar } from '../../../shared/ui/avatar';
 import { LineChart, type LineSeries } from '../../../shared/ui/charts/line-chart';
@@ -47,6 +49,7 @@ function fmt(n: number | null | undefined): string {
     MatProgressSpinnerModule,
     KpiCard,
     KeyValue,
+    SectionHeader,
     StatusBadge,
     Avatar,
     LineChart,
@@ -121,10 +124,7 @@ function fmt(n: number | null | undefined): string {
       <!-- Business SaaS -->
       <section class="grid gap-4 lg:grid-cols-3 mb-6">
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">donut_large</span> MRR
-            par plan
-          </h2>
+          <panga-section-header icon="donut_large" title="MRR par plan" />
           @if (billing()?.mrrByPlan?.length) {
             <panga-donut-chart [data]="billing()!.mrrByPlan" centerLabel="MRR" [height]="240" />
           } @else {
@@ -133,10 +133,7 @@ function fmt(n: number | null | undefined): string {
         </div>
 
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">subscriptions</span>
-            Abonnements actifs
-          </h2>
+          <panga-section-header icon="subscriptions" title="Abonnements actifs" />
           <panga-gauge-chart
             [value]="billing()?.activeSubscriptions ?? 0"
             [max]="subscriptionsTotal()"
@@ -146,12 +143,7 @@ function fmt(n: number | null | undefined): string {
         </div>
 
         <div class="panga-card p-5 flex flex-col gap-3">
-          <h2 class="text-base font-semibold text-[var(--text)] flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]"
-              >notification_important</span
-            >
-            Alertes
-          </h2>
+          <panga-section-header icon="notification_important" title="Alertes" />
           <div
             class="rounded-2xl p-4 flex items-center justify-between"
             [style.background]="
@@ -195,10 +187,7 @@ function fmt(n: number | null | undefined): string {
       <!-- Top écoles + répartition -->
       <section class="grid gap-4 lg:grid-cols-3 mb-6">
         <div class="panga-card p-5 lg:col-span-2">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">leaderboard</span> Top 5
-            écoles par effectif
-          </h2>
+          <panga-section-header icon="leaderboard" title="Top 5 écoles par effectif" />
           @if (overview()?.topSchools?.length) {
             <panga-bar-chart [data]="overview()!.topSchools" [height]="260" />
           } @else {
@@ -206,12 +195,9 @@ function fmt(n: number | null | undefined): string {
           }
         </div>
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">pie_chart</span>
-            Primaire / Secondaire
-          </h2>
+          <panga-section-header icon="pie_chart" title="Classes — primaire / secondaire" />
           @if (cycleSplit().length) {
-            <panga-donut-chart [data]="cycleSplit()" centerLabel="Élèves" [height]="240" />
+            <panga-donut-chart [data]="cycleSplit()" centerLabel="Classes" [height]="240" />
           } @else {
             <p class="text-sm text-[var(--text-muted)] py-10 text-center">Aucune donnée.</p>
           }
@@ -221,17 +207,11 @@ function fmt(n: number | null | undefined): string {
       <!-- Académique & finance -->
       <section class="grid gap-4 lg:grid-cols-2 mb-6">
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">menu_book</span>
-            Académique global
-          </h2>
+          <panga-section-header icon="menu_book" title="Académique global" />
           <panga-key-value [data]="academic()" />
         </div>
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">account_balance</span>
-            Finance globale
-          </h2>
+          <panga-section-header icon="account_balance" title="Finance globale" />
           <panga-key-value [data]="financial()" />
         </div>
       </section>
@@ -239,10 +219,7 @@ function fmt(n: number | null | undefined): string {
       <!-- Activité & système -->
       <section class="grid gap-4 lg:grid-cols-3 mb-6">
         <div class="panga-card p-5 lg:col-span-2">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">history</span> Activité
-            récente
-          </h2>
+          <panga-section-header icon="history" title="Activité récente" />
           @if (audit().length) {
             <ul class="divide-y divide-[var(--border)]">
               @for (a of audit(); track a.id || $index) {
@@ -267,16 +244,18 @@ function fmt(n: number | null | undefined): string {
                 </li>
               }
             </ul>
+          } @else if (auditNeedsSchool) {
+            <div class="flex flex-col items-center text-center text-[var(--text-muted)] py-8 gap-1">
+              <span class="material-symbols-outlined text-[var(--brand-500)]">apartment</span>
+              <p class="text-sm">Sélectionnez une école pour consulter son journal d'audit.</p>
+            </div>
           } @else {
             <p class="text-sm text-[var(--text-muted)] py-8 text-center">Aucun événement récent.</p>
           }
         </div>
 
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-3 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">monitor_heart</span>
-            Système
-          </h2>
+          <panga-section-header icon="monitor_heart" title="Système" />
           @if (health()) {
             <div class="flex items-center justify-between mb-3">
               <span class="text-sm text-[var(--text-muted)]">Statut</span>
@@ -297,10 +276,7 @@ function fmt(n: number | null | undefined): string {
 
       <!-- Actions rapides -->
       <section class="panga-card p-5">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">bolt</span> Actions
-          rapides
-        </h2>
+        <panga-section-header icon="bolt" title="Actions rapides" />
         <div class="flex flex-wrap gap-3">
           <a mat-flat-button class="!rounded-xl" [routerLink]="['/', 'platform', 'schools']">
             <mat-icon fontSet="material-symbols-outlined">add_business</mat-icon> Onboarder une
@@ -326,6 +302,10 @@ export class PlatformOverview {
   private readonly billingApi = inject(BillingService);
   private readonly auditApi = inject(AuditService);
   private readonly system = inject(SystemService);
+  private readonly tenant = inject(TenantService);
+
+  /** Le journal d'audit est cloisonné par école : indisponible sans contexte. */
+  protected readonly auditNeedsSchool = !this.tenant.activeSchoolId();
 
   protected readonly fmt = fmt;
 
@@ -381,7 +361,10 @@ export class PlatformOverview {
       billing: safe(this.billingApi.metrics()),
       academic: safe(this.platform.academicStats()),
       financial: safe(this.platform.financialStats()),
-      audit: safe(this.auditApi.list({ page: 1, limit: 8 })),
+      // L'audit exige un x-school-id : on n'appelle qu'avec une école active.
+      audit: this.tenant.activeSchoolId()
+        ? safe(this.auditApi.list({ page: 1, limit: 8 }))
+        : of(null),
       health: safe(this.system.health()),
     }).subscribe((r) => {
       this.overview.set(normalizeOverview(r.overview));

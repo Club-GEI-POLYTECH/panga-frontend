@@ -11,6 +11,7 @@ import type { PlatformSchool, SchoolAuthority } from '../models/platform.models'
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { KeyValue } from '../../../shared/ui/key-value';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
 /** Détail d'une école : infos, mise à jour, autorités (super_admin). */
@@ -27,6 +28,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
     MatProgressSpinnerModule,
     Avatar,
     KeyValue,
+    SectionHeader,
     StatusBadge,
   ],
   template: `
@@ -73,17 +75,12 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
 
       <section class="grid gap-4 lg:grid-cols-2">
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">info</span> Informations
-          </h2>
+          <panga-section-header icon="info" title="Informations" />
           <panga-key-value [data]="school()" />
         </div>
 
         <div class="panga-card p-5">
-          <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[var(--brand-500)]">edit</span> Mettre à
-            jour
-          </h2>
+          <panga-section-header icon="edit" title="Mettre à jour" />
           <form [formGroup]="editForm" (ngSubmit)="update()" class="grid gap-3">
             <mat-form-field appearance="outline">
               <mat-label>Nom affiché</mat-label>
@@ -103,13 +100,11 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
       </section>
 
       <section class="panga-card p-5 mt-4">
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">shield_person</span>
-          Autorités
-          <span class="text-sm font-normal text-[var(--text-muted)]"
-            >({{ authorities().length }})</span
-          >
-        </h2>
+        <panga-section-header
+          icon="shield_person"
+          title="Autorités"
+          [count]="authorities().length"
+        />
 
         @if (authorities().length) {
           <div class="grid gap-3 sm:grid-cols-2 mb-6">

@@ -7,10 +7,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { SchoolsService } from '../services/schools.service';
 import type { PlatformSchool } from '../models/platform.models';
+import type { PaginationMeta } from '../../../core/models/api.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
+import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
@@ -32,27 +36,23 @@ function isActive(s: PlatformSchool): boolean {
     Avatar,
     EmptyState,
     KpiCard,
+    PageHeader,
+    Paginator,
+    SectionHeader,
     StatusBadge,
     SkeletonTable,
   ],
   template: `
-    <header class="flex flex-wrap items-end justify-between gap-4 mb-6">
-      <div>
-        <h1
-          class="text-2xl font-semibold text-[var(--text)]"
-          style="font-family: Poppins, sans-serif"
-        >
-          Écoles
-        </h1>
-        <p class="text-sm text-[var(--text-muted)] mt-0.5">
-          Gérez les établissements de la plateforme
-        </p>
-      </div>
+    <panga-page-header
+      icon="apartment"
+      title="Écoles"
+      subtitle="Gérez les établissements de la plateforme"
+    >
       <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{ showForm() ? 'close' : 'add' }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Nouvelle école' }}
       </button>
-    </header>
+    </panga-page-header>
 
     <section class="grid gap-4 grid-cols-1 sm:grid-cols-3 mb-6">
       <panga-kpi-card label="Établissements" [value]="total()" icon="apartment" />
@@ -66,10 +66,7 @@ function isActive(s: PlatformSchool): boolean {
         (ngSubmit)="create()"
         class="panga-card p-6 mb-6 animate-[fadeIn_0.2s_ease]"
       >
-        <h2 class="text-base font-semibold text-[var(--text)] mb-4 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">add_business</span>
-          Nouvel établissement
-        </h2>
+        <panga-section-header icon="add_business" title="Nouvel établissement" />
         <div class="grid gap-4 sm:grid-cols-2">
           <mat-form-field appearance="outline">
             <mat-label>Nom</mat-label>
@@ -150,6 +147,9 @@ function isActive(s: PlatformSchool): boolean {
             </mat-icon>
           </a>
         }
+        @if (pagination()) {
+          <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
+        }
       </div>
     }
   `,
@@ -161,6 +161,8 @@ export class SchoolsList {
 
   protected readonly schools = signal<PlatformSchool[]>([]);
   protected readonly total = signal(0);
+  protected readonly pagination = signal<PaginationMeta | null>(null);
+  protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -192,14 +194,20 @@ export class SchoolsList {
 
   private load(): void {
     this.loading.set(true);
-    this.schoolsApi.list({ page: 1, limit: 50 }).subscribe({
+    this.schoolsApi.list({ page: this.page(), limit: 10 }).subscribe({
       next: (res) => {
         this.schools.set(res.items);
+        this.pagination.set(res.pagination ?? null);
         this.total.set(res.pagination?.total ?? res.items.length);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  onPage(page: number): void {
+    this.page.set(page);
+    this.load();
   }
 
   create(): void {

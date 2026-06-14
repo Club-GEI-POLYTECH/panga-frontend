@@ -4,51 +4,144 @@
 }
 
 .wrap {
-  position: relative;
   min-height: 100vh;
   display: grid;
-  place-items: center;
-  padding: 1.5rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .wrap {
+    grid-template-columns: 1.05fr 0.95fr;
+  }
+}
+
+/* ------------------------------- Panneau marque ------------------------------ */
+.brand-panel {
+  position: relative;
+  display: none;
   overflow: hidden;
-  background: var(--background);
-}
-
-.bg {
-  position: absolute;
-  inset: 0;
+  color: #fff;
   background: var(--brand-gradient);
-  opacity: 0.14;
 }
 
+@media (min-width: 1024px) {
+  .brand-panel {
+    display: block;
+  }
+}
+
+.brand-inner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3rem;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  .badge {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 0.9rem;
+    font-weight: 700;
+    background: rgb(255 255 255 / 18%);
+    backdrop-filter: blur(6px);
+  }
+  .name {
+    font-family: Poppins, sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+}
+
+.hero {
+  max-width: 30rem;
+
+  h2 {
+    font-family: Poppins, sans-serif;
+    font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+    font-weight: 600;
+    line-height: 1.15;
+    margin: 0 0 1rem;
+  }
+  p {
+    margin: 0 0 2rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    opacity: 0.92;
+  }
+}
+
+.feats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    opacity: 0.95;
+
+    .material-symbols-outlined {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 0.7rem;
+      font-size: 20px;
+      background: rgb(255 255 255 / 16%);
+    }
+  }
+}
+
+.foot {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+/* Blobs décoratifs translucides. */
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  opacity: 0.55;
-  animation: float 14s ease-in-out infinite;
+  filter: blur(70px);
+  opacity: 0.4;
+  background: #fff;
+  animation: float 16s ease-in-out infinite;
 }
 .blob-1 {
   width: 420px;
   height: 420px;
-  background: #14b8a6;
   top: -120px;
-  left: -80px;
+  right: -100px;
 }
 .blob-2 {
-  width: 360px;
-  height: 360px;
-  background: #2dd4bf;
+  width: 320px;
+  height: 320px;
   bottom: -120px;
-  right: -60px;
-  animation-delay: -4s;
+  left: -80px;
+  animation-delay: -5s;
 }
 .blob-3 {
-  width: 300px;
-  height: 300px;
-  background: #0e7490;
-  top: 40%;
-  left: 55%;
-  animation-delay: -8s;
+  width: 260px;
+  height: 260px;
+  top: 45%;
+  right: 30%;
+  opacity: 0.25;
+  animation-delay: -9s;
 }
 
 @keyframes float {
@@ -57,11 +150,26 @@
     transform: translate(0, 0) scale(1);
   }
   33% {
-    transform: translate(40px, -30px) scale(1.08);
+    transform: translate(36px, -28px) scale(1.08);
   }
   66% {
-    transform: translate(-30px, 25px) scale(0.95);
+    transform: translate(-28px, 22px) scale(0.94);
   }
+}
+
+/* ------------------------------ Panneau formulaire --------------------------- */
+.form-panel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(
+      900px 400px at 100% -10%,
+      color-mix(in srgb, var(--brand-300) 16%, transparent),
+      transparent 70%
+    ),
+    var(--background);
 }
 
 .card {

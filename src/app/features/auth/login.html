@@ -46,6 +46,30 @@
         }
       </mat-form-field>
 
+      <mat-form-field appearance="outline" class="field">
+        <mat-label>{{ t('auth.login.school') }}</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">apartment</mat-icon>
+        <input
+          matInput
+          [formControl]="schoolCtrl"
+          [matAutocomplete]="auto"
+          [placeholder]="t('auth.login.schoolHint')"
+          autocomplete="off"
+        />
+        <mat-autocomplete #auto="matAutocomplete" [displayWith]="displaySchool" class="panga-menu">
+          @for (s of filteredSchools(); track s.id) {
+            <mat-option [value]="s">
+              <span class="opt-name">{{ s.name }}</span>
+              @if (s.subtitle) {
+                <span class="opt-sub">{{ s.subtitle }}</span>
+              }
+            </mat-option>
+          } @empty {
+            <mat-option disabled>{{ t('common.empty') }}</mat-option>
+          }
+        </mat-autocomplete>
+      </mat-form-field>
+
       <div class="row-between">
         <a routerLink="/auth/forgot-password" class="link">{{ t('auth.login.forgot') }}</a>
       </div>

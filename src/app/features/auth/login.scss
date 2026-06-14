@@ -59,8 +59,18 @@
 .field:nth-of-type(2) {
   animation-delay: 0.2s;
 }
+.field:nth-of-type(3) {
+  animation-delay: 0.27s;
+}
 .row-between {
-  animation-delay: 0.28s;
+  animation-delay: 0.32s;
+}
+
+/* Le panneau de marque (desktop) porte déjà le logo : on masque le doublon. */
+@media (min-width: 1024px) {
+  .brand {
+    display: none;
+  }
 }
 .submit {
   animation-delay: 0.34s;
@@ -83,12 +93,14 @@
   margin-bottom: 1rem;
 }
 .link {
-  color: var(--brand-500);
+  color: var(--brand-600);
   font-size: 0.85rem;
+  font-weight: 500;
   text-decoration: none;
+  transition: color 0.15s ease;
 }
 .link:hover {
-  text-decoration: underline;
+  color: var(--brand-800);
 }
 
 .submit {

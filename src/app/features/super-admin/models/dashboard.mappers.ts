@@ -58,27 +58,59 @@ export function toNamedValues(value: unknown): NamedValue[] {
   return [];
 }
 
+function shortSchool(id: unknown, index: number): string {
+  return typeof id === 'string' && id.length >= 6
+    ? `École ${id.slice(0, 6)}`
+    : `École ${index + 1}`;
+}
+
+/**
+ * Le backend renvoie `{ ui: { kpis[], sections }, raw: {...} }`. On lit en
+ * priorité les KPIs structurés, avec repli sur le bloc `raw`.
+ */
 export function normalizeOverview(raw: unknown): OverviewData {
+  const ui = prop(raw, 'ui');
+  const rawBlock = prop(raw, 'raw');
+  const kpis = Array.isArray(prop(ui, 'kpis')) ? (prop(ui, 'kpis') as unknown[]) : [];
+  const kpi = (id: string): unknown => kpis.find((k) => prop(k, 'id') === id);
+  const kpiVal = (id: string): number | null => num(kpi(id), 'value');
+
+  const sections = prop(ui, 'sections');
+  const topSchools = firstArray(prop(sections, 'tenant'), 'topSchoolsByStudents');
+  const classDist = firstArray(prop(sections, 'academics'), 'classesDistribution');
+  const byClass = (prefix: string): number | null =>
+    num(
+      classDist.find((c) => (str(c, 'label') ?? '').toLowerCase().startsWith(prefix)),
+      'value',
+    );
+
   return {
-    activeSchools: num(raw, 'activeSchools', 'schoolsActive', 'activeSchoolsCount', 'schools'),
-    totalStudents: num(raw, 'totalStudents', 'students', 'studentsGlobal', 'globalStudents'),
-    totalTeachers: num(raw, 'totalTeachers', 'teachers', 'teachersGlobal', 'globalTeachers'),
-    monthlyRevenue: num(raw, 'monthlyRevenue', 'revenueThisMonth', 'monthRevenue', 'revenue'),
-    revenueDelta: num(raw, 'revenueDelta', 'revenueDeltaPercent', 'revenueDeltaPct', 'delta'),
-    topSchools: toNamedValues(
-      prop(raw, 'topSchools') ?? prop(raw, 'schoolsByEnrollment') ?? prop(raw, 'top5Schools'),
-    ).slice(0, 5),
-    primary: num(raw, 'primary', 'primaryStudents', 'primaryCount'),
-    secondary: num(raw, 'secondary', 'secondaryStudents', 'secondaryCount'),
+    activeSchools: kpiVal('schools_total') ?? num(prop(rawBlock, 'schools'), 'total'),
+    totalStudents: kpiVal('students_total') ?? num(prop(rawBlock, 'students'), 'total'),
+    totalTeachers: kpiVal('teachers_total') ?? num(prop(rawBlock, 'teachers'), 'total'),
+    monthlyRevenue: kpiVal('revenue_month') ?? num(prop(rawBlock, 'revenue'), 'thisMonth'),
+    revenueDelta: num(prop(kpi('revenue_month'), 'trend'), 'value'),
+    topSchools: topSchools.slice(0, 5).map((s, i) => ({
+      name: shortSchool(prop(s, 'schoolId'), i),
+      value: num(s, 'students', 'value', 'count') ?? 0,
+    })),
+    primary: byClass('primaire') ?? num(prop(rawBlock, 'classes'), 'primary'),
+    secondary: byClass('secondaire') ?? num(prop(rawBlock, 'classes'), 'secondary'),
   };
+}
+
+/** `2025-07` → `07/25` pour des axes lisibles. */
+function shortMonth(m: string): string {
+  const match = /^(\d{4})-(\d{2})$/.exec(m);
+  return match ? `${match[2]}/${match[1].slice(2)}` : m;
 }
 
 export function normalizeTrends(raw: unknown): TrendPoint[] {
   const list = Array.isArray(raw)
     ? raw
-    : firstArray(raw, 'data', 'trends', 'series', 'points', 'months');
+    : firstArray(raw, 'series', 'data', 'trends', 'points', 'months');
   return list.map((p) => ({
-    month: str(p, 'month', 'label', 'period', 'date', 'name') ?? '',
+    month: shortMonth(str(p, 'month', 'label', 'period', 'date', 'name') ?? ''),
     newStudents: num(p, 'newStudents', 'students', 'studentsCount') ?? 0,
     revenue: num(p, 'revenue', 'amount', 'total') ?? 0,
     newSchools: num(p, 'newSchools', 'schools', 'schoolsCount') ?? 0,
@@ -94,7 +126,10 @@ export function normalizeBillingMetrics(raw: unknown): BillingMetrics {
     trial: num(raw, 'trial', 'trials', 'trialing'),
     mrrByPlan: toNamedValues(prop(raw, 'mrrByPlan') ?? prop(raw, 'mrr_by_plan')),
     schoolsByPlan: toNamedValues(prop(raw, 'schoolsByPlan') ?? prop(raw, 'schools_by_plan')),
-    outstanding: num(raw, 'outstanding', 'outstandingAmount', 'unpaidAmount', 'pendingAmount'),
+    // `outstanding` peut être un objet { amount, invoices } ou un nombre brut.
+    outstanding:
+      num(prop(raw, 'outstanding'), 'amount') ??
+      num(raw, 'outstanding', 'outstandingAmount', 'unpaidAmount', 'pendingAmount'),
     invoicesByStatus: toNamedValues(
       prop(raw, 'invoicesByStatus') ?? prop(raw, 'byStatus') ?? prop(raw, 'invoices_by_status'),
     ),

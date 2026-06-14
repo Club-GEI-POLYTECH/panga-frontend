@@ -11,7 +11,9 @@
       "password": "Password",
       "submit": "Sign in",
       "forgot": "Forgot password?",
-      "signingIn": "Signing in…"
+      "signingIn": "Signing in…",
+      "school": "School",
+      "schoolHint": "Search your school (if multiple accounts)"
     },
     "forgot": {
       "title": "Forgot password",
@@ -59,6 +61,12 @@
     "failed": "Failed"
   },
   "nav": {
+    "groups": {
+      "main": "Overview",
+      "gestion": "Management",
+      "pedagogie": "Academics",
+      "communication": "Communication"
+    },
     "dashboard": "Dashboard",
     "platform": "Platform",
     "schools": "Schools",
@@ -79,6 +87,12 @@
     "settings": "Settings",
     "profile": "My profile",
     "logout": "Log out"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications yet",
+    "markAll": "Mark all as read",
+    "clear": "Clear"
   },
   "common": {
     "search": "Search…",
