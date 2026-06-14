@@ -22,18 +22,47 @@ const MODULE_TITLES: Record<string, string> = {
   communications: 'Communications',
 };
 
+/** Modules admin déjà implémentés (vraies pages, hors générateur de placeholders). */
+const IMPLEMENTED = new Set(['students', 'teachers', 'parents', 'classes']);
+
 /**
  * Génère une route placeholder par module non implémenté, protégée par rôle.
- * Les chemins `platform/*` (super_admin) ont de vraies pages : on les exclut.
+ * Les chemins `platform/*` et les modules implémentés ont de vraies pages.
  */
 const moduleRoutes: Routes = NAV_ITEMS.filter(
-  (i) => i.path !== 'dashboard' && !i.path.startsWith('platform/'),
+  (i) => i.path !== 'dashboard' && !i.path.startsWith('platform/') && !IMPLEMENTED.has(i.path),
 ).map((i) => ({
   path: i.path,
   component: PlaceholderPage,
   canActivate: [roleGuard(...i.roles)],
   data: { title: MODULE_TITLES[i.path] ?? i.path },
 }));
+
+/** Vraies pages admin (chargées à la demande). */
+const adminRoutes: Routes = [
+  {
+    path: 'students',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/students/students-list').then((m) => m.StudentsList),
+  },
+  {
+    path: 'teachers',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/teachers/teachers-list').then((m) => m.TeachersList),
+  },
+  {
+    path: 'parents',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () => import('./features/admin/parents/parents-list').then((m) => m.ParentsList),
+  },
+  {
+    path: 'classes',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/classes/classes-list').then((m) => m.ClassesList),
+  },
+];
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
@@ -62,6 +91,7 @@ export const routes: Routes = [
         loadChildren: () =>
           import('./features/super-admin/super-admin.routes').then((m) => m.SUPER_ADMIN_ROUTES),
       },
+      ...adminRoutes,
       ...moduleRoutes,
     ],
   },

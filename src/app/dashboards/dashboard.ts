@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthStore } from '../core/auth/auth.store';
+import { AdminDashboard } from '../features/admin/admin-dashboard/admin-dashboard';
 import { KpiCard } from '../shared/ui/kpi-card';
 import type { Role } from '../core/models/auth.models';
 
@@ -49,25 +51,33 @@ const KPIS: Record<Role, Kpi[]> = {
 @Component({
   selector: 'panga-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [KpiCard],
+  imports: [MatProgressSpinnerModule, AdminDashboard, KpiCard],
   template: `
-    <header class="rounded-3xl p-6 mb-6 text-white" style="background: var(--brand-gradient)">
-      <p class="text-sm opacity-90">Bonjour,</p>
-      <h1 class="text-2xl font-semibold">{{ store.fullName() }}</h1>
-      <p class="text-sm opacity-90 mt-1">{{ roleLabel() }}</p>
-    </header>
-
-    <section class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-      @for (kpi of kpis(); track kpi.label) {
-        <panga-kpi-card
-          [label]="kpi.label"
-          [value]="kpi.value"
-          [icon]="kpi.icon"
-          [trend]="kpi.trend ?? null"
-          [trendLabel]="kpi.trendLabel ?? ''"
-        />
+    @if (store.role() === 'admin') {
+      @defer {
+        <panga-admin-dashboard />
+      } @placeholder {
+        <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
       }
-    </section>
+    } @else if (store.role() !== 'super_admin') {
+      <header class="rounded-3xl p-6 mb-6 text-white" style="background: var(--brand-gradient)">
+        <p class="text-sm opacity-90">Bonjour,</p>
+        <h1 class="text-2xl font-semibold">{{ store.fullName() }}</h1>
+        <p class="text-sm opacity-90 mt-1">{{ roleLabel() }}</p>
+      </header>
+
+      <section class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        @for (kpi of kpis(); track kpi.label) {
+          <panga-kpi-card
+            [label]="kpi.label"
+            [value]="kpi.value"
+            [icon]="kpi.icon"
+            [trend]="kpi.trend ?? null"
+            [trendLabel]="kpi.trendLabel ?? ''"
+          />
+        }
+      </section>
+    }
   `,
 })
 export class Dashboard {
