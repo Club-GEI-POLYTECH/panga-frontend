@@ -11,7 +11,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
 import type { ClassInstance, Student } from '../models/admin.models';
-import { BLOOD_GROUP_OPTIONS, GENDER_OPTIONS } from '../../../core/models/student.enums';
+import {
+  BLOOD_GROUP_OPTIONS,
+  ENROLLMENT_TYPE_OPTIONS,
+  GENDER_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
+  TRANSPORT_TYPE_OPTIONS,
+} from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
@@ -55,6 +61,13 @@ const GROUPS: Group[] = [
     icon: 'school',
     fields: [
       { key: 'classId', label: 'Classe', type: 'select', fromClasses: true },
+      { key: 'status', label: 'Statut', type: 'select', options: STUDENT_STATUS_OPTIONS },
+      {
+        key: 'enrollmentType',
+        label: "Type d'inscription",
+        type: 'select',
+        options: ENROLLMENT_TYPE_OPTIONS,
+      },
       { key: 'enrollmentDate', label: "Date d'inscription", type: 'date' },
       { key: 'admissionDate', label: "Date d'admission", type: 'date' },
       { key: 'previousSchool', label: 'École précédente' },
@@ -92,6 +105,8 @@ const GROUPS: Group[] = [
     title: 'Divers',
     icon: 'info',
     fields: [
+      { key: 'transportType', label: 'Transport', type: 'select', options: TRANSPORT_TYPE_OPTIONS },
+      { key: 'transportRoute', label: 'Itinéraire de transport' },
       { key: 'religion', label: 'Religion' },
       { key: 'ethnicity', label: 'Ethnie' },
       { key: 'motherTongue', label: 'Langue maternelle' },
