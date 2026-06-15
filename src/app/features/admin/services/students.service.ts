@@ -28,6 +28,22 @@ export class StudentsService {
     return this.http.post<unknown>(this.base, dto).pipe(map((r) => unwrapEnvelope<Student>(r)));
   }
 
+  update(id: string, dto: Record<string, unknown>): Observable<Student> {
+    return this.http
+      .patch<unknown>(`${this.base}/${id}`, dto)
+      .pipe(map((r) => unwrapEnvelope<Student>(r)));
+  }
+
+  /** Import d'une liste d'élèves via fichier Excel (.xlsx/.xls). */
+  importExcel(file: File, schoolYear: string): Observable<Record<string, unknown>> {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('schoolYear', schoolYear);
+    return this.http
+      .post<unknown>(`${this.base}/import/excel`, form)
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
   grades(id: string): Observable<unknown> {
     return this.http.get<unknown>(`${this.base}/${id}/grades`).pipe(map((r) => unwrapEnvelope(r)));
   }

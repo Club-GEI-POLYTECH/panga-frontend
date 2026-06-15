@@ -63,6 +63,12 @@ const adminRoutes: Routes = [
       import('./features/admin/students/students-list').then((m) => m.StudentsList),
   },
   {
+    path: 'students/:id',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/students/student-detail').then((m) => m.StudentDetail),
+  },
+  {
     path: 'teachers',
     canActivate: [roleGuard('admin')],
     loadComponent: () =>
