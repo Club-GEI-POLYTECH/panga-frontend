@@ -23,7 +23,14 @@ const MODULE_TITLES: Record<string, string> = {
 };
 
 /** Modules admin déjà implémentés (vraies pages, hors générateur de placeholders). */
-const IMPLEMENTED = new Set(['students', 'teachers', 'parents', 'classes', 'payments']);
+const IMPLEMENTED = new Set([
+  'my-school',
+  'students',
+  'teachers',
+  'parents',
+  'classes',
+  'payments',
+]);
 
 /**
  * Génère une route placeholder par module non implémenté, protégée par rôle.
@@ -40,6 +47,11 @@ const moduleRoutes: Routes = NAV_ITEMS.filter(
 
 /** Vraies pages admin (chargées à la demande). */
 const adminRoutes: Routes = [
+  {
+    path: 'my-school',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () => import('./features/admin/school/my-school').then((m) => m.MySchool),
+  },
   {
     path: 'students',
     canActivate: [roleGuard('admin')],

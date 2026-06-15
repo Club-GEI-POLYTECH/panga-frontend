@@ -43,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['super_admin'],
     group: 'main',
   },
+  { labelKey: 'nav.school', icon: 'apartment', path: 'my-school', roles: ['admin'], group: 'main' },
   {
     labelKey: 'nav.schools',
     icon: 'apartment',
