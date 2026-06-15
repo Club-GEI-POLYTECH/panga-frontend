@@ -92,6 +92,53 @@ export interface Payment {
   [key: string]: unknown;
 }
 
+export interface Period {
+  id: string;
+  term?: string;
+  periodType?: string;
+  periodNumber?: number;
+  label?: string;
+  [key: string]: unknown;
+}
+
+export interface Grade {
+  id: string;
+  studentId?: string;
+  studentName?: string;
+  classId?: string;
+  nationalProgramSlotId?: string;
+  subjectLabel?: string;
+  term?: string;
+  score?: number;
+  periodNumber?: number;
+  isPeriodGrade?: boolean;
+  isExamGrade?: boolean;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface ProgramSlot {
+  id: string;
+  programCode?: string;
+  labelFr?: string;
+  [key: string]: unknown;
+}
+
+export interface Bulletin {
+  id: string;
+  studentId?: string;
+  studentName?: string;
+  classId?: string;
+  term?: string;
+  schoolYear?: string;
+  status?: string;
+  published?: boolean;
+  average?: number;
+  rank?: number;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
 export interface Announcement {
   id: string;
   title?: string;
@@ -172,6 +219,28 @@ export interface CreatePaymentDto {
   paymentDate: string;
   paymentMethod: string;
   notes?: string;
+}
+
+export interface CreateGradeDto {
+  studentId: string;
+  classId: string;
+  nationalProgramSlotId: string;
+  schoolYear: string;
+  term: string;
+  score: number;
+  isPeriodGrade: boolean;
+  isExamGrade: boolean;
+  periodNumber: number;
+  periodId: string;
+}
+
+export interface GenerateBulletinDto {
+  studentId: string;
+  classId: string;
+  schoolYear: string;
+  term: string;
+  generatePdf: boolean;
+  publishImmediately: boolean;
 }
 
 export interface CreateAnnouncementDto {
