@@ -92,6 +92,27 @@ export interface Payment {
   [key: string]: unknown;
 }
 
+export interface Announcement {
+  id: string;
+  title?: string;
+  content?: string;
+  targetAudience?: string;
+  priority?: string;
+  author?: string;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
+export interface UserNotification {
+  id?: string;
+  title?: string;
+  message?: string;
+  type?: string;
+  read?: boolean;
+  createdAt?: string;
+  [key: string]: unknown;
+}
+
 /* ----------------------------- DTOs d'écriture ---------------------------- */
 
 export interface CreateStudentDto {
@@ -151,4 +172,18 @@ export interface CreatePaymentDto {
   paymentDate: string;
   paymentMethod: string;
   notes?: string;
+}
+
+export interface CreateAnnouncementDto {
+  title: string;
+  content: string;
+  targetAudience: string;
+  priority: string;
+}
+
+export interface SendNotificationDto {
+  title: string;
+  message: string;
+  type: string;
+  recipientUserIds: string[];
 }

@@ -30,6 +30,7 @@ const IMPLEMENTED = new Set([
   'parents',
   'classes',
   'payments',
+  'communications',
 ]);
 
 /**
@@ -79,6 +80,12 @@ const adminRoutes: Routes = [
     canActivate: [roleGuard('admin')],
     loadComponent: () =>
       import('./features/admin/payments/payments-list').then((m) => m.PaymentsList),
+  },
+  {
+    // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).
+    path: 'communications',
+    loadComponent: () =>
+      import('./features/admin/communications/communications').then((m) => m.Communications),
   },
 ];
 
