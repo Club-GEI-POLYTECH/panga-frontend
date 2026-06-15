@@ -92,6 +92,13 @@ export interface Payment {
   [key: string]: unknown;
 }
 
+export interface AttendanceEntry {
+  studentId?: string;
+  studentName?: string;
+  status?: string;
+  [key: string]: unknown;
+}
+
 export interface Period {
   id: string;
   term?: string;
@@ -219,6 +226,15 @@ export interface CreatePaymentDto {
   paymentDate: string;
   paymentMethod: string;
   notes?: string;
+}
+
+export interface MarkAttendanceDto {
+  studentId: string;
+  classInstanceId: string;
+  date: string;
+  attendanceType: string;
+  status: string;
+  classScheduleSlotId?: string;
 }
 
 export interface CreateGradeDto {

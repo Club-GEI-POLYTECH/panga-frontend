@@ -33,6 +33,7 @@ const IMPLEMENTED = new Set([
   'communications',
   'grades',
   'bulletins',
+  'attendance',
 ]);
 
 /**
@@ -93,6 +94,11 @@ const adminRoutes: Routes = [
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () =>
       import('./features/admin/bulletins/bulletins-list').then((m) => m.BulletinsList),
+  },
+  {
+    path: 'attendance',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
   },
   {
     // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).
