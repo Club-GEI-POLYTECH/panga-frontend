@@ -6,8 +6,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { SchoolsService } from '../services/schools.service';
 import type { PlatformSchool, SchoolAuthority } from '../models/platform.models';
+import {
+  AUTHORITY_EDU_LEVEL_OPTIONS,
+  AUTHORITY_ROLE_OPTIONS,
+} from '../../../core/models/school.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { KeyValue } from '../../../shared/ui/key-value';
@@ -26,6 +31,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     Avatar,
     KeyValue,
     SectionHeader,
@@ -153,12 +159,20 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
               <input matInput type="email" formControlName="email" />
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>Code rôle</mat-label>
-              <input matInput formControlName="roleCode" placeholder="principal" />
+              <mat-label>Rôle</mat-label>
+              <mat-select formControlName="roleCode">
+                @for (o of authorityRoles; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Niveau</mat-label>
-              <input matInput formControlName="educationLevel" placeholder="all" />
+              <mat-select formControlName="educationLevel">
+                @for (o of authorityLevels; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
             <div class="sm:col-span-2 flex justify-end">
               <button
@@ -184,6 +198,9 @@ export class SchoolDetail {
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+
+  protected readonly authorityRoles = AUTHORITY_ROLE_OPTIONS;
+  protected readonly authorityLevels = AUTHORITY_EDU_LEVEL_OPTIONS;
 
   protected readonly school = signal<PlatformSchool | null>(null);
   protected readonly authorities = signal<SchoolAuthority[]>([]);

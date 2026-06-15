@@ -9,6 +9,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { SchoolService } from '../services/school.service';
 import type { PlatformSchool, SchoolAuthority } from '../../super-admin/models/platform.models';
+import {
+  ACCREDITATION_STATUS_OPTIONS,
+  AUTHORITY_EDU_LEVEL_OPTIONS,
+  AUTHORITY_ROLE_OPTIONS,
+  EDUCATION_LEVEL_OPTIONS,
+  SCHOOL_TYPE_OPTIONS,
+} from '../../../core/models/school.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { SectionHeader } from '../../../shared/ui/section-header';
@@ -28,14 +35,6 @@ interface Group {
   fields: Field[];
 }
 
-const EDU = [
-  { value: 'preschool', label: 'Maternelle' },
-  { value: 'primary', label: 'Primaire' },
-  { value: 'secondary', label: 'Secondaire' },
-  { value: 'vocational', label: 'Professionnel' },
-  { value: 'university', label: 'Supérieur' },
-];
-
 const EDITABLE: Group[] = [
   {
     title: 'Identité',
@@ -44,22 +43,12 @@ const EDITABLE: Group[] = [
       { key: 'displayName', label: 'Nom affiché' },
       { key: 'name', label: 'Nom complet' },
       { key: 'legalName', label: 'Raison sociale' },
-      {
-        key: 'schoolType',
-        label: 'Type',
-        type: 'select',
-        options: [
-          { value: 'private', label: 'Privé' },
-          { value: 'public', label: 'Public' },
-          { value: 'confessional', label: 'Conventionné' },
-          { value: 'other', label: 'Autre' },
-        ],
-      },
+      { key: 'schoolType', label: 'Type', type: 'select', options: SCHOOL_TYPE_OPTIONS },
       {
         key: 'educationLevels',
         label: "Niveaux d'enseignement",
         type: 'multiselect',
-        options: EDU,
+        options: EDUCATION_LEVEL_OPTIONS,
         wide: true,
       },
       { key: 'motto', label: 'Devise' },
@@ -126,11 +115,7 @@ const EDITABLE: Group[] = [
         key: 'accreditationStatus',
         label: 'Statut accréditation',
         type: 'select',
-        options: [
-          { value: 'accredited', label: 'Accréditée' },
-          { value: 'pending', label: 'En cours' },
-          { value: 'none', label: 'Non accréditée' },
-        ],
+        options: ACCREDITATION_STATUS_OPTIONS,
       },
       { key: 'accreditationBody', label: "Organe d'accréditation" },
       { key: 'accreditationNumber', label: "N° d'accréditation" },
@@ -388,12 +373,20 @@ const READONLY: Group[] = [
               <input matInput type="email" formControlName="email" />
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>Code rôle</mat-label>
-              <input matInput formControlName="roleCode" placeholder="secondary_prefect" />
+              <mat-label>Rôle</mat-label>
+              <mat-select formControlName="roleCode">
+                @for (o of authorityRoles; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Niveau</mat-label>
-              <input matInput formControlName="educationLevel" placeholder="secondary" />
+              <mat-select formControlName="educationLevel">
+                @for (o of authorityLevels; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
             </mat-form-field>
             <div class="sm:col-span-2 flex justify-end">
               <button
@@ -418,6 +411,8 @@ export class MySchool {
 
   protected readonly editable = EDITABLE;
   protected readonly readonly = READONLY;
+  protected readonly authorityRoles = AUTHORITY_ROLE_OPTIONS;
+  protected readonly authorityLevels = AUTHORITY_EDU_LEVEL_OPTIONS;
 
   protected readonly school = signal<PlatformSchool | null>(null);
   protected readonly authorities = signal<SchoolAuthority[]>([]);
