@@ -7,7 +7,6 @@ import type {
   CreateAuthorityDto,
   PlatformSchool,
   SchoolAuthority,
-  UpdateSchoolDto,
 } from '../../super-admin/models/platform.models';
 
 /** Mon établissement (dossier « 2 »). Le périmètre vient du JWT (schoolId). */
@@ -22,7 +21,7 @@ export class SchoolService {
       .pipe(map((r) => unwrapEnvelope<PlatformSchool>(r)));
   }
 
-  update(id: string, dto: UpdateSchoolDto): Observable<PlatformSchool> {
+  update(id: string, dto: Record<string, unknown>): Observable<PlatformSchool> {
     return this.http
       .put<unknown>(`${this.base}/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<PlatformSchool>(r)));
