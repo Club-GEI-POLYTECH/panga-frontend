@@ -24,7 +24,7 @@ export class StudentsService {
       .pipe(map((r) => unwrapEnvelope<Student>(r)));
   }
 
-  create(dto: CreateStudentDto): Observable<Student> {
+  create(dto: CreateStudentDto | Record<string, unknown>): Observable<Student> {
     return this.http.post<unknown>(this.base, dto).pipe(map((r) => unwrapEnvelope<Student>(r)));
   }
 

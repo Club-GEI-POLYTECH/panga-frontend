@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,7 +12,14 @@ import { ClassesService } from '../services/classes.service';
 import { ParentsService } from '../services/parents.service';
 import type { ClassInstance, Parent, Student } from '../models/admin.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
-import { GENDER_OPTIONS } from '../../../core/models/student.enums';
+import type { EnumOption } from '../../../core/models/school.enums';
+import {
+  BLOOD_GROUP_OPTIONS,
+  ENROLLMENT_TYPE_OPTIONS,
+  GENDER_OPTIONS,
+  STUDENT_STATUS_OPTIONS,
+  TRANSPORT_TYPE_OPTIONS,
+} from '../../../core/models/student.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
@@ -24,6 +31,126 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
 const SCHOOL_YEAR = '2024-2025';
+
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
+interface Field {
+  key: string;
+  label: string;
+  type?: FieldType;
+  options?: EnumOption[];
+  fromClasses?: boolean;
+  fromParents?: boolean;
+  required?: boolean;
+  wide?: boolean;
+}
+interface Group {
+  title: string;
+  icon: string;
+  fields: Field[];
+}
+
+const GROUPS: Group[] = [
+  {
+    title: 'Identité',
+    icon: 'badge',
+    fields: [
+      { key: 'firstName', label: 'Prénom', required: true },
+      { key: 'lastName', label: 'Nom', required: true },
+      { key: 'postnom', label: 'Postnom' },
+      { key: 'gender', label: 'Sexe', type: 'select', options: GENDER_OPTIONS },
+      { key: 'dateOfBirth', label: 'Date de naissance', type: 'date' },
+      { key: 'placeOfBirth', label: 'Lieu de naissance' },
+      { key: 'nationality', label: 'Nationalité' },
+      { key: 'bloodGroup', label: 'Groupe sanguin', type: 'select', options: BLOOD_GROUP_OPTIONS },
+    ],
+  },
+  {
+    title: 'Scolarité',
+    icon: 'school',
+    fields: [
+      { key: 'classInstanceId', label: 'Classe', type: 'select', fromClasses: true },
+      { key: 'parentId', label: 'Parent', type: 'select', fromParents: true },
+      { key: 'status', label: 'Statut', type: 'select', options: STUDENT_STATUS_OPTIONS },
+      {
+        key: 'enrollmentType',
+        label: "Type d'inscription",
+        type: 'select',
+        options: ENROLLMENT_TYPE_OPTIONS,
+      },
+      { key: 'enrollmentDate', label: "Date d'inscription", type: 'date' },
+      { key: 'previousSchool', label: 'École précédente' },
+      { key: 'previousClass', label: 'Classe précédente' },
+    ],
+  },
+  {
+    title: 'Contact',
+    icon: 'contacts',
+    fields: [
+      { key: 'phone', label: 'Téléphone', type: 'tel' },
+      { key: 'email', label: 'E-mail', type: 'email' },
+      { key: 'address', label: 'Adresse', wide: true },
+      { key: 'city', label: 'Ville' },
+      { key: 'province', label: 'Province' },
+      { key: 'country', label: 'Pays' },
+    ],
+  },
+  {
+    title: "Tuteur & contact d'urgence",
+    icon: 'family_restroom',
+    fields: [
+      { key: 'guardianName', label: 'Tuteur — nom' },
+      { key: 'guardianPhone', label: 'Tuteur — téléphone', type: 'tel' },
+      { key: 'guardianRelation', label: 'Tuteur — relation' },
+      { key: 'emergencyContactName', label: 'Urgence — nom' },
+      { key: 'emergencyContactPhone', label: 'Urgence — téléphone', type: 'tel' },
+      { key: 'emergencyContactRelation', label: 'Urgence — relation' },
+    ],
+  },
+  {
+    title: 'Transport & divers',
+    icon: 'directions_bus',
+    fields: [
+      { key: 'transportType', label: 'Transport', type: 'select', options: TRANSPORT_TYPE_OPTIONS },
+      { key: 'transportRoute', label: 'Itinéraire' },
+      { key: 'religion', label: 'Religion' },
+      { key: 'motherTongue', label: 'Langue maternelle' },
+      { key: 'specialNeeds', label: 'Besoins spéciaux', wide: true },
+    ],
+  },
+];
+
+const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
+
+/** Extrait un libellé lisible d'un objet de forme variable (nom, user imbriqué…). */
+function personLabel(p: Record<string, unknown>): string {
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
+  const user = (p['user'] ?? {}) as Record<string, unknown>;
+  const full =
+    `${str(p['firstName']) || str(user['firstName'])} ${str(p['lastName']) || str(user['lastName'])}`.trim();
+  return (
+    str(p['fullName']) ||
+    str(p['displayName']) ||
+    str(p['name']) ||
+    full ||
+    str(p['email']) ||
+    str(user['email']) ||
+    'Parent'
+  );
+}
+
+function classLabel(c: Record<string, unknown>): string {
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
+  const tpl = (c['template'] ?? {}) as Record<string, unknown>;
+  const composed = [str(c['level']), str(c['section'])].filter(Boolean).join(' ');
+  return (
+    str(c['name']) ||
+    str(c['displayName']) ||
+    str(c['label']) ||
+    str(tpl['name']) ||
+    composed ||
+    'Classe'
+  );
+}
 
 @Component({
   selector: 'panga-students-list',
@@ -76,47 +203,60 @@ const SCHOOL_YEAR = '2024-2025';
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
         <panga-section-header icon="person_add" title="Nouvel élève" />
-        <div class="grid gap-4 sm:grid-cols-2">
-          <mat-form-field appearance="outline">
-            <mat-label>Prénom</mat-label>
-            <input matInput formControlName="firstName" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Nom</mat-label>
-            <input matInput formControlName="lastName" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Sexe</mat-label>
-            <mat-select formControlName="gender">
-              @for (g of genders; track g.value) {
-                <mat-option [value]="g.value">{{ g.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Date de naissance</mat-label>
-            <input matInput type="date" formControlName="dateOfBirth" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Classe</mat-label>
-            <mat-select formControlName="classInstanceId">
-              <mat-option [value]="''">—</mat-option>
-              @for (c of classes(); track c.id) {
-                <mat-option [value]="c.id">{{ c.name || c.id }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Parent</mat-label>
-            <mat-select formControlName="parentId">
-              <mat-option [value]="''">—</mat-option>
-              @for (p of parents(); track p.id) {
-                <mat-option [value]="p.id">{{ parentName(p) }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        </div>
-        <div class="flex justify-end">
+        @for (group of groups; track group.title) {
+          <p class="text-sm font-semibold text-[var(--text)] mt-3 mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">{{
+              group.icon
+            }}</span>
+            {{ group.title }}
+          </p>
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @for (f of group.fields; track f.key) {
+              <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
+                <mat-form-field appearance="outline" class="w-full">
+                  <mat-label>{{ f.label }}</mat-label>
+                  @switch (f.type) {
+                    @case ('select') {
+                      <mat-select [formControlName]="f.key">
+                        @if (f.fromClasses) {
+                          <mat-option [value]="''">—</mat-option>
+                          @for (c of classes(); track c.id) {
+                            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                          }
+                        } @else if (f.fromParents) {
+                          <mat-option [value]="''">—</mat-option>
+                          @for (p of parents(); track p.id) {
+                            <mat-option [value]="p.id">{{ personLabel(p) }}</mat-option>
+                          }
+                        } @else {
+                          @for (o of f.options ?? []; track o.value) {
+                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                          }
+                        }
+                      </mat-select>
+                    }
+                    @default {
+                      <input
+                        matInput
+                        [type]="
+                          f.type === 'date'
+                            ? 'date'
+                            : f.type === 'email'
+                              ? 'email'
+                              : f.type === 'tel'
+                                ? 'tel'
+                                : 'text'
+                        "
+                        [formControlName]="f.key"
+                      />
+                    }
+                  }
+                </mat-form-field>
+              </div>
+            }
+          </div>
+        }
+        <div class="flex justify-end mt-2">
           <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
             Inscrire l'élève
           </button>
@@ -171,7 +311,7 @@ const SCHOOL_YEAR = '2024-2025';
             </div>
             @if (s.gender) {
               <panga-status-badge
-                [label]="s.gender === 'F' ? 'Fille' : 'Garçon'"
+                [label]="s.gender === 'F' ? 'Fille' : s.gender === 'M' ? 'Garçon' : 'Autre'"
                 [tone]="s.gender === 'F' ? 'brand' : 'info'"
                 [dot]="false"
               />
@@ -195,10 +335,12 @@ export class StudentsList {
   private readonly studentsApi = inject(StudentsService);
   private readonly classesApi = inject(ClassesService);
   private readonly parentsApi = inject(ParentsService);
-  private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
 
-  protected readonly genders = GENDER_OPTIONS;
+  protected readonly groups = GROUPS;
+  protected readonly classLabel = classLabel;
+  protected readonly personLabel = personLabel;
+
   protected readonly students = signal<Student[]>([]);
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly parents = signal<Parent[]>([]);
@@ -213,14 +355,22 @@ export class StudentsList {
   protected readonly boys = computed(() => this.students().filter((s) => s.gender === 'M').length);
   protected readonly girls = computed(() => this.students().filter((s) => s.gender === 'F').length);
 
-  protected readonly form = this.fb.nonNullable.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
-    gender: ['M', Validators.required],
-    dateOfBirth: ['', Validators.required],
-    classInstanceId: [''],
-    parentId: [''],
-  });
+  protected readonly form = new FormGroup(
+    Object.fromEntries(
+      ALL_KEYS.map((k) => {
+        const required = k === 'firstName' || k === 'lastName';
+        const initial =
+          k === 'gender' ? 'M' : k === 'status' ? 'active' : k === 'enrollmentType' ? 'new' : '';
+        return [
+          k,
+          new FormControl(initial, {
+            nonNullable: true,
+            validators: required ? [Validators.required] : [],
+          }),
+        ];
+      }),
+    ),
+  );
 
   constructor() {
     this.load();
@@ -230,9 +380,6 @@ export class StudentsList {
 
   protected fullName(s: Student): string {
     return `${s.firstName || ''} ${s.lastName || ''}`.trim();
-  }
-  protected parentName(p: Parent): string {
-    return `${p.firstName || ''} ${p.lastName || ''}`.trim() || (p.email ?? p.id);
   }
 
   private load(): void {
@@ -282,25 +429,24 @@ export class StudentsList {
       return;
     }
     this.submitting.set(true);
-    const v = this.form.getRawValue();
-    this.studentsApi
-      .create({
-        firstName: v.firstName,
-        lastName: v.lastName,
-        gender: v.gender,
-        dateOfBirth: v.dateOfBirth,
-        classInstanceId: v.classInstanceId || undefined,
-        parentId: v.parentId || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.submitting.set(false);
-          this.notify.success('Élève inscrit.');
-          this.form.reset({ gender: 'M' });
-          this.showForm.set(false);
-          this.load();
-        },
-        error: () => this.submitting.set(false),
-      });
+    // N'envoyer que les champs renseignés (les '' échoueraient sur IsEmail/IsDateString).
+    const raw = this.form.getRawValue() as Record<string, string>;
+    const payload: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (v !== '') {
+        payload[k] = v;
+      }
+    }
+    this.studentsApi.create(payload).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.notify.success('Élève inscrit.');
+        this.form.reset({ gender: 'M', status: 'active', enrollmentType: 'new' });
+        this.showForm.set(false);
+        this.page.set(1);
+        this.load();
+      },
+      error: () => this.submitting.set(false),
+    });
   }
 }
