@@ -8,7 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { ClassesService } from '../services/classes.service';
 import { TeachersService } from '../services/teachers.service';
-import type { ClassInstance, Teacher } from '../models/admin.models';
+import type { ClassInstance, SchoolSubOption, Teacher } from '../models/admin.models';
 import {
   CLASS_EDUCATION_LEVEL_OPTIONS,
   CLASS_SCHEDULE_OPTIONS,
@@ -147,6 +147,17 @@ function statusTone(status?: string): BadgeTone {
             <mat-label>Capacité</mat-label>
             <input matInput type="number" formControlName="capacity" />
           </mat-form-field>
+          @if (subOptions().length) {
+            <mat-form-field appearance="outline">
+              <mat-label>Filière (sous-option)</mat-label>
+              <mat-select formControlName="schoolSubOptionId">
+                <mat-option [value]="''">—</mat-option>
+                @for (s of subOptions(); track s.id) {
+                  <mat-option [value]="s.id">{{ s.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
           <mat-form-field appearance="outline">
             <mat-label>Enseignant titulaire</mat-label>
             <mat-select formControlName="classTeacherId">
@@ -244,6 +255,7 @@ export class ClassesList {
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly teachers = signal<Teacher[]>([]);
+  protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -274,6 +286,7 @@ export class ClassesList {
     classSchedule: new FormControl('', { nonNullable: true }),
     classType: new FormControl('', { nonNullable: true }),
     capacity: new FormControl(40, { nonNullable: true }),
+    schoolSubOptionId: new FormControl('', { nonNullable: true }),
     classTeacherId: new FormControl('', { nonNullable: true }),
     roomNumber: new FormControl('', { nonNullable: true }),
   });
@@ -283,6 +296,7 @@ export class ClassesList {
     this.teachersApi
       .list({ page: 1, limit: 200 })
       .subscribe({ next: (r) => this.teachers.set(r.items) });
+    this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.eduLevelCtrl.valueChanges.subscribe(() => this.load());
     this.scheduleCtrl.valueChanges.subscribe(() => this.load());
   }
@@ -333,6 +347,7 @@ export class ClassesList {
       schoolCycle: v.schoolCycle,
       classSchedule: v.classSchedule,
       classType: v.classType,
+      schoolSubOptionId: v.schoolSubOptionId,
       classTeacherId: v.classTeacherId,
       roomNumber: v.roomNumber,
     })) {

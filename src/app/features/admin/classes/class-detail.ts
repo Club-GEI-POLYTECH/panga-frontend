@@ -10,7 +10,12 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ClassesService } from '../services/classes.service';
 import { TeachersService } from '../services/teachers.service';
-import type { ClassInstance, ClassScheduleSlot, Teacher } from '../models/admin.models';
+import type {
+  ClassInstance,
+  ClassScheduleSlot,
+  SchoolSubOption,
+  Teacher,
+} from '../models/admin.models';
 import {
   CLASS_EDUCATION_LEVEL_OPTIONS,
   CLASS_SCHEDULE_OPTIONS,
@@ -36,6 +41,7 @@ interface Field {
   options?: EnumOption[];
   fromTemplate?: boolean;
   teachers?: boolean;
+  subOptions?: boolean;
 }
 interface Group {
   title: string;
@@ -81,6 +87,13 @@ const GROUPS: Group[] = [
         fromTemplate: true,
       },
       { key: 'capacity', label: 'Capacité', type: 'number', fromTemplate: true },
+      {
+        key: 'schoolSubOptionId',
+        label: 'Filière (sous-option)',
+        type: 'select',
+        subOptions: true,
+        fromTemplate: true,
+      },
     ],
   },
   {
@@ -106,6 +119,41 @@ function statusTone(status?: string): BadgeTone {
   if (status === 'archived' || status === 'closed') return 'neutral';
   return 'warning';
 }
+
+const BOARD_TYPE_OPTIONS: EnumOption[] = [
+  { value: 'whiteboard', label: 'Tableau blanc' },
+  { value: 'blackboard', label: 'Tableau noir' },
+  { value: 'smartboard', label: 'Tableau intelligent' },
+  { value: 'interactive', label: 'Interactif' },
+  { value: 'none', label: 'Aucun' },
+];
+
+const PHYS_NUMERIC = ['numberOfBenches', 'numberOfSeats', 'boardCount', 'wastebasketCount'];
+const EQUIPMENT: { key: string; label: string }[] = [
+  { key: 'desks', label: 'Pupitres' },
+  { key: 'chairs', label: 'Chaises' },
+  { key: 'tables', label: 'Tables' },
+  { key: 'shelves', label: 'Étagères' },
+  { key: 'cabinets', label: 'Armoires' },
+  { key: 'projectors', label: 'Projecteurs' },
+  { key: 'computers', label: 'Ordinateurs' },
+  { key: 'printers', label: 'Imprimantes' },
+  { key: 'airConditioners', label: 'Climatiseurs' },
+  { key: 'fans', label: 'Ventilateurs' },
+  { key: 'lights', label: 'Lampes' },
+  { key: 'windows', label: 'Fenêtres' },
+  { key: 'doors', label: 'Portes' },
+];
+
+const PHYS_KEYS = [
+  'numberOfBenches',
+  'numberOfSeats',
+  'boardType',
+  'boardCount',
+  'hasWastebaskets',
+  'wastebasketCount',
+  ...EQUIPMENT.map((e) => e.key),
+];
 
 @Component({
   selector: 'panga-class-detail',
@@ -218,6 +266,10 @@ function statusTone(status?: string): BadgeTone {
                         @if (f.teachers) {
                           @for (t of teachers(); track t.id) {
                             <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
+                          }
+                        } @else if (f.subOptions) {
+                          @for (s of subOptions(); track s.id) {
+                            <mat-option [value]="s.id">{{ s.name }}</mat-option>
                           }
                         } @else {
                           @for (o of f.options ?? []; track o.value) {
@@ -337,6 +389,62 @@ function statusTone(status?: string): BadgeTone {
             }
           </div>
         }
+      </section>
+
+      <!-- Aspects physiques -->
+      <section class="panga-card p-5 mb-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <panga-section-header icon="chair" title="Aspects physiques" />
+          <button
+            mat-flat-button
+            class="!rounded-xl"
+            (click)="savePhysical()"
+            [disabled]="savingPhys()"
+          >
+            {{ savingPhys() ? '…' : 'Enregistrer' }}
+          </button>
+        </div>
+        <form [formGroup]="physForm" class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Bancs</mat-label>
+            <input matInput type="number" formControlName="numberOfBenches" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Places</mat-label>
+            <input matInput type="number" formControlName="numberOfSeats" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Type de tableau</mat-label>
+            <mat-select formControlName="boardType">
+              <mat-option [value]="''">—</mat-option>
+              @for (o of boardTypes; track o.value) {
+                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Nb tableaux</mat-label>
+            <input matInput type="number" formControlName="boardCount" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Poubelles</mat-label>
+            <mat-select formControlName="hasWastebaskets">
+              <mat-option [value]="''">—</mat-option>
+              <mat-option [value]="'true'">Oui</mat-option>
+              <mat-option [value]="'false'">Non</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Nb poubelles</mat-label>
+            <input matInput type="number" formControlName="wastebasketCount" />
+          </mat-form-field>
+          @for (e of equipment; track e.key) {
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>{{ e.label }}</mat-label>
+              <input matInput type="number" [formControlName]="e.key" />
+            </mat-form-field>
+          }
+        </form>
       </section>
 
       <!-- Promotion / passage -->
@@ -460,6 +568,7 @@ export class ClassDetail {
 
   protected readonly cls = signal<ClassInstance | null>(null);
   protected readonly teachers = signal<Teacher[]>([]);
+  protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly slots = signal<ClassScheduleSlot[]>([]);
   protected readonly stats = signal<Record<string, unknown> | null>(null);
   protected readonly allClasses = signal<ClassInstance[]>([]);
@@ -473,6 +582,13 @@ export class ClassDetail {
   protected readonly students = computed(() => this.cls()?.students ?? []);
   protected readonly otherClasses = computed(() =>
     this.allClasses().filter((c) => c.id !== this.id),
+  );
+
+  protected readonly boardTypes = BOARD_TYPE_OPTIONS;
+  protected readonly equipment = EQUIPMENT;
+  protected readonly savingPhys = signal(false);
+  protected readonly physForm = new FormGroup(
+    Object.fromEntries(PHYS_KEYS.map((k) => [k, new FormControl('', { nonNullable: true })])),
   );
 
   protected readonly promoteForm = new FormGroup({
@@ -497,6 +613,7 @@ export class ClassDetail {
       .statistics(this.id)
       .subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
     this.classesApi.list('2024-2025').subscribe({ next: (r) => this.allClasses.set(r.items) });
+    this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.loadHistory();
   }
 
@@ -560,9 +677,71 @@ export class ClassDetail {
       next: (c) => {
         this.cls.set(c);
         this.patch(c);
+        this.patchPhys(c);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  private patchPhys(c: ClassInstance): void {
+    const inst = c as Record<string, unknown>;
+    const eq = (c['physicalEquipment'] ?? {}) as Record<string, unknown>;
+    const value: Record<string, string> = {};
+    for (const k of [
+      'numberOfBenches',
+      'numberOfSeats',
+      'boardType',
+      'boardCount',
+      'hasWastebaskets',
+      'wastebasketCount',
+    ]) {
+      const v = inst[k];
+      value[k] = v === null || v === undefined ? '' : String(v);
+    }
+    for (const e of EQUIPMENT) {
+      const v = eq[e.key];
+      value[e.key] = v === null || v === undefined ? '' : String(v);
+    }
+    this.physForm.patchValue(value);
+    this.physForm.markAsPristine();
+  }
+
+  savePhysical(): void {
+    if (this.savingPhys()) {
+      return;
+    }
+    const raw = this.physForm.getRawValue() as Record<string, string>;
+    const payload: Record<string, unknown> = {};
+    for (const k of PHYS_NUMERIC) {
+      if (raw[k] !== '') {
+        payload[k] = Number(raw[k]);
+      }
+    }
+    if (raw['boardType']) {
+      payload['boardType'] = raw['boardType'];
+    }
+    if (raw['hasWastebaskets'] !== '') {
+      payload['hasWastebaskets'] = raw['hasWastebaskets'] === 'true';
+    }
+    const equipment: Record<string, number> = {};
+    for (const e of EQUIPMENT) {
+      if (raw[e.key] !== '') {
+        equipment[e.key] = Number(raw[e.key]);
+      }
+    }
+    if (Object.keys(equipment).length) {
+      payload['equipment'] = equipment;
+    }
+    this.savingPhys.set(true);
+    this.classesApi.updatePhysicalEquipment(this.id, payload).subscribe({
+      next: (c) => {
+        this.savingPhys.set(false);
+        this.cls.set(c);
+        this.patchPhys(c);
+        this.notify.success('Aspects physiques mis à jour.');
+      },
+      error: () => this.savingPhys.set(false),
     });
   }
 
