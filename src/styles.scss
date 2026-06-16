@@ -65,8 +65,10 @@ html.dark {
   --warning: #e8a13a;
   --danger: #e05656;
 
-  // « Primaire » sombre (en-têtes, pilule active, CTA) — texte blanc lisible.
-  --brand-gradient: linear-gradient(135deg, #222026 0%, #2c3326 100%);
+  // En-têtes / héros : dégradé vert → bleu (texte blanc lisible).
+  --brand-gradient: linear-gradient(135deg, #559426 0%, #2f88a8 100%);
+  // Sombre réservé aux petits éléments (pilule de nav active, CTA).
+  --ink-gradient: linear-gradient(135deg, #222026 0%, #34322c 100%);
 }
 
 html.dark {
@@ -82,7 +84,8 @@ html.dark {
   --text-muted: #9b9ca2;
   --border: rgb(235 235 235 / 12%);
 
-  --brand-gradient: linear-gradient(135deg, #2c3326 0%, #1b1a1f 100%);
+  --brand-gradient: linear-gradient(135deg, #437320 0%, #2b6f8a 100%);
+  --ink-gradient: linear-gradient(135deg, #2c3326 0%, #1b1a1f 100%);
 }
 
 /* ----------------------------------------------------------------------------
@@ -214,11 +217,11 @@ html.dark {
   background-clip: padding-box;
 }
 
-/* Élément de navigation actif (sidebar) : pilule dégradée. */
+/* Élément de navigation actif (sidebar) : pilule sombre (#222026). */
 .panga-nav-active {
-  background: var(--brand-gradient) !important;
+  background: var(--ink-gradient) !important;
   color: #fff !important;
-  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--brand-700) 75%, transparent);
+  box-shadow: 0 10px 22px -12px rgb(34 32 38 / 55%);
 
   &:hover {
     color: #fff !important;
@@ -278,12 +281,12 @@ html.dark {
   border-left-color: var(--brand-500);
 }
 
-/* Bouton principal à dégradé turquoise (formulaires auth, CTA). */
+/* Bouton principal sombre (#222026) — formulaires auth, CTA. */
 .panga-btn-primary {
   height: 48px;
   border-radius: 0.85rem !important;
   font-weight: 600;
-  background: var(--brand-gradient) !important;
+  background: var(--ink-gradient) !important;
   color: #fff !important;
 }
 
