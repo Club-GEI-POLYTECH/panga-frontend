@@ -9,8 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
-import { ParentsService } from '../services/parents.service';
-import type { ClassInstance, Parent, Student } from '../models/admin.models';
+import type { ClassInstance, Student } from '../models/admin.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import type { EnumOption } from '../../../core/models/school.enums';
 import {
@@ -39,7 +38,6 @@ interface Field {
   type?: FieldType;
   options?: EnumOption[];
   fromClasses?: boolean;
-  fromParents?: boolean;
   required?: boolean;
   wide?: boolean;
 }
@@ -69,7 +67,6 @@ const GROUPS: Group[] = [
     icon: 'school',
     fields: [
       { key: 'classInstanceId', label: 'Classe', type: 'select', fromClasses: true },
-      { key: 'parentId', label: 'Parent', type: 'select', fromParents: true },
       { key: 'status', label: 'Statut', type: 'select', options: STUDENT_STATUS_OPTIONS },
       {
         key: 'enrollmentType',
@@ -120,23 +117,6 @@ const GROUPS: Group[] = [
 ];
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
-
-/** Extrait un libellé lisible d'un objet de forme variable (nom, user imbriqué…). */
-function personLabel(p: Record<string, unknown>): string {
-  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
-  const user = (p['user'] ?? {}) as Record<string, unknown>;
-  const full =
-    `${str(p['firstName']) || str(user['firstName'])} ${str(p['lastName']) || str(user['lastName'])}`.trim();
-  return (
-    str(p['fullName']) ||
-    str(p['displayName']) ||
-    str(p['name']) ||
-    full ||
-    str(p['email']) ||
-    str(user['email']) ||
-    'Parent'
-  );
-}
 
 function classLabel(c: Record<string, unknown>): string {
   const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
@@ -222,11 +202,6 @@ function classLabel(c: Record<string, unknown>): string {
                           <mat-option [value]="''">—</mat-option>
                           @for (c of classes(); track c.id) {
                             <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
-                          }
-                        } @else if (f.fromParents) {
-                          <mat-option [value]="''">—</mat-option>
-                          @for (p of parents(); track p.id) {
-                            <mat-option [value]="p.id">{{ personLabel(p) }}</mat-option>
                           }
                         } @else {
                           @for (o of f.options ?? []; track o.value) {
@@ -334,16 +309,13 @@ function classLabel(c: Record<string, unknown>): string {
 export class StudentsList {
   private readonly studentsApi = inject(StudentsService);
   private readonly classesApi = inject(ClassesService);
-  private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
 
   protected readonly groups = GROUPS;
   protected readonly classLabel = classLabel;
-  protected readonly personLabel = personLabel;
 
   protected readonly students = signal<Student[]>([]);
   protected readonly classes = signal<ClassInstance[]>([]);
-  protected readonly parents = signal<Parent[]>([]);
   protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
@@ -375,7 +347,6 @@ export class StudentsList {
   constructor() {
     this.load();
     this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
-    this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
   }
 
   protected fullName(s: Student): string {
