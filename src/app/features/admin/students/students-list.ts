@@ -6,7 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
 import { ParentsService } from '../services/parents.service';
@@ -137,7 +139,9 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
+    MatTooltipModule,
     Avatar,
     EmptyState,
     KpiCard,
@@ -149,6 +153,9 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
   ],
   template: `
     <panga-page-header icon="school" title="Élèves" subtitle="Effectifs de l'établissement">
+      <button mat-stroked-button class="!rounded-xl" (click)="downloadTemplate()">
+        <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
+      </button>
       <input #fileInput type="file" class="hidden" accept=".xlsx,.xls" (change)="onFile($event)" />
       <button
         mat-stroked-button
@@ -253,50 +260,82 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     } @else {
       <div class="panga-card divide-y divide-[var(--border)]">
         @for (s of students(); track s.id) {
-          <a
-            [routerLink]="['/', 'students', s.id]"
+          <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
           >
-            <panga-avatar [name]="fullName(s)" [size]="44" />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-[var(--text)] truncate">{{ fullName(s) || '—' }}</p>
-              <div
-                class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
-              >
-                @if (s.matricule || s.studentNumber) {
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">badge</span>
-                    {{ s.matricule || s.studentNumber }}
-                  </span>
-                }
-                @if (s.className) {
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">meeting_room</span>
-                    {{ s.className }}
-                  </span>
-                }
-                @if (s.dateOfBirth) {
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">cake</span>
-                    {{ s.dateOfBirth | date: 'dd/MM/yyyy' }}
-                  </span>
-                }
+            <a
+              [routerLink]="['/', 'students', s.id]"
+              class="flex items-center gap-4 min-w-0 flex-1"
+            >
+              <panga-avatar [name]="fullName(s)" [size]="44" />
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-[var(--text)] truncate">{{ fullName(s) || '—' }}</p>
+                <div
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                >
+                  @if (s.matricule || s.studentNumber) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">badge</span>
+                      {{ s.matricule || s.studentNumber }}
+                    </span>
+                  }
+                  @if (s.className) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">meeting_room</span>
+                      {{ s.className }}
+                    </span>
+                  }
+                  @if (s.dateOfBirth) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">cake</span>
+                      {{ s.dateOfBirth | date: 'dd/MM/yyyy' }}
+                    </span>
+                  }
+                </div>
               </div>
-            </div>
+            </a>
             @if (s.gender) {
               <panga-status-badge
                 [label]="s.gender === 'F' ? 'Fille' : s.gender === 'M' ? 'Garçon' : 'Autre'"
                 [tone]="s.gender === 'F' ? 'brand' : 'info'"
                 [dot]="false"
+                class="hidden sm:inline-flex"
               />
             }
-            <mat-icon
-              fontSet="material-symbols-outlined"
-              class="text-[var(--text-muted)] hidden sm:block"
+            @if (s.status) {
+              <panga-status-badge
+                [label]="statusLabel(s.status)"
+                [tone]="s.status === 'active' ? 'success' : 'neutral'"
+                class="hidden sm:inline-flex"
+              />
+            }
+            <button
+              mat-icon-button
+              [matMenuTriggerFor]="statusMenu"
+              matTooltip="Changer le statut"
+              aria-label="Changer le statut"
+              class="shrink-0"
             >
-              chevron_right
-            </mat-icon>
-          </a>
+              <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]">
+                more_vert
+              </mat-icon>
+            </button>
+            <mat-menu #statusMenu="matMenu" class="panga-menu">
+              <p class="px-4 pt-2 pb-1 text-xs text-[var(--text-muted)]">Changer le statut</p>
+              @for (st of statusOptions; track st.value) {
+                <button
+                  mat-menu-item
+                  (click)="changeStatus(s, st.value)"
+                  [disabled]="s.status === st.value"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">
+                    {{ s.status === st.value ? 'check' : 'radio_button_unchecked' }}
+                  </mat-icon>
+                  <span>{{ st.label }}</span>
+                </button>
+              }
+            </mat-menu>
+          </div>
         }
         @if (pagination()) {
           <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
@@ -312,6 +351,7 @@ export class StudentsList {
   private readonly notify = inject(NotificationService);
 
   protected readonly groups = GROUPS;
+  protected readonly statusOptions = STUDENT_STATUS_OPTIONS;
   protected readonly classLabel = classLabel;
   protected readonly personLabel = personLabel;
 
@@ -393,6 +433,35 @@ export class StudentsList {
       error: () => {
         this.importing.set(false);
         input.value = '';
+      },
+    });
+  }
+
+  downloadTemplate(): void {
+    this.studentsApi.downloadTemplate().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'template_eleves.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  }
+
+  statusLabel(value: string): string {
+    return STUDENT_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  }
+
+  changeStatus(student: Student, status: string): void {
+    if (student.status === status) {
+      return;
+    }
+    this.studentsApi.update(student.id, { status }).subscribe({
+      next: () => {
+        this.notify.success('Statut mis à jour.');
+        this.load();
       },
     });
   }

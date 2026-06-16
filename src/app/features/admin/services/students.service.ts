@@ -53,6 +53,11 @@ export class StudentsService {
       .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
   }
 
+  /** Modèle Excel d'import (binaire). */
+  downloadTemplate(): Observable<Blob> {
+    return this.http.get(`${this.base}/import/template`, { responseType: 'blob' });
+  }
+
   grades(id: string): Observable<unknown> {
     return this.http.get<unknown>(`${this.base}/${id}/grades`).pipe(map((r) => unwrapEnvelope(r)));
   }
