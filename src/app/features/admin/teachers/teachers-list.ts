@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { TeachersService } from '../services/teachers.service';
 import { ClassesService } from '../services/classes.service';
@@ -135,6 +136,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
     Avatar,
     EmptyState,
@@ -151,6 +153,19 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       title="Enseignants"
       subtitle="Corps enseignant de l'établissement"
     >
+      <button mat-stroked-button class="!rounded-xl" (click)="downloadTemplate()">
+        <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
+      </button>
+      <input #fileInput type="file" class="hidden" accept=".xlsx,.xls" (change)="onFile($event)" />
+      <button
+        mat-stroked-button
+        class="!rounded-xl"
+        (click)="fileInput.click()"
+        [disabled]="importing()"
+      >
+        <mat-icon fontSet="material-symbols-outlined">upload_file</mat-icon>
+        {{ importing() ? 'Import…' : 'Importer (Excel)' }}
+      </button>
       <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
@@ -250,35 +265,39 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     } @else {
       <div class="panga-card divide-y divide-[var(--border)]">
         @for (t of teachers(); track t.id) {
-          <a
-            [routerLink]="['/', 'teachers', t.id]"
+          <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
           >
-            <panga-avatar [name]="name(t)" [size]="46" />
-            <div class="min-w-0 flex-1">
-              <p class="font-medium text-[var(--text)] truncate">{{ name(t) || '—' }}</p>
-              <div
-                class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
-              >
-                @if (t.employeeNumber) {
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">badge</span>
-                    {{ t.employeeNumber }}
-                  </span>
-                }
-                @if (email(t)) {
-                  <span class="inline-flex items-center gap-1 truncate">
-                    <span class="material-symbols-outlined text-[14px]">mail</span> {{ email(t) }}
-                  </span>
-                }
-                @if (t.classInstancesAsTeacher?.length) {
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">meeting_room</span>
-                    {{ t.classInstancesAsTeacher?.length }} classe(s)
-                  </span>
-                }
+            <a
+              [routerLink]="['/', 'teachers', t.id]"
+              class="flex items-center gap-4 min-w-0 flex-1"
+            >
+              <panga-avatar [name]="name(t)" [size]="46" />
+              <div class="min-w-0 flex-1">
+                <p class="font-medium text-[var(--text)] truncate">{{ name(t) || '—' }}</p>
+                <div
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                >
+                  @if (t.employeeNumber) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">badge</span>
+                      {{ t.employeeNumber }}
+                    </span>
+                  }
+                  @if (email(t)) {
+                    <span class="inline-flex items-center gap-1 truncate">
+                      <span class="material-symbols-outlined text-[14px]">mail</span> {{ email(t) }}
+                    </span>
+                  }
+                  @if (t.classInstancesAsTeacher?.length) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[14px]">meeting_room</span>
+                      {{ t.classInstancesAsTeacher?.length }} classe(s)
+                    </span>
+                  }
+                </div>
               </div>
-            </div>
+            </a>
             <div class="hidden sm:flex items-center gap-2 shrink-0">
               @if (t.specialization) {
                 <panga-status-badge [label]="t.specialization" tone="brand" [dot]="false" />
@@ -294,13 +313,33 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
                 <panga-status-badge [label]="t.status" [tone]="statusTone(t.status)" />
               }
             </div>
-            <mat-icon
-              fontSet="material-symbols-outlined"
-              class="text-[var(--text-muted)] hidden sm:block"
+            <button
+              mat-icon-button
+              [matMenuTriggerFor]="statusMenu"
+              matTooltip="Changer le statut"
+              aria-label="Changer le statut"
+              class="shrink-0"
             >
-              chevron_right
-            </mat-icon>
-          </a>
+              <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]">
+                more_vert
+              </mat-icon>
+            </button>
+            <mat-menu #statusMenu="matMenu" class="panga-menu">
+              <p class="px-4 pt-2 pb-1 text-xs text-[var(--text-muted)]">Changer le statut</p>
+              @for (s of statusOptions; track s.value) {
+                <button
+                  mat-menu-item
+                  (click)="changeStatus(t, s.value)"
+                  [disabled]="t.status === s.value"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">
+                    {{ t.status === s.value ? 'check' : 'radio_button_unchecked' }}
+                  </mat-icon>
+                  <span>{{ s.label }}</span>
+                </button>
+              }
+            </mat-menu>
+          </div>
         }
         @if (pagination()) {
           <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
@@ -315,6 +354,7 @@ export class TeachersList {
   private readonly notify = inject(NotificationService);
 
   protected readonly groups = GROUPS;
+  protected readonly statusOptions = TEACHER_STATUS_OPTIONS;
   protected readonly classLabel = classLabel;
   protected readonly employment = employmentLabel;
   protected readonly statusTone = teacherStatusTone;
@@ -328,6 +368,7 @@ export class TeachersList {
   protected readonly searchCtrl = new FormControl('', { nonNullable: true });
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
+  protected readonly importing = signal(false);
   protected readonly showForm = signal(false);
 
   protected readonly fullTime = computed(
@@ -406,6 +447,54 @@ export class TeachersList {
   onPage(page: number): void {
     this.page.set(page);
     this.load();
+  }
+
+  onFile(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.importing()) {
+      return;
+    }
+    this.importing.set(true);
+    this.teachersApi.importExcel(file).subscribe({
+      next: (res) => {
+        this.importing.set(false);
+        const count = Number(res?.['success'] ?? res?.['imported'] ?? res?.['count']) || 0;
+        this.notify.success(count ? `${count} enseignant(s) importé(s).` : 'Import terminé.');
+        input.value = '';
+        this.page.set(1);
+        this.load();
+      },
+      error: () => {
+        this.importing.set(false);
+        input.value = '';
+      },
+    });
+  }
+
+  downloadTemplate(): void {
+    this.teachersApi.downloadTemplate().subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'template_enseignants.xlsx';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  }
+
+  changeStatus(teacher: Teacher, status: string): void {
+    if (teacher.status === status) {
+      return;
+    }
+    this.teachersApi.updateStatus(teacher.id, status).subscribe({
+      next: () => {
+        this.notify.success('Statut mis à jour.');
+        this.load();
+      },
+    });
   }
 
   create(): void {

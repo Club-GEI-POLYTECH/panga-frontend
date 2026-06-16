@@ -47,6 +47,20 @@ export class TeachersService {
     return this.http.delete<unknown>(`${this.base}/${id}`);
   }
 
+  /** Import d'enseignants via Excel (.xlsx/.xls) — fichier seul. */
+  importExcel(file: File): Observable<Record<string, unknown>> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http
+      .post<unknown>(`${this.base}/import/excel`, form)
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
+  /** Modèle Excel d'import (binaire). */
+  downloadTemplate(): Observable<Blob> {
+    return this.http.get(`${this.base}/import/template`, { responseType: 'blob' });
+  }
+
   classes(id: string): Observable<unknown> {
     return this.http.get<unknown>(`${this.base}/${id}/classes`).pipe(map((r) => unwrapEnvelope(r)));
   }
