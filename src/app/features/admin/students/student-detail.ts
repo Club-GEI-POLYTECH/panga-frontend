@@ -193,7 +193,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
                           <mat-option [value]="''">—</mat-option>
                           @if (f.fromClasses) {
                             @for (c of classes(); track c.id) {
-                              <mat-option [value]="c.id">{{ c.name || c.id }}</mat-option>
+                              <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
                             }
                           } @else {
                             @for (o of f.options ?? []; track o.value) {

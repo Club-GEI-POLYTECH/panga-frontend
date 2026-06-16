@@ -91,6 +91,11 @@ const adminRoutes: Routes = [
     loadComponent: () => import('./features/admin/classes/classes-list').then((m) => m.ClassesList),
   },
   {
+    path: 'classes/:id',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/classes/class-detail').then((m) => m.ClassDetail),
+  },
+  {
     path: 'payments',
     canActivate: [roleGuard('admin')],
     loadComponent: () =>

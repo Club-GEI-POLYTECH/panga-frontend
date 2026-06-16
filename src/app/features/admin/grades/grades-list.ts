@@ -43,7 +43,7 @@ const SCHOOL_YEAR = '2024-2025';
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
-            <mat-option [value]="c.id">{{ c.name || c.id }}</mat-option>
+            <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
           }
         </mat-select>
       </mat-form-field>

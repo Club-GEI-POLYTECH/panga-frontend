@@ -54,22 +54,65 @@ export interface Parent {
 export interface ClassTemplate {
   id: string;
   name?: string;
+  displayName?: string;
   level?: number;
   section?: string;
+  educationLevel?: string;
+  schoolCycle?: string;
+  classSchedule?: string;
+  classCode?: string;
+  classType?: string;
   capacity?: number;
+  schoolSubOptionId?: string;
   [key: string]: unknown;
 }
 
 export interface ClassInstance {
   id: string;
-  name?: string;
   templateId?: string;
   schoolYear?: string;
-  programId?: string;
-  studentCount?: number;
-  capacity?: number;
-  level?: number;
-  section?: string;
+  status?: string;
+  currentEnrollment?: number;
+  availableSeats?: number;
+  roomNumber?: string;
+  building?: string;
+  classTeacherId?: string;
+  assistantTeacherId?: string;
+  /** Relations chargées par le backend. */
+  template?: ClassTemplate;
+  classTeacher?: Record<string, unknown>;
+  subjects?: Record<string, unknown>[];
+  students?: Record<string, unknown>[];
+  [key: string]: unknown;
+}
+
+export interface ClassScheduleSlot {
+  id?: string;
+  weekdayIso: number;
+  startTime: string;
+  endTime: string;
+  label?: string | null;
+  classSubjectId?: string | null;
+  teacherId?: string | null;
+  room?: string | null;
+  sortOrder?: number;
+  [key: string]: unknown;
+}
+
+export interface SchoolOption {
+  id: string;
+  name?: string;
+  description?: string;
+  displayOrder?: number;
+  subOptions?: SchoolSubOption[];
+  [key: string]: unknown;
+}
+
+export interface SchoolSubOption {
+  id: string;
+  optionId?: string;
+  name?: string;
+  description?: string;
   [key: string]: unknown;
 }
 
@@ -205,14 +248,36 @@ export interface CreateParentDto {
 
 export interface CreateClassTemplateDto {
   name: string;
+  displayName?: string;
   level: number;
   section?: string;
+  educationLevel?: string;
+  schoolCycle?: string;
+  classSchedule?: string;
+  classCode?: string;
+  classType?: string;
   capacity?: number;
+  schoolSubOptionId?: string;
 }
 
 export interface CreateClassInstanceDto {
   templateId: string;
   schoolYear: string;
+  classTeacherId?: string;
+  assistantTeacherId?: string;
+  status?: string;
+  roomNumber?: string;
+  building?: string;
+}
+
+/** Création combinée (modèle + instance) — POST /classes. */
+export interface CreateClassDto extends Partial<CreateClassTemplateDto> {
+  name: string;
+  level: number;
+  schoolYear?: string;
+  classTeacherId?: string;
+  status?: string;
+  roomNumber?: string;
 }
 
 export interface CreateFeeStructureDto {
