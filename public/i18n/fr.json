@@ -58,7 +58,17 @@
     "device": "Appareil",
     "status": "Statut",
     "success": "Réussie",
-    "failed": "Échouée"
+    "failed": "Échouée",
+    "infoTitle": "Informations personnelles",
+    "username": "Identifiant",
+    "email": "E-mail",
+    "phone": "Téléphone",
+    "address": "Adresse",
+    "city": "Ville",
+    "country": "Pays",
+    "nationality": "Nationalité",
+    "memberSince": "Membre depuis",
+    "lastLogin": "Dernière connexion"
   },
   "nav": {
     "groups": {

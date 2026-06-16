@@ -58,7 +58,17 @@
     "device": "Device",
     "status": "Status",
     "success": "Success",
-    "failed": "Failed"
+    "failed": "Failed",
+    "infoTitle": "Personal information",
+    "username": "Username",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address",
+    "city": "City",
+    "country": "Country",
+    "nationality": "Nationality",
+    "memberSince": "Member since",
+    "lastLogin": "Last login"
   },
   "nav": {
     "groups": {

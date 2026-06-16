@@ -7,26 +7,44 @@
     <!-- Informations -->
     <section class="panga-card p-6">
       <div class="flex items-center gap-4">
-        <div
-          class="flex h-16 w-16 items-center justify-center rounded-2xl text-white text-xl font-semibold"
-          style="background: var(--brand-gradient)"
-        >
-          {{ store.fullName().charAt(0) || 'U' }}
-        </div>
-        <div class="min-w-0">
+        <panga-avatar [name]="store.fullName()" [size]="64" />
+        <div class="min-w-0 flex-1">
           <p class="text-lg font-semibold text-[var(--text)] truncate">{{ store.fullName() }}</p>
-          <p class="text-sm text-[var(--text-muted)] truncate">{{ store.user()?.email }}</p>
-          <span
-            class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium"
-            style="
-              background: color-mix(in srgb, var(--brand-500) 14%, transparent);
-              color: var(--brand-700);
-            "
-          >
-            {{ t('roles.' + (store.role() ?? 'student')) }}
-          </span>
+          @if (store.user()?.username) {
+            <p class="text-sm text-[var(--text-muted)] truncate">
+              {{ '@' + store.user()?.username }}
+            </p>
+          }
+          <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span
+              class="px-2 py-0.5 rounded-full text-xs font-medium"
+              style="
+                background: color-mix(in srgb, var(--brand-500) 14%, transparent);
+                color: var(--brand-700);
+              "
+            >
+              {{ t('roles.' + (store.role() ?? 'student')) }}
+            </span>
+            @if (store.user()?.status) {
+              <panga-status-badge
+                [label]="store.user()?.status ?? ''"
+                [tone]="store.user()?.status === 'active' ? 'success' : 'neutral'"
+              />
+            }
+          </div>
         </div>
       </div>
+
+      <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+        @for (row of infoRows(); track row.label) {
+          <div class="flex justify-between gap-3 py-1.5 border-b border-[var(--border)]">
+            <dt class="text-sm text-[var(--text-muted)]">{{ row.label }}</dt>
+            <dd class="text-sm font-medium text-[var(--text)] text-right break-all">
+              {{ row.value }}
+            </dd>
+          </div>
+        }
+      </dl>
     </section>
 
     <!-- Changement de mot de passe -->

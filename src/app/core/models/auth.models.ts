@@ -24,6 +24,15 @@ export interface User {
   schoolId?: string | null;
   /** Écoles auxquelles l'utilisateur a accès (parents multi-écoles). */
   schools?: School[];
+  /* Champs de profil renvoyés par /auth/profile (auth/me). */
+  status?: string | null;
+  phone?: string | null;
+  nationality?: string | null;
+  address?: string | null;
+  city?: string | null;
+  country?: string | null;
+  createdAt?: string | null;
+  lastLoginAt?: string | null;
 }
 
 export interface LoginRequest {

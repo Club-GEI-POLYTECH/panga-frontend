@@ -267,5 +267,13 @@ function mapUser(u: unknown): User {
     avatarUrl: str(u, 'avatar', 'profilePhoto', 'avatarUrl') ?? null,
     schoolId: str(u, 'schoolId', 'school_id') ?? null,
     schools: prop(u, 'schools') as School[] | undefined,
+    status: str(u, 'status') ?? null,
+    phone: str(u, 'phone') ?? null,
+    nationality: str(u, 'nationality') ?? null,
+    address: str(u, 'address') ?? null,
+    city: str(u, 'city') ?? null,
+    country: str(u, 'country') ?? null,
+    createdAt: str(u, 'createdAt', 'created_at') ?? null,
+    lastLoginAt: str(u, 'lastLoginAt', 'last_login_at') ?? null,
   };
 }
