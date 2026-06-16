@@ -22,12 +22,22 @@ export interface Student {
 
 export interface Teacher {
   id: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
+  employeeNumber?: string;
   specialization?: string;
-  isActive?: boolean;
+  status?: string;
+  employmentType?: string;
+  hireDate?: string;
+  salary?: number;
+  salaryCurrency?: string;
+  subjectsTaught?: string[];
+  languagesSpoken?: string[];
+  certifications?: string[];
+  /** Infos personnelles (le backend les imbrique sous `user`). */
+  user?: Record<string, unknown>;
+  /** Classes dont l'enseignant est titulaire. */
+  classInstancesAsTeacher?: Record<string, unknown>[];
+  /** Cours (matières) assignés. */
+  classSubjects?: Record<string, unknown>[];
   [key: string]: unknown;
 }
 
