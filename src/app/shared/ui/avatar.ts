@@ -2,12 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 /** Palettes dérivées d'un nom pour varier les avatars sans image. */
 const GRADIENTS = [
-  'linear-gradient(135deg, #0e7490 0%, #14b8a6 55%, #2dd4bf 100%)',
-  'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-  'linear-gradient(135deg, #ea580c 0%, #f59e0b 100%)',
-  'linear-gradient(135deg, #2563eb 0%, #38bdf8 100%)',
-  'linear-gradient(135deg, #db2777 0%, #f472b6 100%)',
-  'linear-gradient(135deg, #059669 0%, #34d399 100%)',
+  'linear-gradient(135deg, #6fbb31 0%, #a7e46a 100%)',
+  'linear-gradient(135deg, #2b7fa8 0%, #a8dff8 100%)',
+  'linear-gradient(135deg, #222026 0%, #4a4750 100%)',
+  'linear-gradient(135deg, #559426 0%, #bde97f 100%)',
+  'linear-gradient(135deg, #3a7d9a 0%, #7fc6e8 100%)',
+  'linear-gradient(135deg, #437320 0%, #8fd34a 100%)',
 ];
 
 function hash(text: string): number {

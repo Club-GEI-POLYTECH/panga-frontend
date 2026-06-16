@@ -21,7 +21,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         <div class="min-w-0">
           <h1
             class="text-2xl font-semibold text-[var(--text)] truncate"
-            style="font-family: Poppins, sans-serif"
+            style="font-family: Urbanist, sans-serif"
           >
             {{ title() }}
           </h1>

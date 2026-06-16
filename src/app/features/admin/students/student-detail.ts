@@ -162,7 +162,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         <div class="relative flex flex-wrap items-center gap-4">
           <panga-avatar [name]="fullName()" [size]="64" />
           <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Poppins, sans-serif">
+            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
               {{ fullName() || 'Élève' }}
             </h1>
             <p class="text-sm opacity-90">

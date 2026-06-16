@@ -7,16 +7,16 @@
 html {
   color-scheme: light;
 
-  // Thème Material 3 : palette turquoise (cyan) en primaire.
+  // Thème Material 3 : vert en primaire, bleu en tertiaire, police Urbanist.
   @include mat.theme(
     (
       color: (
-        primary: mat.$cyan-palette,
+        primary: mat.$green-palette,
         tertiary: mat.$azure-palette,
       ),
       typography: (
-        plain-family: 'Inter',
-        brand-family: 'Poppins',
+        plain-family: 'Urbanist',
+        brand-family: 'Urbanist',
       ),
       density: 0,
     )
@@ -37,47 +37,52 @@ html.dark {
    Tokens de marque — échelle turquoise fixe + sémantiques clair/sombre
    -------------------------------------------------------------------------- */
 :root {
-  --brand-50: #ecfeff;
-  --brand-100: #cffafe;
-  --brand-200: #a5f3fc;
-  --brand-300: #67e8f9;
-  --brand-400: #2dd4bf;
-  --brand-500: #14b8a6;
-  --brand-600: #0fb5ba;
-  --brand-700: #0e7490;
-  --brand-800: #155e75;
-  --brand-900: #134e4a;
+  // Échelle verte (accent EstateHub : #A7E46A).
+  --brand-50: #f3fbe9;
+  --brand-100: #e6f6cf;
+  --brand-200: #d2efa6;
+  --brand-300: #bde97f;
+  --brand-400: #a7e46a;
+  --brand-500: #8fd34a;
+  --brand-600: #6fbb31;
+  --brand-700: #559426;
+  --brand-800: #437320;
+  --brand-900: #34571a;
 
-  --brand-deep: #0e7490;
-  --brand-secondary: #0fb5ba;
+  --brand-deep: #437320;
+  --brand-secondary: #a8dff8; // bleu accent
+  --accent-blue: #a8dff8;
+  --accent-blue-deep: #2b7fa8;
 
-  // Sémantiques — mode clair
+  // Sémantiques — mode clair (palette : #222026 / #EBEBEB / #A7E46A / #A8DFF8)
   --surface: #ffffff;
-  --background: #f4fbfb;
-  --text: #0f172a;
-  --text-muted: #475569;
-  --border: rgb(15 23 42 / 8%);
+  --background: #f6f7f4;
+  --text: #222026;
+  --text-muted: #6b6f76;
+  --border: #ebebeb;
 
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --danger: #dc2626;
+  --success: #5aa61f;
+  --warning: #e8a13a;
+  --danger: #e05656;
 
-  // Dégradé turquoise (auth, en-têtes de dashboard)
-  --brand-gradient: linear-gradient(135deg, #0e7490 0%, #14b8a6 55%, #2dd4bf 100%);
+  // « Primaire » sombre (en-têtes, pilule active, CTA) — texte blanc lisible.
+  --brand-gradient: linear-gradient(135deg, #222026 0%, #2c3326 100%);
 }
 
 html.dark {
-  --brand-deep: #155e75;
-  --brand-secondary: #22d3ee;
+  --brand-deep: #6fbb31;
+  --brand-secondary: #a8dff8;
+  --accent-blue: #a8dff8;
+  --accent-blue-deep: #7fc6e8;
 
   // Sémantiques — mode sombre
-  --surface: #0b1220;
-  --background: #0a0f1a;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
-  --border: rgb(226 232 240 / 10%);
+  --surface: #1b1a1f;
+  --background: #141318;
+  --text: #ececed;
+  --text-muted: #9b9ca2;
+  --border: rgb(235 235 235 / 12%);
 
-  --brand-gradient: linear-gradient(135deg, #155e75 0%, #0e7490 55%, #14b8a6 100%);
+  --brand-gradient: linear-gradient(135deg, #2c3326 0%, #1b1a1f 100%);
 }
 
 /* ----------------------------------------------------------------------------
@@ -90,7 +95,7 @@ body {
 
 body {
   margin: 0;
-  font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+  font-family: 'Urbanist', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   background-color: var(--background);
   color: var(--text);
@@ -161,20 +166,32 @@ html.dark .panga-card {
   color: transparent;
 }
 
-/* Halo de marque appliqué au fond de la zone de contenu. */
+/* Halo doux vert + bleu dans les coins (façon EstateHub). */
 :root {
-  --app-surface-glow: radial-gradient(
-    1000px 380px at 100% -8%,
-    color-mix(in srgb, var(--brand-300) 16%, transparent),
-    transparent 70%
-  );
+  --app-surface-glow:
+    radial-gradient(
+      820px 360px at 100% -6%,
+      color-mix(in srgb, var(--accent-blue) 50%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      720px 320px at 0% -4%,
+      color-mix(in srgb, var(--brand-300) 45%, transparent),
+      transparent 66%
+    );
 }
 html.dark {
-  --app-surface-glow: radial-gradient(
-    1000px 380px at 100% -8%,
-    color-mix(in srgb, var(--brand-700) 22%, transparent),
-    transparent 70%
-  );
+  --app-surface-glow:
+    radial-gradient(
+      820px 360px at 100% -6%,
+      color-mix(in srgb, var(--accent-blue) 12%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      720px 320px at 0% -4%,
+      color-mix(in srgb, var(--brand-700) 16%, transparent),
+      transparent 66%
+    );
 }
 
 /* Scrollbar discrète, raccord avec la marque. */

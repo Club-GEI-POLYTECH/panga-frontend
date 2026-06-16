@@ -24,7 +24,7 @@ export class GaugeChart {
         endAngle: -30,
         min: 0,
         max: Math.max(this.max(), this.value(), 1),
-        progress: { show: true, width: 16, roundCap: true, itemStyle: { color: '#14b8a6' } },
+        progress: { show: true, width: 16, roundCap: true, itemStyle: { color: '#8fd34a' } },
         axisLine: { lineStyle: { width: 16, color: [[1, 'rgba(148, 163, 184, 0.20)']] } },
         pointer: { show: false },
         axisTick: { show: false },

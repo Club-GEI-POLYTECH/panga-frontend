@@ -229,7 +229,7 @@ const READONLY: Group[] = [
         <div class="relative flex flex-wrap items-center gap-4">
           <panga-avatar [name]="school()?.name || '?'" [size]="64" />
           <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Poppins, sans-serif">
+            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
               {{ school()?.displayName || school()?.name || 'Mon établissement' }}
             </h1>
             <p class="text-sm opacity-90">

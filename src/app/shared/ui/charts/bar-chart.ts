@@ -37,7 +37,7 @@ export class BarChart {
           type: 'bar',
           barWidth: '56%',
           data: data.map((d) => d.value),
-          itemStyle: { color: '#14b8a6', borderRadius: [0, 6, 6, 0] },
+          itemStyle: { color: '#8fd34a', borderRadius: [0, 6, 6, 0] },
           label: { show: true, position: 'right', color: AXIS_LABEL, fontSize: 11 },
         },
       ],

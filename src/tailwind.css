@@ -17,16 +17,17 @@
  * variables CSS qui basculent en mode sombre (définies dans styles.scss).
  */
 @theme {
-  --color-brand-50: #ecfeff;
-  --color-brand-100: #cffafe;
-  --color-brand-200: #a5f3fc;
-  --color-brand-300: #67e8f9;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0fb5ba;
-  --color-brand-700: #0e7490;
-  --color-brand-800: #155e75;
-  --color-brand-900: #134e4a;
+  /* Échelle « brand » verte (accent EstateHub : #A7E46A). */
+  --color-brand-50: #f3fbe9;
+  --color-brand-100: #e6f6cf;
+  --color-brand-200: #d2efa6;
+  --color-brand-300: #bde97f;
+  --color-brand-400: #a7e46a;
+  --color-brand-500: #8fd34a;
+  --color-brand-600: #6fbb31;
+  --color-brand-700: #559426;
+  --color-brand-800: #437320;
+  --color-brand-900: #34571a;
 
   --color-brand: var(--brand-500);
   --color-brand-deep: var(--brand-deep);
@@ -38,12 +39,12 @@
   --color-muted: var(--text-muted);
   --color-line: var(--border);
 
-  --color-success: #16a34a;
+  --color-success: #5aa61f;
   --color-warning: #f59e0b;
   --color-danger: #dc2626;
 
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
+  --radius-2xl: 1.25rem;
+  --radius-3xl: 1.75rem;
 
-  --font-sans: 'Inter', 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Urbanist', ui-sans-serif, system-ui, sans-serif;
 }

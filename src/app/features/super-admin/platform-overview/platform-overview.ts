@@ -69,7 +69,7 @@ function fmt(n: number | null | undefined): string {
       <p class="text-sm opacity-90 flex items-center gap-1.5">
         <span class="material-symbols-outlined text-base">verified_user</span> Espace plateforme
       </p>
-      <h1 class="text-2xl sm:text-3xl font-semibold mt-1" style="font-family: Poppins, sans-serif">
+      <h1 class="text-2xl sm:text-3xl font-semibold mt-1" style="font-family: Urbanist, sans-serif">
         Tableau de bord plateforme
       </h1>
       <p class="text-sm opacity-90 mt-1">Pilotage global de toutes les écoles Panga</p>
@@ -322,9 +322,9 @@ export class PlatformOverview {
   protected readonly trendSeries = computed<LineSeries[]>(() => {
     const t = this.trends();
     return [
-      { name: 'Nouvelles écoles', data: t.map((p) => p.newSchools), axis: 0, color: '#0e7490' },
-      { name: 'Nouveaux élèves', data: t.map((p) => p.newStudents), axis: 0, color: '#14b8a6' },
-      { name: 'Revenus', data: t.map((p) => p.revenue), axis: 1, color: '#a855f7', area: true },
+      { name: 'Nouvelles écoles', data: t.map((p) => p.newSchools), axis: 0, color: '#6fbb31' },
+      { name: 'Nouveaux élèves', data: t.map((p) => p.newStudents), axis: 0, color: '#8fd34a' },
+      { name: 'Revenus', data: t.map((p) => p.revenue), axis: 1, color: '#5fb0d8', area: true },
     ];
   });
 

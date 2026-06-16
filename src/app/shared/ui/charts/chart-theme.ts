@@ -4,17 +4,21 @@ export interface ChartDatum {
   value: number;
 }
 
-/** Palette et helpers communs aux graphiques ECharts (theme-neutres). */
+/** Palette EstateHub : vert + bleu + sombre. */
 export const CHART_COLORS = [
-  '#14b8a6',
-  '#0e7490',
-  '#2dd4bf',
-  '#0ea5e9',
-  '#a855f7',
-  '#f59e0b',
-  '#f472b6',
-  '#34d399',
+  '#a7e46a',
+  '#8fd34a',
+  '#a8dff8',
+  '#5fb0d8',
+  '#6fbb31',
+  '#222026',
+  '#bde97f',
+  '#7fc6e8',
 ];
+
+/** Vert et bleu de marque, réutilisables. */
+export const BRAND_GREEN = '#8fd34a';
+export const BRAND_BLUE = '#5fb0d8';
 
 /** Gris lisible sur fond clair comme sombre (labels / axes). */
 export const AXIS_LABEL = '#94a3b8';

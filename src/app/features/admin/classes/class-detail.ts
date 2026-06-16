@@ -199,7 +199,7 @@ const PHYS_KEYS = [
             <span class="material-symbols-outlined text-3xl">meeting_room</span>
           </div>
           <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Poppins, sans-serif">
+            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
               {{ name() }}
             </h1>
             <p class="text-sm opacity-90">
