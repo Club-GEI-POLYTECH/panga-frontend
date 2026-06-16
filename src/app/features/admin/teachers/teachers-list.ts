@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +14,11 @@ import type { ClassInstance, Teacher } from '../models/admin.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import type { EnumOption } from '../../../core/models/school.enums';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
+import {
+  EMPLOYMENT_TYPE_OPTIONS,
+  QUALIFICATION_LEVEL_OPTIONS,
+  TEACHER_STATUS_OPTIONS,
+} from '../../../core/models/teacher.enums';
 import { classLabel, personLabel } from '../shared/labels';
 import { employmentLabel, teacherStatusTone } from '../shared/teacher-labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
@@ -72,6 +79,21 @@ const GROUPS: Group[] = [
       { key: 'employeeNumber', label: "Numéro d'employé" },
       { key: 'specialization', label: 'Spécialisation' },
       { key: 'academicTitle', label: 'Titre académique' },
+      {
+        key: 'employmentType',
+        label: "Type d'emploi",
+        type: 'select',
+        options: EMPLOYMENT_TYPE_OPTIONS,
+      },
+      { key: 'status', label: 'Statut', type: 'select', options: TEACHER_STATUS_OPTIONS },
+      {
+        key: 'qualificationLevel',
+        label: 'Niveau de qualification',
+        type: 'select',
+        options: QUALIFICATION_LEVEL_OPTIONS,
+      },
+      { key: 'qualificationInstitution', label: 'Institution' },
+      { key: 'qualificationYear', label: 'Année de qualification', type: 'number' },
       { key: 'hireDate', label: "Date d'embauche", type: 'date' },
       { key: 'yearsOfExperience', label: "Années d'expérience", type: 'number' },
       { key: 'salary', label: 'Salaire', type: 'number' },
@@ -206,6 +228,13 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </form>
     }
 
+    <mat-form-field appearance="outline" class="w-full mb-4" subscriptSizing="dynamic">
+      <mat-icon matPrefix fontSet="material-symbols-outlined" class="text-[var(--text-muted)] mr-1"
+        >search</mat-icon
+      >
+      <input matInput [formControl]="searchCtrl" placeholder="Rechercher (nom, prénom, e-mail)…" />
+    </mat-form-field>
+
     @if (loading()) {
       <panga-skeleton-table />
     } @else if (teachers().length === 0) {
@@ -295,6 +324,8 @@ export class TeachersList {
   protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
+  protected readonly search = signal('');
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -318,9 +349,17 @@ export class TeachersList {
         if (k === 'homeroomClassInstanceIds') {
           return [k, new FormControl<string[]>([], { nonNullable: true })];
         }
+        const initial =
+          k === 'gender'
+            ? 'M'
+            : k === 'employmentType'
+              ? 'full_time'
+              : k === 'status'
+                ? 'active'
+                : '';
         return [
           k,
-          new FormControl(k === 'gender' ? 'M' : '', {
+          new FormControl(initial, {
             nonNullable: true,
             validators: required ? [Validators.required] : [],
           }),
@@ -332,6 +371,13 @@ export class TeachersList {
   constructor() {
     this.load();
     this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.searchCtrl.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
+      .subscribe((v) => {
+        this.search.set(v.trim());
+        this.page.set(1);
+        this.load();
+      });
   }
 
   protected name(t: Teacher): string {
@@ -343,15 +389,18 @@ export class TeachersList {
 
   private load(): void {
     this.loading.set(true);
-    this.teachersApi.list({ page: this.page(), limit: 10 }).subscribe({
-      next: (res) => {
-        this.teachers.set(res.items);
-        this.pagination.set(res.pagination ?? null);
-        this.total.set(res.pagination?.total ?? res.items.length);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    const search = this.search();
+    this.teachersApi
+      .list({ page: this.page(), limit: 10, ...(search ? { search } : {}) })
+      .subscribe({
+        next: (res) => {
+          this.teachers.set(res.items);
+          this.pagination.set(res.pagination ?? null);
+          this.total.set(res.pagination?.total ?? res.items.length);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   onPage(page: number): void {
@@ -366,7 +415,7 @@ export class TeachersList {
     }
     this.submitting.set(true);
     const raw = this.form.getRawValue() as Record<string, unknown>;
-    const numberKeys = new Set(['yearsOfExperience', 'salary']);
+    const numberKeys = new Set(['yearsOfExperience', 'salary', 'qualificationYear']);
     const csvKeys = new Set(['subjectsTaught', 'languagesSpoken']);
     const payload: Record<string, unknown> = {};
     for (const key of ALL_KEYS) {
@@ -391,7 +440,12 @@ export class TeachersList {
       next: () => {
         this.submitting.set(false);
         this.notify.success('Enseignant ajouté.');
-        this.form.reset({ gender: 'M', homeroomClassInstanceIds: [] });
+        this.form.reset({
+          gender: 'M',
+          employmentType: 'full_time',
+          status: 'active',
+          homeroomClassInstanceIds: [],
+        });
         this.showForm.set(false);
         this.page.set(1);
         this.load();

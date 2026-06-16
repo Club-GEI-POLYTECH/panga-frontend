@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,16 +7,21 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeachersService } from '../services/teachers.service';
 import type { Teacher } from '../models/admin.models';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
+import {
+  EMPLOYMENT_TYPE_OPTIONS,
+  QUALIFICATION_LEVEL_OPTIONS,
+  TEACHER_STATUS_OPTIONS,
+} from '../../../core/models/teacher.enums';
 import { personLabel } from '../shared/labels';
 import { employmentLabel } from '../shared/teacher-labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { StatusBadge } from '../../../shared/ui/status-badge';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select';
 interface Field {
@@ -67,6 +72,21 @@ const GROUPS: Group[] = [
       { key: 'employeeNumber', label: "Numéro d'employé" },
       { key: 'specialization', label: 'Spécialisation' },
       { key: 'academicTitle', label: 'Titre académique' },
+      {
+        key: 'employmentType',
+        label: "Type d'emploi",
+        type: 'select',
+        options: EMPLOYMENT_TYPE_OPTIONS,
+      },
+      { key: 'status', label: 'Statut', type: 'select', options: TEACHER_STATUS_OPTIONS },
+      {
+        key: 'qualificationLevel',
+        label: 'Niveau de qualification',
+        type: 'select',
+        options: QUALIFICATION_LEVEL_OPTIONS,
+      },
+      { key: 'qualificationInstitution', label: 'Institution' },
+      { key: 'qualificationYear', label: 'Année de qualification', type: 'number' },
       { key: 'hireDate', label: "Date d'embauche", type: 'date' },
       { key: 'yearsOfExperience', label: "Années d'expérience", type: 'number' },
       { key: 'salary', label: 'Salaire', type: 'number' },
@@ -82,7 +102,7 @@ const GROUPS: Group[] = [
 ];
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
-const NUMBER_KEYS = new Set(['yearsOfExperience', 'salary']);
+const NUMBER_KEYS = new Set(['yearsOfExperience', 'salary', 'qualificationYear']);
 const FROM_USER = new Set(
   GROUPS.flatMap((g) => g.fields.filter((f) => f.fromUser).map((f) => f.key)),
 );
@@ -99,9 +119,9 @@ const FROM_USER = new Set(
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    MatTooltipModule,
     Avatar,
     SectionHeader,
-    StatusBadge,
   ],
   template: `
     <a
@@ -138,7 +158,7 @@ const FROM_USER = new Set(
               }
             </p>
           </div>
-          <div class="flex flex-wrap gap-1.5">
+          <div class="flex flex-wrap items-center gap-1.5">
             @if (teacher()?.employmentType) {
               <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs">{{
                 employment(teacher()?.employmentType)
@@ -149,6 +169,15 @@ const FROM_USER = new Set(
                 teacher()?.status
               }}</span>
             }
+            <button
+              mat-icon-button
+              class="!text-white"
+              (click)="remove()"
+              matTooltip="Supprimer"
+              aria-label="Supprimer"
+            >
+              <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+            </button>
           </div>
         </div>
       </div>
@@ -283,6 +312,7 @@ const FROM_USER = new Set(
 })
 export class TeacherDetail {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
 
@@ -321,6 +351,15 @@ export class TeacherDetail {
   }
   protected str(v: unknown): string {
     return v === null || v === undefined ? '' : String(v);
+  }
+
+  remove(): void {
+    this.teachersApi.remove(this.id).subscribe({
+      next: () => {
+        this.notify.success('Enseignant supprimé.');
+        void this.router.navigate(['/', 'teachers']);
+      },
+    });
   }
 
   private reload(): void {

@@ -12,7 +12,9 @@ export class TeachersService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiBaseUrl}/teachers`;
 
-  list(query: PageQuery = { page: 1, limit: 10 }): Observable<ListResult<Teacher>> {
+  list(
+    query: PageQuery & { search?: string } = { page: 1, limit: 10 },
+  ): Observable<ListResult<Teacher>> {
     return this.http
       .get<unknown>(this.base, { params: toHttpParams(query) })
       .pipe(map((r) => unwrapList<Teacher>(r)));
@@ -28,10 +30,21 @@ export class TeachersService {
     return this.http.post<unknown>(this.base, dto).pipe(map((r) => unwrapEnvelope<Teacher>(r)));
   }
 
+  /** Mise à jour : le backend expose un PUT (UpdateTeacherDto). */
   update(id: string, dto: Record<string, unknown>): Observable<Teacher> {
     return this.http
-      .patch<unknown>(`${this.base}/${id}`, dto)
+      .put<unknown>(`${this.base}/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<Teacher>(r)));
+  }
+
+  updateStatus(id: string, status: string): Observable<Teacher> {
+    return this.http
+      .put<unknown>(`${this.base}/${id}/status`, { status })
+      .pipe(map((r) => unwrapEnvelope<Teacher>(r)));
+  }
+
+  remove(id: string): Observable<unknown> {
+    return this.http.delete<unknown>(`${this.base}/${id}`);
   }
 
   classes(id: string): Observable<unknown> {

@@ -1,19 +1,22 @@
 import type { BadgeTone } from '../../../shared/ui/status-badge';
+import {
+  EMPLOYMENT_TYPE_OPTIONS,
+  QUALIFICATION_LEVEL_OPTIONS,
+} from '../../../core/models/teacher.enums';
 
-const EMPLOYMENT: Record<string, string> = {
-  full_time: 'Temps plein',
-  part_time: 'Temps partiel',
-  contract: 'Contrat',
-  temporary: 'Temporaire',
-  volunteer: 'Bénévole',
-  intern: 'Stagiaire',
-};
-
-export function employmentLabel(value?: string | null): string {
+function labelFrom(options: { value: string; label: string }[], value?: string | null): string {
   if (!value) {
     return '';
   }
-  return EMPLOYMENT[value] ?? value.replace(/_/g, ' ');
+  return options.find((o) => o.value === value)?.label ?? value.replace(/_/g, ' ');
+}
+
+export function employmentLabel(value?: string | null): string {
+  return labelFrom(EMPLOYMENT_TYPE_OPTIONS, value);
+}
+
+export function qualificationLabel(value?: string | null): string {
+  return labelFrom(QUALIFICATION_LEVEL_OPTIONS, value);
 }
 
 const STATUS_TONE: Record<string, BadgeTone> = {
