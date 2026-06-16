@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,7 +10,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
-import type { ClassInstance, Student } from '../models/admin.models';
+import { ParentsService } from '../services/parents.service';
+import type { ClassInstance, Parent, Student } from '../models/admin.models';
+import { personLabel } from '../shared/labels';
 import {
   BLOOD_GROUP_OPTIONS,
   ENROLLMENT_TYPE_OPTIONS,
@@ -236,6 +238,60 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </div>
       </form>
 
+      <!-- Parents liés -->
+      <section class="panga-card p-5 mb-4">
+        <panga-section-header
+          icon="family_restroom"
+          title="Parents liés"
+          [count]="linkedParents().length"
+        />
+        @if (linkedParents().length) {
+          <div class="flex flex-wrap gap-2 mb-4">
+            @for (p of linkedParents(); track p.id) {
+              <span
+                class="inline-flex items-center gap-2 rounded-full border border-[var(--border)] pl-1.5 pr-1 py-1"
+              >
+                <panga-avatar [name]="label(p)" [size]="24" />
+                <span class="text-sm text-[var(--text)]">{{ label(p) }}</span>
+                <button
+                  type="button"
+                  class="grid h-6 w-6 place-items-center rounded-full hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+                  (click)="removeParent(p.id)"
+                  aria-label="Retirer"
+                >
+                  <mat-icon
+                    fontSet="material-symbols-outlined"
+                    class="!text-base text-[var(--danger)]"
+                  >
+                    close
+                  </mat-icon>
+                </button>
+              </span>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-[var(--text-muted)] mb-4">Aucun parent lié.</p>
+        }
+        <div class="flex flex-wrap items-end gap-3">
+          <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+            <mat-label>Lier un parent</mat-label>
+            <mat-select [formControl]="parentCtrl">
+              @for (p of parents(); track p.id) {
+                <mat-option [value]="p.id">{{ label(p) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button
+            mat-flat-button
+            class="!rounded-xl !mb-1"
+            (click)="addParent()"
+            [disabled]="!parentCtrl.value || linking()"
+          >
+            Lier
+          </button>
+        </div>
+      </section>
+
       <!-- Dossier scolaire -->
       <section class="grid gap-4 sm:grid-cols-3">
         <div class="panga-card p-5 text-center">
@@ -261,18 +317,34 @@ export class StudentDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly studentsApi = inject(StudentsService);
   private readonly classesApi = inject(ClassesService);
+  private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
   protected readonly groups = GROUPS;
+  protected readonly label = personLabel;
   protected readonly student = signal<Student | null>(null);
   protected readonly classes = signal<ClassInstance[]>([]);
+  protected readonly parents = signal<Parent[]>([]);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly linking = signal(false);
   protected readonly gradesCount = signal(0);
   protected readonly paymentsCount = signal(0);
   protected readonly attendanceCount = signal(0);
+
+  protected readonly parentCtrl = new FormControl('', { nonNullable: true });
+
+  /** Parents déjà rattachés (forme variable : `parents` / `guardians`). */
+  protected readonly linkedParents = computed<{ id: string; [k: string]: unknown }[]>(() => {
+    const s = this.student() as Record<string, unknown> | null;
+    const arr = (s?.['parents'] ?? s?.['guardians']) as unknown;
+    if (!Array.isArray(arr)) {
+      return [];
+    }
+    return (arr as Record<string, unknown>[]).map((p) => ({ ...p, id: String(p['id'] ?? '') }));
+  });
 
   protected readonly form = new FormGroup(
     Object.fromEntries(ALL_KEYS.map((k) => [k, new FormControl('', { nonNullable: true })])),
@@ -280,6 +352,18 @@ export class StudentDetail {
 
   constructor() {
     this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
+    this.reloadStudent();
+    this.studentsApi.grades(this.id).subscribe({ next: (d) => this.gradesCount.set(toCount(d)) });
+    this.studentsApi
+      .payments(this.id)
+      .subscribe({ next: (d) => this.paymentsCount.set(toCount(d)) });
+    this.studentsApi
+      .attendance(this.id)
+      .subscribe({ next: (d) => this.attendanceCount.set(toCount(d)) });
+  }
+
+  private reloadStudent(): void {
     this.studentsApi.get(this.id).subscribe({
       next: (s) => {
         this.student.set(s);
@@ -288,13 +372,32 @@ export class StudentDetail {
       },
       error: () => this.loading.set(false),
     });
-    this.studentsApi.grades(this.id).subscribe({ next: (d) => this.gradesCount.set(toCount(d)) });
-    this.studentsApi
-      .payments(this.id)
-      .subscribe({ next: (d) => this.paymentsCount.set(toCount(d)) });
-    this.studentsApi
-      .attendance(this.id)
-      .subscribe({ next: (d) => this.attendanceCount.set(toCount(d)) });
+  }
+
+  addParent(): void {
+    const parentId = this.parentCtrl.value;
+    if (!parentId || this.linking()) {
+      return;
+    }
+    this.linking.set(true);
+    this.studentsApi.linkParent(this.id, parentId).subscribe({
+      next: () => {
+        this.linking.set(false);
+        this.notify.success('Parent lié.');
+        this.parentCtrl.reset('');
+        this.reloadStudent();
+      },
+      error: () => this.linking.set(false),
+    });
+  }
+
+  removeParent(parentId: string): void {
+    this.studentsApi.unlinkParent(this.id, parentId).subscribe({
+      next: () => {
+        this.notify.success('Parent retiré.');
+        this.reloadStudent();
+      },
+    });
   }
 
   protected fullName(): string {

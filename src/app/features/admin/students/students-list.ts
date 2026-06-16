@@ -9,7 +9,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
-import type { ClassInstance, Student } from '../models/admin.models';
+import { ParentsService } from '../services/parents.service';
+import type { ClassInstance, Parent, Student } from '../models/admin.models';
+import { classLabel, personLabel } from '../shared/labels';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import type { EnumOption } from '../../../core/models/school.enums';
 import {
@@ -38,6 +40,9 @@ interface Field {
   type?: FieldType;
   options?: EnumOption[];
   fromClasses?: boolean;
+  fromParents?: boolean;
+  /** Champ géré hors payload `create` (ex. liaison parent via route dédiée). */
+  external?: boolean;
   required?: boolean;
   wide?: boolean;
 }
@@ -67,6 +72,7 @@ const GROUPS: Group[] = [
     icon: 'school',
     fields: [
       { key: 'classInstanceId', label: 'Classe', type: 'select', fromClasses: true },
+      { key: 'parentId', label: 'Parent', type: 'select', fromParents: true, external: true },
       { key: 'status', label: 'Statut', type: 'select', options: STUDENT_STATUS_OPTIONS },
       {
         key: 'enrollmentType',
@@ -117,20 +123,8 @@ const GROUPS: Group[] = [
 ];
 
 const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
-
-function classLabel(c: Record<string, unknown>): string {
-  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : '');
-  const tpl = (c['template'] ?? {}) as Record<string, unknown>;
-  const composed = [str(c['level']), str(c['section'])].filter(Boolean).join(' ');
-  return (
-    str(c['name']) ||
-    str(c['displayName']) ||
-    str(c['label']) ||
-    str(tpl['name']) ||
-    composed ||
-    'Classe'
-  );
-}
+/** Clés réellement envoyées au POST /students (le reste = liaisons externes). */
+const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).map((f) => f.key));
 
 @Component({
   selector: 'panga-students-list',
@@ -202,6 +196,11 @@ function classLabel(c: Record<string, unknown>): string {
                           <mat-option [value]="''">—</mat-option>
                           @for (c of classes(); track c.id) {
                             <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                          }
+                        } @else if (f.fromParents) {
+                          <mat-option [value]="''">—</mat-option>
+                          @for (p of parents(); track p.id) {
+                            <mat-option [value]="p.id">{{ personLabel(p) }}</mat-option>
                           }
                         } @else {
                           @for (o of f.options ?? []; track o.value) {
@@ -309,13 +308,16 @@ function classLabel(c: Record<string, unknown>): string {
 export class StudentsList {
   private readonly studentsApi = inject(StudentsService);
   private readonly classesApi = inject(ClassesService);
+  private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
 
   protected readonly groups = GROUPS;
   protected readonly classLabel = classLabel;
+  protected readonly personLabel = personLabel;
 
   protected readonly students = signal<Student[]>([]);
   protected readonly classes = signal<ClassInstance[]>([]);
+  protected readonly parents = signal<Parent[]>([]);
   protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
@@ -347,6 +349,7 @@ export class StudentsList {
   constructor() {
     this.load();
     this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
   }
 
   protected fullName(s: Student): string {
@@ -400,22 +403,33 @@ export class StudentsList {
       return;
     }
     this.submitting.set(true);
-    // N'envoyer que les champs renseignés (les '' échoueraient sur IsEmail/IsDateString).
     const raw = this.form.getRawValue() as Record<string, string>;
+    // POST /students : uniquement les clés du DTO, et seulement si renseignées
+    // (les '' échoueraient sur IsEmail/IsDateString/IsUUID ; parentId est exclu).
     const payload: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(raw)) {
-      if (v !== '') {
-        payload[k] = v;
+    for (const key of PAYLOAD_KEYS) {
+      if (raw[key] !== '') {
+        payload[key] = raw[key];
       }
     }
+    const parentId = raw['parentId'];
+
     this.studentsApi.create(payload).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.notify.success('Élève inscrit.');
-        this.form.reset({ gender: 'M', status: 'active', enrollmentType: 'new' });
-        this.showForm.set(false);
-        this.page.set(1);
-        this.load();
+      next: (student) => {
+        const done = () => {
+          this.submitting.set(false);
+          this.notify.success('Élève inscrit.');
+          this.form.reset({ gender: 'M', status: 'active', enrollmentType: 'new' });
+          this.showForm.set(false);
+          this.page.set(1);
+          this.load();
+        };
+        // Liaison parent via la route dédiée (hors create).
+        if (parentId && student?.id) {
+          this.studentsApi.linkParent(student.id, parentId).subscribe({ next: done, error: done });
+        } else {
+          done();
+        }
       },
       error: () => this.submitting.set(false),
     });

@@ -34,6 +34,15 @@ export class StudentsService {
       .pipe(map((r) => unwrapEnvelope<Student>(r)));
   }
 
+  /** Lie un parent existant à l'élève (idempotent). */
+  linkParent(studentId: string, parentId: string): Observable<unknown> {
+    return this.http.post<unknown>(`${this.base}/${studentId}/parents`, { parentId });
+  }
+
+  unlinkParent(studentId: string, parentId: string): Observable<unknown> {
+    return this.http.delete<unknown>(`${this.base}/${studentId}/parents/${parentId}`);
+  }
+
   /** Import d'une liste d'élèves via fichier Excel (.xlsx/.xls). */
   importExcel(file: File, schoolYear: string): Observable<Record<string, unknown>> {
     const form = new FormData();
