@@ -62,6 +62,16 @@ export class MainShell {
   protected readonly navSections = computed(() => navSectionsForRole(this.store.role()));
   protected readonly roleKey = computed(() => `roles.${this.store.role()}`);
   protected readonly email = computed(() => this.store.user()?.email ?? '');
+  protected readonly location = computed(() => {
+    const u = this.store.user();
+    return [u?.city, u?.country].filter(Boolean).join(', ');
+  });
+  protected readonly isActive = computed(() => this.store.user()?.status === 'active');
+
+  constructor() {
+    // Profil complet (auth/profile) pour enrichir l'en-tête / la barre latérale.
+    this.auth.loadMe().subscribe({ error: () => undefined });
+  }
 
   protected toneColor(tone: Tone): string {
     return TONE_COLOR[tone];
