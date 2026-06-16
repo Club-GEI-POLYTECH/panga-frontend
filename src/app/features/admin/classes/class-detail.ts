@@ -16,6 +16,7 @@ import {
   CLASS_SCHEDULE_OPTIONS,
   CLASS_STATUS_OPTIONS,
   CLASS_TYPE_OPTIONS,
+  PROMOTION_ACTION_OPTIONS,
   SCHOOL_CYCLE_OPTIONS,
   WEEKDAY_OPTIONS,
 } from '../../../core/models/class.enums';
@@ -25,7 +26,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
+import type { BadgeTone } from '../../../shared/ui/status-badge';
 
 type FieldType = 'text' | 'number' | 'select';
 interface Field {
@@ -122,7 +123,6 @@ function statusTone(status?: string): BadgeTone {
     Avatar,
     KeyValue,
     SectionHeader,
-    StatusBadge,
   ],
   template: `
     <a
@@ -339,6 +339,70 @@ function statusTone(status?: string): BadgeTone {
         }
       </section>
 
+      <!-- Promotion / passage -->
+      <section class="panga-card p-5 mb-4">
+        <panga-section-header icon="trending_up" title="Promotion / passage d'année" />
+        <form
+          [formGroup]="promoteForm"
+          (ngSubmit)="promote()"
+          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <mat-form-field appearance="outline">
+            <mat-label>Action</mat-label>
+            <mat-select formControlName="action">
+              @for (o of promotionActions; track o.value) {
+                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Classe de destination</mat-label>
+            <mat-select formControlName="toClassInstanceId">
+              @for (c of otherClasses(); track c.id) {
+                <mat-option [value]="c.id">{{ classLabelOf(c) }} ({{ c.schoolYear }})</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Année de destination</mat-label>
+            <input matInput formControlName="toSchoolYear" placeholder="2025-2026" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Motif</mat-label>
+            <input matInput formControlName="reason" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="sm:col-span-2 lg:col-span-4">
+            <mat-label>Élèves concernés</mat-label>
+            <mat-select formControlName="studentIds" multiple>
+              @for (st of students(); track $index) {
+                <mat-option [value]="str(st['id'])">{{ studentName(st) }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
+            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="promoting()">
+              Enregistrer la promotion
+            </button>
+          </div>
+        </form>
+
+        @if (history().length) {
+          <div class="mt-5">
+            <p class="text-sm font-medium text-[var(--text)] mb-2">Historique</p>
+            <ul class="divide-y divide-[var(--border)]">
+              @for (h of history(); track $index) {
+                <li class="flex items-center justify-between gap-2 py-2 text-sm">
+                  <span class="text-[var(--text)]"
+                    >{{ str(h['action']) }} → {{ str(h['toSchoolYear']) }}</span
+                  >
+                  <span class="text-xs text-[var(--text-muted)]">{{ str(h['reason']) }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      </section>
+
       <!-- Cours & élèves -->
       <section class="grid gap-4 lg:grid-cols-2 mb-4">
         <div class="panga-card p-5">
@@ -389,18 +453,35 @@ export class ClassDetail {
 
   protected readonly groups = GROUPS;
   protected readonly weekdays = WEEKDAY_OPTIONS;
+  protected readonly promotionActions = PROMOTION_ACTION_OPTIONS;
   protected readonly tone = statusTone;
+  protected readonly classLabelOf = (c: ClassInstance): string =>
+    classLabel(c as unknown as Record<string, unknown>);
 
   protected readonly cls = signal<ClassInstance | null>(null);
   protected readonly teachers = signal<Teacher[]>([]);
   protected readonly slots = signal<ClassScheduleSlot[]>([]);
   protected readonly stats = signal<Record<string, unknown> | null>(null);
+  protected readonly allClasses = signal<ClassInstance[]>([]);
+  protected readonly history = signal<Record<string, unknown>[]>([]);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly savingSlots = signal(false);
+  protected readonly promoting = signal(false);
 
   protected readonly subjects = computed(() => this.cls()?.subjects ?? []);
   protected readonly students = computed(() => this.cls()?.students ?? []);
+  protected readonly otherClasses = computed(() =>
+    this.allClasses().filter((c) => c.id !== this.id),
+  );
+
+  protected readonly promoteForm = new FormGroup({
+    action: new FormControl('promote', { nonNullable: true }),
+    toClassInstanceId: new FormControl('', { nonNullable: true }),
+    toSchoolYear: new FormControl('2025-2026', { nonNullable: true }),
+    reason: new FormControl('', { nonNullable: true }),
+    studentIds: new FormControl<string[]>([], { nonNullable: true }),
+  });
 
   protected readonly form = new FormGroup(
     Object.fromEntries(ALL_KEYS.map((k) => [k, new FormControl('', { nonNullable: true })])),
@@ -415,6 +496,42 @@ export class ClassDetail {
     this.classesApi
       .statistics(this.id)
       .subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
+    this.classesApi.list('2024-2025').subscribe({ next: (r) => this.allClasses.set(r.items) });
+    this.loadHistory();
+  }
+
+  private loadHistory(): void {
+    this.classesApi.promotionHistory(this.id).subscribe({
+      next: (h) => this.history.set(Array.isArray(h) ? (h as Record<string, unknown>[]) : []),
+      error: () => undefined,
+    });
+  }
+
+  promote(): void {
+    const v = this.promoteForm.getRawValue();
+    if (!v.toClassInstanceId || v.studentIds.length === 0 || this.promoting()) {
+      this.notify.warning('Choisissez une destination et au moins un élève.');
+      return;
+    }
+    this.promoting.set(true);
+    this.classesApi
+      .promote(this.id, {
+        toClassInstanceId: v.toClassInstanceId,
+        toSchoolYear: v.toSchoolYear,
+        action: v.action,
+        studentIds: v.studentIds,
+        reason: v.reason || undefined,
+      })
+      .subscribe({
+        next: () => {
+          this.promoting.set(false);
+          this.notify.success('Promotion enregistrée.');
+          this.promoteForm.patchValue({ studentIds: [], reason: '' });
+          this.loadHistory();
+          this.reload();
+        },
+        error: () => this.promoting.set(false),
+      });
   }
 
   protected name(): string {

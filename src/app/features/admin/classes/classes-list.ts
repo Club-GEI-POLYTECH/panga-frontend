@@ -53,6 +53,9 @@ function statusTone(status?: string): BadgeTone {
   ],
   template: `
     <panga-page-header icon="meeting_room" title="Classes" [subtitle]="'Année ' + schoolYear">
+      <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'class-options']">
+        <mat-icon fontSet="material-symbols-outlined">account_tree</mat-icon> Filières
+      </a>
       <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{ showForm() ? 'close' : 'add' }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Nouvelle classe' }}

@@ -280,6 +280,27 @@ export interface CreateClassDto extends Partial<CreateClassTemplateDto> {
   roomNumber?: string;
 }
 
+export interface CreateSchoolOptionDto {
+  name: string;
+  description?: string;
+  displayOrder?: number;
+}
+
+export interface CreateSchoolSubOptionDto {
+  optionId: string;
+  name: string;
+  description?: string;
+  displayOrder?: number;
+}
+
+export interface PromoteStudentsDto {
+  toClassInstanceId: string;
+  toSchoolYear: string;
+  action: string;
+  studentIds: string[];
+  reason?: string;
+}
+
 export interface CreateFeeStructureDto {
   name: string;
   displayName?: string;

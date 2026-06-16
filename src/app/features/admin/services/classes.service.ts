@@ -10,6 +10,9 @@ import type {
   CreateClassDto,
   CreateClassInstanceDto,
   CreateClassTemplateDto,
+  CreateSchoolOptionDto,
+  CreateSchoolSubOptionDto,
+  PromoteStudentsDto,
   SchoolOption,
   SchoolSubOption,
 } from '../models/admin.models';
@@ -117,15 +120,41 @@ export class ClassesService {
       .pipe(map((r) => unwrapList<SchoolOption>(r)));
   }
 
+  createOption(dto: CreateSchoolOptionDto): Observable<SchoolOption> {
+    return this.http
+      .post<unknown>(`${this.base}/options`, dto)
+      .pipe(map((r) => unwrapEnvelope<SchoolOption>(r)));
+  }
+
+  updateOption(id: string, dto: Partial<CreateSchoolOptionDto>): Observable<SchoolOption> {
+    return this.http
+      .put<unknown>(`${this.base}/options/${id}`, dto)
+      .pipe(map((r) => unwrapEnvelope<SchoolOption>(r)));
+  }
+
+  removeOption(id: string): Observable<unknown> {
+    return this.http.delete<unknown>(`${this.base}/options/${id}`);
+  }
+
   subOptions(optionId?: string): Observable<ListResult<SchoolSubOption>> {
     return this.http
       .get<unknown>(`${this.base}/sub-options`, { params: toHttpParams({ optionId }) })
       .pipe(map((r) => unwrapList<SchoolSubOption>(r)));
   }
 
+  createSubOption(dto: CreateSchoolSubOptionDto): Observable<SchoolSubOption> {
+    return this.http
+      .post<unknown>(`${this.base}/sub-options`, dto)
+      .pipe(map((r) => unwrapEnvelope<SchoolSubOption>(r)));
+  }
+
+  removeSubOption(id: string): Observable<unknown> {
+    return this.http.delete<unknown>(`${this.base}/sub-options/${id}`);
+  }
+
   /* ------------------------------ Promotions -------------------------------- */
 
-  promote(instanceId: string, dto: Record<string, unknown>): Observable<unknown> {
+  promote(instanceId: string, dto: PromoteStudentsDto): Observable<unknown> {
     return this.http.post<unknown>(`${this.base}/${instanceId}/promote`, dto);
   }
 
