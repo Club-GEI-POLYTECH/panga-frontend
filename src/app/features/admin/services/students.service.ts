@@ -13,15 +13,18 @@ export class StudentsService {
   private readonly base = `${environment.apiBaseUrl}/students`;
 
   list(query: PageQuery = { page: 1, limit: 10 }): Observable<ListResult<Student>> {
-    return this.http
-      .get<unknown>(this.base, { params: toHttpParams(query) })
-      .pipe(map((r) => unwrapList<Student>(r)));
+    return this.http.get<unknown>(this.base, { params: toHttpParams(query) }).pipe(
+      map((r) => {
+        const res = unwrapList<Student>(r);
+        return { ...res, items: res.items.map(flattenStudent) };
+      }),
+    );
   }
 
   get(id: string): Observable<Student> {
     return this.http
       .get<unknown>(`${this.base}/${id}`)
-      .pipe(map((r) => unwrapEnvelope<Student>(r)));
+      .pipe(map((r) => flattenStudent(unwrapEnvelope<Student>(r))));
   }
 
   create(dto: CreateStudentDto | Record<string, unknown>): Observable<Student> {
@@ -73,4 +76,50 @@ export class StudentsService {
       .get<unknown>(`${this.base}/${id}/attendance`)
       .pipe(map((r) => unwrapEnvelope(r)));
   }
+}
+
+/**
+ * Les infos personnelles (prénom, nom, sexe, date de naissance, contacts…) sont
+ * portées par le compte `user` imbriqué, pas au niveau de l'élève. On les remonte
+ * à plat (sans écraser un champ propre à l'élève : id, status, schoolId…) pour
+ * que toutes les vues (liste, détail, notes, présences…) les affichent.
+ */
+const USER_FIELDS = [
+  'firstName',
+  'lastName',
+  'postnom',
+  'dateOfBirth',
+  'placeOfBirth',
+  'gender',
+  'nationality',
+  'address',
+  'city',
+  'province',
+  'postalCode',
+  'country',
+  'phone',
+  'secondaryPhone',
+  'email',
+  'bloodGroup',
+  'emergencyContactName',
+  'emergencyContactPhone',
+  'emergencyContactRelation',
+  'avatar',
+  'profilePhoto',
+] as const;
+
+function flattenStudent(student: Student): Student {
+  const raw = student as Record<string, unknown>;
+  const user = raw['user'] as Record<string, unknown> | undefined;
+  if (!user) {
+    return student;
+  }
+  const flat: Record<string, unknown> = { ...raw };
+  for (const key of USER_FIELDS) {
+    const current = flat[key];
+    if ((current === undefined || current === null || current === '') && user[key] != null) {
+      flat[key] = user[key];
+    }
+  }
+  return flat as Student;
 }
