@@ -596,7 +596,7 @@ export class ClassDetail {
   protected readonly promoteForm = new FormGroup({
     action: new FormControl('promote', { nonNullable: true }),
     toClassInstanceId: new FormControl('', { nonNullable: true }),
-    toSchoolYear: new FormControl('2025-2026', { nonNullable: true }),
+    toSchoolYear: new FormControl(this.sy.next(), { nonNullable: true }),
     reason: new FormControl('', { nonNullable: true }),
     studentIds: new FormControl<string[]>([], { nonNullable: true }),
   });
