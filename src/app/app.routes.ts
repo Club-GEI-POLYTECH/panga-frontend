@@ -35,6 +35,7 @@ const IMPLEMENTED = new Set([
   'bulletins',
   'attendance',
   'course-journal',
+  'exams',
 ]);
 
 /**
@@ -123,6 +124,16 @@ const adminRoutes: Routes = [
     path: 'attendance',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
+  },
+  {
+    path: 'exams',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/exams/exams-list').then((m) => m.ExamsList),
+  },
+  {
+    path: 'exams/:id',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/exams/exam-detail').then((m) => m.ExamDetail),
   },
   {
     path: 'course-journal',

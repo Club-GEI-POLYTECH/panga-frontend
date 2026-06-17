@@ -123,6 +123,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    labelKey: 'nav.exams',
+    icon: 'quiz',
+    path: 'exams',
+    roles: ['admin', 'teacher'],
+    group: 'pedagogie',
+  },
+  {
     labelKey: 'nav.payments',
     icon: 'payments',
     path: 'payments',
