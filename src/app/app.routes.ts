@@ -37,6 +37,10 @@ const IMPLEMENTED = new Set([
   'course-journal',
   'promotions',
   'exams',
+  'ma-scolarite',
+  'mes-paiements',
+  'mes-notifications',
+  'mes-services',
 ]);
 
 /**
@@ -152,6 +156,32 @@ const adminRoutes: Routes = [
     path: 'promotions',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/promotions/promotions').then((m) => m.Promotions),
+  },
+  {
+    path: 'ma-scolarite',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/scolarite/student-scolarite').then((m) => m.StudentScolarite),
+  },
+  {
+    path: 'mes-paiements',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/paiements/student-paiements').then((m) => m.StudentPaiements),
+  },
+  {
+    path: 'mes-notifications',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/notifications/student-notifications').then(
+        (m) => m.StudentNotifications,
+      ),
+  },
+  {
+    path: 'mes-services',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/services-hub/student-services').then((m) => m.StudentServices),
   },
   {
     // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).
