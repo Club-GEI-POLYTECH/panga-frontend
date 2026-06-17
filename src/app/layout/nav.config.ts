@@ -102,6 +102,20 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    labelKey: 'nav.myPayments',
+    icon: 'payments',
+    path: 'mes-paiements',
+    roles: ['student'],
+    group: 'gestion',
+  },
+  {
+    labelKey: 'nav.myNotifications',
+    icon: 'notifications',
+    path: 'mes-notifications',
+    roles: ['student'],
+    group: 'communication',
+  },
+  {
     labelKey: 'nav.grades',
     icon: 'grade',
     path: 'grades',

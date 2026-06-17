@@ -111,11 +111,47 @@ export class StudentService {
       .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
   }
 
+  /** Mes reçus. */
+  myReceipts(): Observable<Record<string, unknown>[]> {
+    return this.http
+      .get<unknown>(`${this.base}/payments/my-receipts`)
+      .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
+  }
+
+  /** Structures de frais de l'école. */
+  feeStructures(): Observable<Record<string, unknown>[]> {
+    return this.http
+      .get<unknown>(`${this.base}/payments/fee-structures`)
+      .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
+  }
+
+  /** Tranches de paiement de l'élève. */
+  installments(studentId: string): Observable<Record<string, unknown>[]> {
+    return this.http
+      .get<unknown>(`${this.base}/payments/students/${studentId}/installments`)
+      .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
+  }
+
+  /** Reçu PDF d'un paiement. */
+  receiptPdf(paymentId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/payments/${paymentId}/receipt/pdf`, {
+      responseType: 'blob',
+    });
+  }
+
   /** Mes notifications. */
   notifications(): Observable<Record<string, unknown>[]> {
     return this.http
       .get<unknown>(`${this.base}/notifications/me`)
       .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
+  }
+
+  markNotificationRead(id: string): Observable<unknown> {
+    return this.http.post<unknown>(`${this.base}/notifications/${id}/read`, {});
+  }
+
+  markAllNotificationsRead(): Observable<unknown> {
+    return this.http.post<unknown>(`${this.base}/notifications/read-all`, {});
   }
 }
 
