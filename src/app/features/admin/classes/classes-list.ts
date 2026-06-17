@@ -315,7 +315,7 @@ export class ClassesList {
   private load(): void {
     this.loading.set(true);
     this.classesApi
-      .list(this.sy.selected(), {
+      .list(this.sy.filter(), {
         educationLevel: this.eduLevelCtrl.value || undefined,
         classSchedule: this.scheduleCtrl.value || undefined,
       })

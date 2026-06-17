@@ -62,7 +62,7 @@ interface ChildRef {
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
       <mat-form-field appearance="outline" class="w-[150px]">
         <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" (blur)="reload()" />
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
 
       @if (isParent()) {
@@ -459,7 +459,8 @@ export class CourseJournal {
     () => this.role() === 'teacher' || this.role() === 'super_admin',
   );
 
-  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
+  /** Vide = année en cours (le backend applique l'année courante sur les GET). */
+  protected readonly schoolYear = new FormControl('', { nonNullable: true });
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classInstanceId = signal('');

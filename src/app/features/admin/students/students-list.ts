@@ -388,7 +388,7 @@ export class StudentsList {
 
   constructor() {
     this.load();
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
   }
 
@@ -399,7 +399,7 @@ export class StudentsList {
   private load(): void {
     this.loading.set(true);
     this.studentsApi
-      .list({ page: this.page(), limit: 10, schoolYear: this.sy.selected() })
+      .list({ page: this.page(), limit: 10, schoolYear: this.sy.filter() })
       .subscribe({
         next: (res) => {
           this.students.set(res.items);

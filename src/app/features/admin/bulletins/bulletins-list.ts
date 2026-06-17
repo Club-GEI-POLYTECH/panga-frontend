@@ -173,9 +173,9 @@ export class BulletinsList {
   });
 
   constructor() {
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.studentsApi
-      .list({ page: 1, limit: 200, schoolYear: this.sy.selected() })
+      .list({ page: 1, limit: 200, schoolYear: this.sy.filter() })
       .subscribe({ next: (r) => this.allStudents.set(r.items) });
   }
 
@@ -199,7 +199,7 @@ export class BulletinsList {
 
   private load(): void {
     this.loading.set(true);
-    this.academics.classBulletins(this.classId(), this.sy.selected(), this.term()).subscribe({
+    this.academics.classBulletins(this.classId(), this.sy.filter(), this.term()).subscribe({
       next: (r) => {
         this.bulletins.set(r.items);
         this.loading.set(false);

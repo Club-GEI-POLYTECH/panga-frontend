@@ -46,6 +46,15 @@ export class SchoolYearStore {
   /** L'année courante est déduite (pas encore configurée) → rappel admin. */
   readonly needsSetup = computed(() => this.source() === 'computed');
 
+  /**
+   * Valeur d'année à transmettre aux **GET** (filtres de liste) :
+   * - chaîne vide si l'année sélectionnée est l'année courante → on n'envoie
+   *   rien, le backend applique automatiquement l'année en cours de l'école
+   *   (évite tout décalage front/back) ;
+   * - sinon l'année explicitement choisie (`all` inclus pour l'historique).
+   */
+  readonly filter = computed(() => (this.selected() === this.current() ? '' : this.selected()));
+
   /** Options du sélecteur : courante, suivante, 2 précédentes, + historique. */
   readonly options = computed(() => {
     const cur = this.current();

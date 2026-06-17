@@ -411,7 +411,7 @@ export class TeachersList {
 
   constructor() {
     this.load();
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.searchCtrl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((v) => {

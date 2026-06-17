@@ -65,7 +65,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
       </mat-form-field>
       <mat-form-field appearance="outline" class="w-[150px]">
         <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" (blur)="reload()" />
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
       <mat-form-field appearance="outline" class="w-[150px]">
         <mat-label>Seuil (%)</mat-label>
@@ -222,7 +222,12 @@ export class Promotions {
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
-  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
+  /** Vide = année en cours (le backend applique l'année courante sur les GET). */
+  protected readonly schoolYear = new FormControl('', { nonNullable: true });
+  /** Année pour les actions qui exigent une année (calcul, finalisation, transfert). */
+  private yr(): string {
+    return this.schoolYear.value || this.sy.current();
+  }
   protected readonly threshold = new FormControl<number | null>(null);
   protected readonly filterDecision = new FormControl('', { nonNullable: true });
 
@@ -294,7 +299,7 @@ export class Promotions {
     this.promotionsApi
       .compute({
         classInstanceId: this.classId(),
-        schoolYear: this.schoolYear.value,
+        schoolYear: this.yr(),
         ...(this.threshold.value !== null ? { passThreshold: Number(this.threshold.value) } : {}),
       })
       .subscribe({
@@ -314,7 +319,7 @@ export class Promotions {
     }
     this.busy.set(true);
     this.promotionsApi
-      .finalize({ classInstanceId: this.classId(), schoolYear: this.schoolYear.value })
+      .finalize({ classInstanceId: this.classId(), schoolYear: this.yr() })
       .subscribe({
         next: () => {
           this.busy.set(false);
@@ -342,14 +347,12 @@ export class Promotions {
     if (!d.studentId) {
       return;
     }
-    this.promotionsApi
-      .recordTransfer({ studentId: d.studentId, schoolYear: this.schoolYear.value })
-      .subscribe({
-        next: () => {
-          this.notify.success('Transfert enregistré.');
-          this.updateRow(d.id, { decision: 'transferred' });
-        },
-      });
+    this.promotionsApi.recordTransfer({ studentId: d.studentId, schoolYear: this.yr() }).subscribe({
+      next: () => {
+        this.notify.success('Transfert enregistré.');
+        this.updateRow(d.id, { decision: 'transferred' });
+      },
+    });
   }
 
   private updateRow(id: string, patch: Partial<PromotionDecision>): void {

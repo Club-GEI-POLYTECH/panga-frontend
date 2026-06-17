@@ -403,7 +403,7 @@ export class StudentDetail {
   );
 
   constructor() {
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
     this.reloadStudent();
     this.studentsApi.grades(this.id).subscribe({ next: (d) => this.gradesCount.set(toCount(d)) });

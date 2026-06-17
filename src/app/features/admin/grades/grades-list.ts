@@ -111,7 +111,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       </mat-form-field>
       <mat-form-field appearance="outline" class="w-[150px]">
         <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" (blur)="reloadAll()" />
+        <input
+          matInput
+          [formControl]="schoolYear"
+          placeholder="Année en cours"
+          (blur)="reloadAll()"
+        />
       </mat-form-field>
     </div>
 
@@ -508,7 +513,12 @@ export class GradesList {
     { key: 'averages' as const, label: 'Moyennes' },
   ];
 
-  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
+  /** Vide = année en cours (le backend applique l'année courante sur les GET). */
+  protected readonly schoolYear = new FormControl('', { nonNullable: true });
+  /** Année pour les actions qui exigent une année (calcul, seed, création). */
+  private yr(): string {
+    return this.schoolYear.value || this.sy.current();
+  }
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
   protected readonly tab = signal<'entry' | 'list' | 'averages'>('entry');
@@ -625,7 +635,7 @@ export class GradesList {
   /* ------------------------------- Périodes -------------------------------- */
 
   seedPeriods(): void {
-    this.gradesApi.seedPeriods(this.schoolYear.value).subscribe({
+    this.gradesApi.seedPeriods(this.yr()).subscribe({
       next: () => {
         this.notify.success('Périodes générées.');
         this.gradesApi
@@ -675,7 +685,7 @@ export class GradesList {
     const dto: BulkCreateGradesDto = {
       classId: this.classId(),
       nationalProgramSlotId: slotId,
-      schoolYear: this.schoolYear.value,
+      schoolYear: this.yr(),
       term: period.term ?? 'TERM1',
       rows,
       periodId: period.id,
@@ -791,7 +801,7 @@ export class GradesList {
     }
     this.loadingAverages.set(true);
     const run = () =>
-      this.gradesApi.proclamation(this.classId(), this.schoolYear.value).subscribe({
+      this.gradesApi.proclamation(this.classId(), this.yr()).subscribe({
         next: (r) => {
           this.proclamation.set(normalizeProclamation(r));
           this.loadingAverages.set(false);
@@ -802,7 +812,7 @@ export class GradesList {
         },
       });
     if (recompute) {
-      this.gradesApi.computeClassAverages(this.classId(), this.schoolYear.value).subscribe({
+      this.gradesApi.computeClassAverages(this.classId(), this.yr()).subscribe({
         next: () => run(),
         error: () => run(),
       });
@@ -886,7 +896,7 @@ export class GradesList {
     if (!file) {
       return;
     }
-    this.gradesApi.importExcel(file, this.schoolYear.value).subscribe({
+    this.gradesApi.importExcel(file, this.yr()).subscribe({
       next: (res) => {
         const ok = (res['success'] as number) ?? 0;
         this.notify.success(`Import terminé (${ok} note(s)).`);

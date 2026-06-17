@@ -359,7 +359,7 @@ export class ExamDetail {
   constructor() {
     forkJoin({
       exam: this.examsApi.get(this.id),
-      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: this.sy.selected() }),
+      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: this.sy.filter() }),
       teachers: this.teachersApi.list({ page: 1, limit: 200 }),
       rooms: this.examsApi.rooms(),
     }).subscribe({

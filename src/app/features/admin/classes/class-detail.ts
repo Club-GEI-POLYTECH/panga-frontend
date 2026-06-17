@@ -614,9 +614,7 @@ export class ClassDetail {
     this.classesApi
       .statistics(this.id)
       .subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
-    this.classesApi
-      .list(this.sy.selected())
-      .subscribe({ next: (r) => this.allClasses.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.allClasses.set(r.items) });
     this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.loadHistory();
   }

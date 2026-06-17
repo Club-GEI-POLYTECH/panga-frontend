@@ -336,13 +336,11 @@ export class PaymentsList {
   constructor() {
     this.loadPayments();
     this.loadFees();
-    this.paymentsApi
-      .statsOverview(this.sy.selected())
-      .subscribe({ next: (s) => this.stats.set(s) });
-    this.studentsApi.list({ page: 1, limit: 100, schoolYear: this.sy.selected() }).subscribe({
+    this.paymentsApi.statsOverview(this.sy.filter()).subscribe({ next: (s) => this.stats.set(s) });
+    this.studentsApi.list({ page: 1, limit: 100, schoolYear: this.sy.filter() }).subscribe({
       next: (r) => this.students.set(r.items),
     });
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
   }
 
   protected studentName(s: Student): string {
@@ -354,7 +352,7 @@ export class PaymentsList {
 
   private loadFees(): void {
     this.paymentsApi
-      .feeStructures(this.sy.selected())
+      .feeStructures(this.sy.filter())
       .subscribe({ next: (r) => this.fees.set(r.items) });
   }
 
@@ -426,7 +424,7 @@ export class PaymentsList {
         this.showPayForm.set(false);
         this.loadPayments();
         this.paymentsApi
-          .statsOverview(this.sy.selected())
+          .statsOverview(this.sy.filter())
           .subscribe({ next: (s) => this.stats.set(s) });
       },
       error: () => this.savingPay.set(false),

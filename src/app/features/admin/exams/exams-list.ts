@@ -509,7 +509,7 @@ export class ExamsList {
   });
 
   constructor() {
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.reload();
     this.examsApi.sessions().subscribe({ next: (s) => this.sessions.set(s) });
     this.examsApi.rooms().subscribe({ next: (r) => this.rooms.set(r) });
@@ -534,7 +534,7 @@ export class ExamsList {
         term: this.filterTerm.value || undefined,
         examType: this.filterType.value || undefined,
         status: this.filterStatus.value || undefined,
-        schoolYear: this.sy.selected(),
+        schoolYear: this.sy.filter(),
         page: this.page,
         limit: 20,
       })
@@ -563,7 +563,7 @@ export class ExamsList {
 
   loadCourses(classId: string): void {
     this.subjectsApi
-      .classSubjects({ classId, schoolYear: this.sy.selected() })
+      .classSubjects({ classId, schoolYear: this.sy.filter() })
       .pipe(catchError(() => of({ items: [] })))
       .subscribe({ next: (r) => this.courses.set(toCourses(r.items)) });
   }

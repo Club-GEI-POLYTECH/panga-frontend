@@ -430,9 +430,9 @@ export class Attendance {
   protected readonly loadingReport = signal(false);
 
   constructor() {
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.studentsApi
-      .list({ page: 1, limit: 300, schoolYear: this.sy.selected() })
+      .list({ page: 1, limit: 300, schoolYear: this.sy.filter() })
       .subscribe({ next: (r) => this.allStudents.set(r.items) });
   }
 
