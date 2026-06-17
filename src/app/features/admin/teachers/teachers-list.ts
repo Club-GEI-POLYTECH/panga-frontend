@@ -31,8 +31,7 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'csv' | 'classes';
 interface Field {
@@ -352,6 +351,7 @@ export class TeachersList {
   private readonly teachersApi = inject(TeachersService);
   private readonly classesApi = inject(ClassesService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly groups = GROUPS;
   protected readonly statusOptions = TEACHER_STATUS_OPTIONS;
@@ -411,7 +411,7 @@ export class TeachersList {
 
   constructor() {
     this.load();
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.searchCtrl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((v) => {

@@ -24,8 +24,7 @@ import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 function statusTone(status?: string): BadgeTone {
   if (status === 'active') return 'success';
@@ -243,8 +242,9 @@ export class ClassesList {
   private readonly classesApi = inject(ClassesService);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
-  protected readonly schoolYear = SCHOOL_YEAR;
+  protected readonly schoolYear = this.sy.selected();
   protected readonly eduLevels = CLASS_EDUCATION_LEVEL_OPTIONS;
   protected readonly cycles = SCHOOL_CYCLE_OPTIONS;
   protected readonly schedules = CLASS_SCHEDULE_OPTIONS;
@@ -315,7 +315,7 @@ export class ClassesList {
   private load(): void {
     this.loading.set(true);
     this.classesApi
-      .list(SCHOOL_YEAR, {
+      .list(this.sy.selected(), {
         educationLevel: this.eduLevelCtrl.value || undefined,
         classSchedule: this.scheduleCtrl.value || undefined,
       })
@@ -338,7 +338,7 @@ export class ClassesList {
     const payload: Record<string, unknown> = {
       name: v.name,
       level: Number(v.level),
-      schoolYear: SCHOOL_YEAR,
+      schoolYear: this.sy.selected(),
       capacity: Number(v.capacity) || 40,
     };
     for (const [k, val] of Object.entries({

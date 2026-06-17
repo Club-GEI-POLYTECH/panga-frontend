@@ -14,8 +14,7 @@ import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 const TERMS = ['TERM1', 'TERM2', 'TERM3'];
 
 function isPublished(b: Bulletin): boolean {
@@ -149,8 +148,9 @@ export class BulletinsList {
   private readonly studentsApi = inject(StudentsService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
-  protected readonly schoolYear = SCHOOL_YEAR;
+  protected readonly schoolYear = this.sy.selected();
   protected readonly terms = TERMS;
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
@@ -173,9 +173,9 @@ export class BulletinsList {
   });
 
   constructor() {
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.studentsApi
-      .list({ page: 1, limit: 200, schoolYear: SCHOOL_YEAR })
+      .list({ page: 1, limit: 200, schoolYear: this.sy.selected() })
       .subscribe({ next: (r) => this.allStudents.set(r.items) });
   }
 
@@ -199,7 +199,7 @@ export class BulletinsList {
 
   private load(): void {
     this.loading.set(true);
-    this.academics.classBulletins(this.classId(), SCHOOL_YEAR, this.term()).subscribe({
+    this.academics.classBulletins(this.classId(), this.sy.selected(), this.term()).subscribe({
       next: (r) => {
         this.bulletins.set(r.items);
         this.loading.set(false);
@@ -218,7 +218,7 @@ export class BulletinsList {
       .generateBulletin({
         studentId: this.form.getRawValue().studentId,
         classId: this.classId(),
-        schoolYear: SCHOOL_YEAR,
+        schoolYear: this.sy.selected(),
         term: this.term(),
         generatePdf: false,
         publishImmediately: false,

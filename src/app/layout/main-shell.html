@@ -180,6 +180,54 @@
 
         <panga-school-switcher />
 
+        @if (!isSuperAdmin()) {
+          <button
+            mat-button
+            [matMenuTriggerFor]="yearMenu"
+            class="!rounded-xl !min-w-0 !px-2"
+            matTooltip="Année scolaire"
+            aria-label="Année scolaire"
+          >
+            <span class="flex items-center gap-1.5">
+              <mat-icon fontSet="material-symbols-outlined" class="!text-[20px]"
+                >calendar_month</mat-icon
+              >
+              <span class="hidden sm:inline text-xs font-semibold tabular-nums">
+                {{ sy.selected() === 'all' ? 'Toutes années' : sy.selected() }}
+              </span>
+              @if (sy.needsSetup()) {
+                <span
+                  class="h-1.5 w-1.5 rounded-full"
+                  style="background: var(--warning)"
+                  matTooltip="Année non configurée"
+                ></span>
+              }
+              <mat-icon
+                fontSet="material-symbols-outlined"
+                class="!text-lg text-[var(--text-muted)]"
+                >expand_more</mat-icon
+              >
+            </span>
+          </button>
+          <mat-menu #yearMenu="matMenu" class="panga-menu" xPosition="before">
+            <div class="w-52 py-1">
+              <p
+                class="px-4 pt-1 pb-1.5 text-[11px] uppercase tracking-wide text-[var(--text-muted)]"
+              >
+                Année scolaire
+              </p>
+              @for (o of sy.options(); track o.value) {
+                <button mat-menu-item (click)="sy.setSelected(o.value)">
+                  <mat-icon fontSet="material-symbols-outlined">
+                    {{ sy.selected() === o.value ? 'check' : 'calendar_today' }}
+                  </mat-icon>
+                  <span>{{ o.label }}</span>
+                </button>
+              }
+            </div>
+          </mat-menu>
+        }
+
         <span class="flex-1"></span>
 
         <!-- Actions utilitaires groupées (langue · thème · notifications) -->

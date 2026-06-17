@@ -26,8 +26,7 @@ import {
   decisionTone,
   promotionLabel,
 } from '../../../core/models/promotion.enums';
-
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 @Component({
   selector: 'panga-promotions',
@@ -214,6 +213,7 @@ export class Promotions {
   private readonly studentsApi = inject(StudentsService);
   private readonly store = inject(AuthStore);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly decisionOptions = PROMOTION_DECISION_OPTIONS;
   protected readonly isAdmin = computed(
@@ -222,7 +222,7 @@ export class Promotions {
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
-  protected readonly schoolYear = new FormControl(DEFAULT_SCHOOL_YEAR, { nonNullable: true });
+  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
   protected readonly threshold = new FormControl<number | null>(null);
   protected readonly filterDecision = new FormControl('', { nonNullable: true });
 
@@ -238,7 +238,7 @@ export class Promotions {
   );
 
   constructor() {
-    this.classesApi.list(DEFAULT_SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
   }
 
   selectClass(id: string): void {

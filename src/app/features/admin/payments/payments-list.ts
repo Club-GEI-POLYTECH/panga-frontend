@@ -19,8 +19,7 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface StatTile {
   label: string;
@@ -278,6 +277,7 @@ export class PaymentsList {
   private readonly classesApi = inject(ClassesService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly fees = signal<FeeStructure[]>([]);
   protected readonly payments = signal<Payment[]>([]);
@@ -336,11 +336,13 @@ export class PaymentsList {
   constructor() {
     this.loadPayments();
     this.loadFees();
-    this.paymentsApi.statsOverview(SCHOOL_YEAR).subscribe({ next: (s) => this.stats.set(s) });
-    this.studentsApi.list({ page: 1, limit: 100, schoolYear: SCHOOL_YEAR }).subscribe({
+    this.paymentsApi
+      .statsOverview(this.sy.selected())
+      .subscribe({ next: (s) => this.stats.set(s) });
+    this.studentsApi.list({ page: 1, limit: 100, schoolYear: this.sy.selected() }).subscribe({
       next: (r) => this.students.set(r.items),
     });
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
   }
 
   protected studentName(s: Student): string {
@@ -351,7 +353,9 @@ export class PaymentsList {
   }
 
   private loadFees(): void {
-    this.paymentsApi.feeStructures(SCHOOL_YEAR).subscribe({ next: (r) => this.fees.set(r.items) });
+    this.paymentsApi
+      .feeStructures(this.sy.selected())
+      .subscribe({ next: (r) => this.fees.set(r.items) });
   }
 
   private loadPayments(): void {
@@ -385,7 +389,7 @@ export class PaymentsList {
         feeType: v.feeType,
         amount: v.amount,
         currency: v.currency,
-        schoolYear: SCHOOL_YEAR,
+        schoolYear: this.sy.selected(),
         classId: v.classId || undefined,
         feeFrequency: v.feeFrequency,
         isMandatory: true,
@@ -421,7 +425,9 @@ export class PaymentsList {
         this.payForm.reset({ currency: 'CDF', paymentMethod: 'cash', amountPaid: 0 });
         this.showPayForm.set(false);
         this.loadPayments();
-        this.paymentsApi.statsOverview(SCHOOL_YEAR).subscribe({ next: (s) => this.stats.set(s) });
+        this.paymentsApi
+          .statsOverview(this.sy.selected())
+          .subscribe({ next: (s) => this.stats.set(s) });
       },
       error: () => this.savingPay.set(false),
     });

@@ -36,13 +36,12 @@ import {
   TERM_OPTIONS,
   labelOf,
 } from '../../../core/models/grade.enums';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface CourseRef {
   slotId: string;
   label: string;
 }
-
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
 
 const STATUS_TONE: Record<string, BadgeTone> = {
   draft: 'neutral',
@@ -499,6 +498,7 @@ export class GradesList {
   private readonly studentsApi = inject(StudentsService);
   private readonly subjectsApi = inject(SubjectsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly terms = TERM_OPTIONS;
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
@@ -508,7 +508,7 @@ export class GradesList {
     { key: 'averages' as const, label: 'Moyennes' },
   ];
 
-  protected readonly schoolYear = new FormControl(DEFAULT_SCHOOL_YEAR, { nonNullable: true });
+  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
   protected readonly tab = signal<'entry' | 'list' | 'averages'>('entry');

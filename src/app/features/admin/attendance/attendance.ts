@@ -26,8 +26,7 @@ import {
   ATTENDANCE_TYPE_OPTIONS,
   statusColor,
 } from '../../../core/models/attendance.enums';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
@@ -386,6 +385,7 @@ export class Attendance {
   private readonly studentsApi = inject(StudentsService);
   private readonly store = inject(AuthStore);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly statuses = ATTENDANCE_STATUS_OPTIONS;
   protected readonly modes = ATTENDANCE_TYPE_OPTIONS;
@@ -430,9 +430,9 @@ export class Attendance {
   protected readonly loadingReport = signal(false);
 
   constructor() {
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.studentsApi
-      .list({ page: 1, limit: 300, schoolYear: SCHOOL_YEAR })
+      .list({ page: 1, limit: 300, schoolYear: this.sy.selected() })
       .subscribe({ next: (r) => this.allStudents.set(r.items) });
   }
 

@@ -25,13 +25,12 @@ import { CurriculumService } from '../../super-admin/services/curriculum.service
 import type { ClassInstance, Period } from '../models/admin.models';
 import type { NationalProgram } from '../../super-admin/models/platform.models';
 import type { ClassSubject, CourseOverviewRow, LessonLogEntry } from '../models/course.models';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface ChildRef {
   studentId: string;
   name: string;
 }
-
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
 
 /** Journal de cours (cahier de texte) : progression, séances, heures prévues. */
 @Component({
@@ -447,6 +446,7 @@ export class CourseJournal {
   private readonly curriculum = inject(CurriculumService);
   private readonly parents = inject(ParentsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly role = this.store.role;
   protected readonly isAdmin = computed(
@@ -459,7 +459,7 @@ export class CourseJournal {
     () => this.role() === 'teacher' || this.role() === 'super_admin',
   );
 
-  protected readonly schoolYear = new FormControl(DEFAULT_SCHOOL_YEAR, { nonNullable: true });
+  protected readonly schoolYear = new FormControl(this.sy.selected(), { nonNullable: true });
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classInstanceId = signal('');

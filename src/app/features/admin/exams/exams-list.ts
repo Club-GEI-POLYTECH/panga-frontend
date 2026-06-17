@@ -28,13 +28,12 @@ import {
   examStatusTone,
 } from '../../../core/models/exam.enums';
 import { TERM_OPTIONS } from '../../../core/models/grade.enums';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface CourseRef {
   slotId: string;
   label: string;
 }
-
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
 
 @Component({
   selector: 'panga-exams-list',
@@ -440,6 +439,7 @@ export class ExamsList {
   private readonly classesApi = inject(ClassesService);
   private readonly subjectsApi = inject(SubjectsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly terms = TERM_OPTIONS;
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
@@ -509,7 +509,7 @@ export class ExamsList {
   });
 
   constructor() {
-    this.classesApi.list(DEFAULT_SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.reload();
     this.examsApi.sessions().subscribe({ next: (s) => this.sessions.set(s) });
     this.examsApi.rooms().subscribe({ next: (r) => this.rooms.set(r) });
@@ -534,7 +534,7 @@ export class ExamsList {
         term: this.filterTerm.value || undefined,
         examType: this.filterType.value || undefined,
         status: this.filterStatus.value || undefined,
-        schoolYear: DEFAULT_SCHOOL_YEAR,
+        schoolYear: this.sy.selected(),
         page: this.page,
         limit: 20,
       })
@@ -563,7 +563,7 @@ export class ExamsList {
 
   loadCourses(classId: string): void {
     this.subjectsApi
-      .classSubjects({ classId, schoolYear: DEFAULT_SCHOOL_YEAR })
+      .classSubjects({ classId, schoolYear: this.sy.selected() })
       .pipe(catchError(() => of({ items: [] })))
       .subscribe({ next: (r) => this.courses.set(toCourses(r.items)) });
   }
@@ -579,7 +579,7 @@ export class ExamsList {
       nationalProgramSlotId: v.nationalProgramSlotId,
       name: v.name,
       examType: v.examType,
-      schoolYear: DEFAULT_SCHOOL_YEAR,
+      schoolYear: this.sy.selected(),
       term: v.term,
       examDate: v.examDate,
       startTime: v.startTime,
@@ -618,7 +618,7 @@ export class ExamsList {
     }
     const v = this.sessionForm.getRawValue();
     this.saving.set(true);
-    this.examsApi.createSession({ ...v, schoolYear: DEFAULT_SCHOOL_YEAR }).subscribe({
+    this.examsApi.createSession({ ...v, schoolYear: this.sy.selected() }).subscribe({
       next: () => {
         this.saving.set(false);
         this.notify.success('Session créée.');

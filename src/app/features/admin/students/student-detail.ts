@@ -27,8 +27,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
 interface Field {
@@ -367,10 +366,11 @@ export class StudentDetail {
   private readonly parentsApi = inject(ParentsService);
   private readonly gradesApi = inject(GradesService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
-  protected readonly schoolYear = SCHOOL_YEAR;
+  protected readonly schoolYear = this.sy.selected();
   protected readonly groups = GROUPS;
   protected readonly label = personLabel;
   protected readonly student = signal<Student | null>(null);
@@ -403,7 +403,7 @@ export class StudentDetail {
   );
 
   constructor() {
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
     this.reloadStudent();
     this.studentsApi.grades(this.id).subscribe({ next: (d) => this.gradesCount.set(toCount(d)) });
@@ -437,7 +437,7 @@ export class StudentDetail {
       return;
     }
     this.loadingAverages.set(true);
-    this.gradesApi.studentAverages(this.id, classId, SCHOOL_YEAR).subscribe({
+    this.gradesApi.studentAverages(this.id, classId, this.sy.selected()).subscribe({
       next: (r) => {
         this.subjectAverages.set(r.subjectAverages ?? []);
         const overall = r.overallAveragePercent ?? r.overallAverage;

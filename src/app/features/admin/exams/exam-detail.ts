@@ -27,6 +27,7 @@ import {
   examLabel,
   examStatusTone,
 } from '../../../core/models/exam.enums';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 @Component({
   selector: 'panga-exam-detail',
@@ -318,6 +319,7 @@ export class ExamDetail {
   private readonly studentsApi = inject(StudentsService);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
@@ -357,7 +359,7 @@ export class ExamDetail {
   constructor() {
     forkJoin({
       exam: this.examsApi.get(this.id),
-      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: '2024-2025' }),
+      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: this.sy.selected() }),
       teachers: this.teachersApi.list({ page: 1, limit: 200 }),
       rooms: this.examsApi.rooms(),
     }).subscribe({

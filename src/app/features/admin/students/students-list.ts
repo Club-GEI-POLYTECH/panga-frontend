@@ -32,8 +32,7 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
 interface Field {
@@ -349,6 +348,7 @@ export class StudentsList {
   private readonly classesApi = inject(ClassesService);
   private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly groups = GROUPS;
   protected readonly statusOptions = STUDENT_STATUS_OPTIONS;
@@ -388,7 +388,7 @@ export class StudentsList {
 
   constructor() {
     this.load();
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
   }
 
@@ -398,15 +398,17 @@ export class StudentsList {
 
   private load(): void {
     this.loading.set(true);
-    this.studentsApi.list({ page: this.page(), limit: 10, schoolYear: SCHOOL_YEAR }).subscribe({
-      next: (res) => {
-        this.students.set(res.items);
-        this.pagination.set(res.pagination ?? null);
-        this.total.set(res.pagination?.total ?? res.items.length);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.studentsApi
+      .list({ page: this.page(), limit: 10, schoolYear: this.sy.selected() })
+      .subscribe({
+        next: (res) => {
+          this.students.set(res.items);
+          this.pagination.set(res.pagination ?? null);
+          this.total.set(res.pagination?.total ?? res.items.length);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   onPage(page: number): void {
@@ -421,7 +423,7 @@ export class StudentsList {
       return;
     }
     this.importing.set(true);
-    this.studentsApi.importExcel(file, SCHOOL_YEAR).subscribe({
+    this.studentsApi.importExcel(file, this.sy.selected()).subscribe({
       next: (res) => {
         this.importing.set(false);
         const count = Number(res?.['imported'] ?? res?.['count'] ?? res?.['created']) || 0;

@@ -32,6 +32,7 @@ import { Avatar } from '../../../shared/ui/avatar';
 import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import type { BadgeTone } from '../../../shared/ui/status-badge';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'number' | 'select';
 interface Field {
@@ -556,6 +557,7 @@ export class ClassDetail {
   private readonly classesApi = inject(ClassesService);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
@@ -612,7 +614,9 @@ export class ClassDetail {
     this.classesApi
       .statistics(this.id)
       .subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
-    this.classesApi.list('2024-2025').subscribe({ next: (r) => this.allClasses.set(r.items) });
+    this.classesApi
+      .list(this.sy.selected())
+      .subscribe({ next: (r) => this.allClasses.set(r.items) });
     this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.loadHistory();
   }
