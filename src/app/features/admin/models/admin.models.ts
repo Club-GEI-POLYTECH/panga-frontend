@@ -43,10 +43,50 @@ export interface Teacher {
 
 export interface Parent {
   id: string;
+  userId?: string;
+  /** Champs perso remontés depuis le compte `user` (cf. ParentsService). */
   firstName?: string;
   lastName?: string;
+  postnom?: string;
+  gender?: string;
   email?: string;
   phone?: string;
+  secondaryPhone?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  country?: string;
+  nationality?: string;
+  nationalIdNumber?: string;
+  /** Champs propres au parent. */
+  relationship?: string;
+  status?: string;
+  isPrimary?: boolean;
+  isEmergencyContact?: boolean;
+  canPickupStudent?: boolean;
+  canAuthorizeMedical?: boolean;
+  canAuthorizeTrips?: boolean;
+  occupation?: string;
+  employerName?: string;
+  employerPhone?: string;
+  jobTitle?: string;
+  workAddress?: string;
+  monthlyIncome?: number | string | null;
+  incomeCurrency?: string;
+  educationLevel?: string;
+  educationInstitution?: string;
+  languagesSpoken?: string[];
+  communicationPreference?: string;
+  spouseName?: string;
+  spousePhone?: string;
+  spouseEmail?: string;
+  spouseOccupation?: string;
+  parentingStyle?: string;
+  concernsNotes?: string;
+  specialInstructions?: string;
+  /** Relations chargées par le backend. */
+  user?: Record<string, unknown>;
+  students?: Record<string, unknown>[];
   childrenCount?: number;
   [key: string]: unknown;
 }
