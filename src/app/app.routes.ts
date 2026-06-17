@@ -37,6 +37,7 @@ const IMPLEMENTED = new Set([
   'course-journal',
   'promotions',
   'exams',
+  'ma-scolarite',
 ]);
 
 /**
@@ -152,6 +153,12 @@ const adminRoutes: Routes = [
     path: 'promotions',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/promotions/promotions').then((m) => m.Promotions),
+  },
+  {
+    path: 'ma-scolarite',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/scolarite/student-scolarite').then((m) => m.StudentScolarite),
   },
   {
     // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).

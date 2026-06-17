@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthStore } from '../core/auth/auth.store';
 import { AdminDashboard } from '../features/admin/admin-dashboard/admin-dashboard';
+import { StudentDashboard } from '../features/student/student-dashboard/student-dashboard';
 import { KpiCard } from '../shared/ui/kpi-card';
 import type { Role } from '../core/models/auth.models';
 
@@ -51,11 +52,17 @@ const KPIS: Record<Role, Kpi[]> = {
 @Component({
   selector: 'panga-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatProgressSpinnerModule, AdminDashboard, KpiCard],
+  imports: [MatProgressSpinnerModule, AdminDashboard, StudentDashboard, KpiCard],
   template: `
     @if (store.role() === 'admin') {
       @defer {
         <panga-admin-dashboard />
+      } @placeholder {
+        <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      }
+    } @else if (store.role() === 'student') {
+      @defer {
+        <panga-student-dashboard />
       } @placeholder {
         <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
       }
