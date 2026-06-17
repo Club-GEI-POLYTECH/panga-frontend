@@ -123,6 +123,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    labelKey: 'nav.promotions',
+    icon: 'workspace_premium',
+    path: 'promotions',
+    roles: ['admin', 'teacher'],
+    group: 'pedagogie',
+  },
+  {
     labelKey: 'nav.payments',
     icon: 'payments',
     path: 'payments',
