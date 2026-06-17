@@ -58,7 +58,9 @@ export class MainShell {
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
 
-  protected readonly opened = signal(true);
+  /** Sidebar réduite en rail (icônes seules) plutôt que masquée. */
+  protected readonly collapsed = signal(false);
+  protected readonly lang = signal(this.transloco.getActiveLang());
   protected readonly navSections = computed(() => navSectionsForRole(this.store.role()));
   protected readonly roleKey = computed(() => `roles.${this.store.role()}`);
   protected readonly email = computed(() => this.store.user()?.email ?? '');
@@ -78,13 +80,16 @@ export class MainShell {
   }
 
   toggleSidenav(): void {
-    this.opened.update((v) => !v);
+    this.collapsed.update((v) => !v);
   }
 
-  toggleLang(): void {
-    const next = this.transloco.getActiveLang() === 'fr' ? 'en' : 'fr';
-    this.transloco.setActiveLang(next);
+  setLang(lang: string): void {
+    this.transloco.setActiveLang(lang);
+    this.lang.set(lang);
   }
+
+  /** Année courante pour le pied de page (évalué une fois). */
+  protected readonly year = new Date().getFullYear();
 
   logout(): void {
     this.auth.logout().subscribe({
