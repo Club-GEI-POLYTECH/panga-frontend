@@ -126,6 +126,10 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.promotions',
     icon: 'workspace_premium',
     path: 'promotions',
+    roles: ['admin', 'teacher'],
+    group: 'pedagogie',
+  },
+  {
     labelKey: 'nav.exams',
     icon: 'quiz',
     path: 'exams',

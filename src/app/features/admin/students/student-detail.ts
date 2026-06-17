@@ -12,6 +12,7 @@ import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
 import { ParentsService } from '../services/parents.service';
 import { GradesService } from '../services/grades.service';
+import { UsersService } from '../services/users.service';
 import type { ClassInstance, Parent, Student } from '../models/admin.models';
 import type { AnnualAverageResult } from '../models/grade.models';
 import { personLabel } from '../shared/labels';
@@ -25,6 +26,7 @@ import {
 import type { EnumOption } from '../../../core/models/school.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
@@ -136,6 +138,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatProgressSpinnerModule,
     MatSelectModule,
     Avatar,
+    CredentialReveal,
     SectionHeader,
     StatusBadge,
   ],
@@ -149,6 +152,15 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       >
       Élèves
     </a>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Nouveau mot de passe — accès élève"
+        [identifier]="ro('studentNumber')"
+        [password]="c"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -174,9 +186,20 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
               }
             </p>
           </div>
-          @if (ro('status'); as st) {
-            <panga-status-badge [label]="st" tone="success" />
-          }
+          <div class="flex flex-col items-end gap-2">
+            @if (ro('status'); as st) {
+              <panga-status-badge [label]="st" tone="success" />
+            }
+            <button
+              mat-stroked-button
+              class="!rounded-xl !text-white !border-white/40"
+              [disabled]="resetting() || !userId()"
+              (click)="resetPassword()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+              Réinitialiser le mot de passe
+            </button>
+          </div>
         </div>
       </div>
 
@@ -366,6 +389,7 @@ export class StudentDetail {
   private readonly classesApi = inject(ClassesService);
   private readonly parentsApi = inject(ParentsService);
   private readonly gradesApi = inject(GradesService);
+  private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -385,6 +409,32 @@ export class StudentDetail {
   protected readonly subjectAverages = signal<AnnualAverageResult[]>([]);
   protected readonly overallPercent = signal<number | null>(null);
   protected readonly loadingAverages = signal(false);
+  protected readonly resetting = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois par la réinitialisation. */
+  protected readonly credential = signal<string | null>(null);
+  protected readonly userId = computed(
+    () => (this.student() as Record<string, unknown> | null)?.['userId'] as string | undefined,
+  );
+
+  resetPassword(): void {
+    const uid = this.userId();
+    if (!uid || this.resetting()) {
+      return;
+    }
+    this.resetting.set(true);
+    this.usersApi.resetPassword(uid).subscribe({
+      next: (r) => {
+        this.resetting.set(false);
+        if (r.temporaryPassword) {
+          this.credential.set(r.temporaryPassword);
+          this.notify.success('Mot de passe réinitialisé.');
+        } else {
+          this.notify.success('Mot de passe réinitialisé.');
+        }
+      },
+      error: () => this.resetting.set(false),
+    });
+  }
 
   protected readonly parentCtrl = new FormControl('', { nonNullable: true });
 
