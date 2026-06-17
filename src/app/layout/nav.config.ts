@@ -123,6 +123,9 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    labelKey: 'nav.promotions',
+    icon: 'workspace_premium',
+    path: 'promotions',
     labelKey: 'nav.exams',
     icon: 'quiz',
     path: 'exams',
