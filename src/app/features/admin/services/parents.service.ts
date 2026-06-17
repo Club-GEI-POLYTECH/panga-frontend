@@ -15,6 +15,13 @@ export class ParentsService {
     return this.http.get<unknown>(this.base).pipe(map((r) => unwrapList<Parent>(r)));
   }
 
+  /** Profil du parent connecté (inclut généralement les enfants liés). */
+  me(): Observable<Record<string, unknown>> {
+    return this.http
+      .get<unknown>(`${this.base}/me`)
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
   create(dto: CreateParentDto): Observable<Parent> {
     return this.http.post<unknown>(this.base, dto).pipe(map((r) => unwrapEnvelope<Parent>(r)));
   }

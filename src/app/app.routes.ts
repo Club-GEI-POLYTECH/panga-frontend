@@ -34,6 +34,7 @@ const IMPLEMENTED = new Set([
   'grades',
   'bulletins',
   'attendance',
+  'course-journal',
 ]);
 
 /**
@@ -122,6 +123,12 @@ const adminRoutes: Routes = [
     path: 'attendance',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
+  },
+  {
+    path: 'course-journal',
+    canActivate: [roleGuard('admin', 'teacher', 'parent')],
+    loadComponent: () =>
+      import('./features/admin/course-journal/course-journal').then((m) => m.CourseJournal),
   },
   {
     // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).
