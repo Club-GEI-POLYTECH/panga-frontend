@@ -36,6 +36,7 @@ const IMPLEMENTED = new Set([
   'attendance',
   'course-journal',
   'promotions',
+  'exams',
 ]);
 
 /**
@@ -88,6 +89,12 @@ const adminRoutes: Routes = [
     loadComponent: () => import('./features/admin/parents/parents-list').then((m) => m.ParentsList),
   },
   {
+    path: 'parents/:id',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/parents/parent-detail').then((m) => m.ParentDetail),
+  },
+  {
     path: 'classes',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/classes/classes-list').then((m) => m.ClassesList),
@@ -124,6 +131,16 @@ const adminRoutes: Routes = [
     path: 'attendance',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
+  },
+  {
+    path: 'exams',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/exams/exams-list').then((m) => m.ExamsList),
+  },
+  {
+    path: 'exams/:id',
+    canActivate: [roleGuard('admin', 'teacher')],
+    loadComponent: () => import('./features/admin/exams/exam-detail').then((m) => m.ExamDetail),
   },
   {
     path: 'course-journal',
