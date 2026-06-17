@@ -139,6 +139,20 @@ export class StudentService {
     });
   }
 
+  /** Initier un paiement Mobile Money (passerelle). */
+  initiateGatewayPayment(payload: Record<string, unknown>): Observable<Record<string, unknown>> {
+    return this.http
+      .post<unknown>(`${this.base}/payments/gateway/initiate`, payload)
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
+  /** Statut d'une transaction passerelle. */
+  gatewayStatus(transactionId: string): Observable<Record<string, unknown>> {
+    return this.http
+      .get<unknown>(`${this.base}/payments/gateway/${transactionId}/status`)
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
   /** Mes notifications. */
   notifications(): Observable<Record<string, unknown>[]> {
     return this.http

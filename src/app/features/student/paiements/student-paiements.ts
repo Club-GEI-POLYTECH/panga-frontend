@@ -1,9 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { StudentService, extractContext } from '../services/student.service';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
@@ -30,9 +34,13 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     DatePipe,
+    ReactiveFormsModule,
     MatButtonModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatProgressSpinnerModule,
+    MatSelectModule,
     EmptyState,
     KpiCard,
     PageHeader,
@@ -40,7 +48,76 @@ const STATUS_TONE: Record<string, BadgeTone> = {
     StatusBadge,
   ],
   template: `
-    <panga-page-header icon="payments" title="Mes paiements" subtitle="Frais, échéances & reçus" />
+    <panga-page-header icon="payments" title="Mes paiements" subtitle="Frais, échéances & reçus">
+      <button mat-flat-button class="!rounded-xl" (click)="showPay.set(!showPay())">
+        <mat-icon fontSet="material-symbols-outlined">{{
+          showPay() ? 'close' : 'smartphone'
+        }}</mat-icon>
+        {{ showPay() ? 'Annuler' : 'Payer (Mobile Money)' }}
+      </button>
+    </panga-page-header>
+
+    @if (showPay()) {
+      <section class="panga-card p-5 mb-6">
+        <panga-section-header icon="smartphone" title="Paiement Mobile Money" />
+        <form
+          [formGroup]="payForm"
+          (ngSubmit)="pay()"
+          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          <mat-form-field appearance="outline">
+            <mat-label>Opérateur</mat-label>
+            <mat-select formControlName="provider">
+              @for (p of providers; track p.value) {
+                <mat-option [value]="p.value">{{ p.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Numéro de téléphone</mat-label>
+            <input matInput formControlName="phoneNumber" placeholder="09xxxxxxxx" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Montant</mat-label>
+            <input matInput type="number" formControlName="amount" min="1" />
+          </mat-form-field>
+          <div class="flex items-end">
+            <button
+              mat-flat-button
+              class="!rounded-xl"
+              type="submit"
+              [disabled]="payForm.invalid || paying()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">send</mat-icon> Payer
+            </button>
+          </div>
+        </form>
+
+        @if (tx(); as t) {
+          <div class="mt-4 rounded-2xl border border-[var(--border)] p-4 flex items-center gap-3">
+            <mat-icon fontSet="material-symbols-outlined" [style.color]="txColor()">{{
+              txIcon()
+            }}</mat-icon>
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-medium text-[var(--text)]">
+                Transaction {{ txStatusLabel() }}
+              </p>
+              <p class="text-xs text-[var(--text-muted)] truncate">
+                Réf : {{ t['transactionId'] || t['id'] || '—' }}
+              </p>
+            </div>
+            <button
+              mat-stroked-button
+              class="!rounded-xl"
+              [disabled]="polling()"
+              (click)="refreshStatus()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">refresh</mat-icon> Actualiser
+            </button>
+          </div>
+        }
+      </section>
+    }
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -170,6 +247,24 @@ export class StudentPaiements {
   protected readonly receipts = signal<Row[]>([]);
   protected readonly installments = signal<Row[]>([]);
   protected readonly fees = signal<Row[]>([]);
+  private studentId = '';
+
+  /* ----------------------------- Mobile Money ------------------------------ */
+  protected readonly providers = [
+    { value: 'orange', label: 'Orange Money' },
+    { value: 'airtel', label: 'Airtel Money' },
+    { value: 'mpesa', label: 'M-Pesa (Vodacom)' },
+    { value: 'africell', label: 'Afrimoney' },
+  ];
+  protected readonly showPay = signal(false);
+  protected readonly paying = signal(false);
+  protected readonly polling = signal(false);
+  protected readonly tx = signal<Row | null>(null);
+  protected readonly payForm = new FormGroup({
+    provider: new FormControl('orange', { nonNullable: true, validators: [Validators.required] }),
+    phoneNumber: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    amount: new FormControl<number | null>(null, [Validators.required, Validators.min(1)]),
+  });
 
   protected readonly totalPaid = computed(() => {
     const sum = this.payments().reduce((s, p) => s + this.amount(p), 0);
@@ -183,6 +278,7 @@ export class StudentPaiements {
     this.api.me().subscribe({
       next: (me) => {
         const ctx = extractContext(me);
+        this.studentId = ctx.studentId;
         forkJoin({
           payments: this.api.myPayments().pipe(catchError(() => of([]))),
           receipts: this.api.myReceipts().pipe(catchError(() => of([]))),
@@ -200,6 +296,68 @@ export class StudentPaiements {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /* ----------------------------- Mobile Money ------------------------------ */
+
+  pay(): void {
+    if (this.payForm.invalid || this.paying()) {
+      return;
+    }
+    const v = this.payForm.getRawValue();
+    this.paying.set(true);
+    this.api
+      .initiateGatewayPayment({
+        provider: v.provider,
+        phoneNumber: v.phoneNumber,
+        amount: Number(v.amount),
+        ...(this.studentId ? { studentId: this.studentId } : {}),
+      })
+      .subscribe({
+        next: (t) => {
+          this.paying.set(false);
+          this.tx.set(t);
+          this.notify.success('Paiement initié. Validez sur votre téléphone.');
+        },
+        error: () => this.paying.set(false),
+      });
+  }
+
+  refreshStatus(): void {
+    const t = this.tx();
+    const id = String(t?.['transactionId'] ?? t?.['id'] ?? '');
+    if (!id || this.polling()) {
+      return;
+    }
+    this.polling.set(true);
+    this.api.gatewayStatus(id).subscribe({
+      next: (s) => {
+        this.polling.set(false);
+        this.tx.set({ ...t, ...s });
+        if (this.statusOf(s) === 'success' || this.statusOf(s) === 'completed') {
+          this.notify.success('Paiement confirmé.');
+        }
+      },
+      error: () => this.polling.set(false),
+    });
+  }
+
+  protected txStatusLabel(): string {
+    return this.statusLabel(this.tx() ?? {});
+  }
+  protected txColor(): string {
+    const tone = this.tone(this.tx() ?? {});
+    return tone === 'success'
+      ? 'var(--success)'
+      : tone === 'danger'
+        ? 'var(--danger)'
+        : 'var(--warning)';
+  }
+  protected txIcon(): string {
+    const s = this.statusOf(this.tx() ?? {});
+    if (s === 'success' || s === 'completed') return 'check_circle';
+    if (s === 'failed' || s === 'cancelled') return 'error';
+    return 'hourglass_top';
   }
 
   receipt(p: Row): void {

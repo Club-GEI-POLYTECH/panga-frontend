@@ -40,6 +40,7 @@ const IMPLEMENTED = new Set([
   'ma-scolarite',
   'mes-paiements',
   'mes-notifications',
+  'mes-services',
 ]);
 
 /**
@@ -175,6 +176,12 @@ const adminRoutes: Routes = [
       import('./features/student/notifications/student-notifications').then(
         (m) => m.StudentNotifications,
       ),
+  },
+  {
+    path: 'mes-services',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/services-hub/student-services').then((m) => m.StudentServices),
   },
   {
     // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).

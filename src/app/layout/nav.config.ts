@@ -109,6 +109,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'gestion',
   },
   {
+    labelKey: 'nav.myServices',
+    icon: 'apps',
+    path: 'mes-services',
+    roles: ['student'],
+    group: 'communication',
+  },
+  {
     labelKey: 'nav.myNotifications',
     icon: 'notifications',
     path: 'mes-notifications',
