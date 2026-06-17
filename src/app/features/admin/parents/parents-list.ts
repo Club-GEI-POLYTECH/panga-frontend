@@ -13,6 +13,7 @@ import { ParentsService } from '../services/parents.service';
 import type { Parent } from '../models/admin.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
@@ -119,6 +120,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatSlideToggleModule,
     MatTooltipModule,
     Avatar,
+    CredentialReveal,
     EmptyState,
     KpiCard,
     PageHeader,
@@ -152,6 +154,15 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         {{ showForm() ? 'Annuler' : 'Nouveau parent' }}
       </button>
     </panga-page-header>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Compte parent créé"
+        [identifier]="c.identifier"
+        [password]="c.password"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Parents" [value]="parents().length" icon="family_restroom" />
@@ -334,6 +345,8 @@ export class ParentsList {
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
   protected readonly showForm = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois à la création d'un compte. */
+  protected readonly credential = signal<{ identifier: string; password: string } | null>(null);
 
   protected readonly primaryCount = computed(
     () => this.parents().filter((p) => p.isPrimary).length,
@@ -425,7 +438,8 @@ export class ParentsList {
     }
     this.submitting.set(true);
     this.parentsApi.create(payload).subscribe({
-      next: () => {
+      next: (parent) => {
+        this.revealCredential(parent as Record<string, unknown>);
         this.submitting.set(false);
         this.notify.success('Parent ajouté.');
         this.form.reset({ relationship: 'guardian', status: 'active', canPickupStudent: true });
@@ -434,6 +448,21 @@ export class ParentsList {
       },
       error: () => this.submitting.set(false),
     });
+  }
+
+  /** Affiche le mot de passe temporaire si le backend en a généré un. */
+  private revealCredential(parent: Record<string, unknown>): void {
+    const user = (parent?.['user'] ?? {}) as Record<string, unknown>;
+    const password = (parent?.['temporaryPassword'] ?? user['temporaryPassword']) as
+      | string
+      | undefined;
+    if (!password) {
+      return;
+    }
+    const identifier = String(
+      user['username'] ?? user['email'] ?? parent['email'] ?? this.fullName(parent as Parent),
+    );
+    this.credential.set({ identifier, password });
   }
 
   onFile(event: Event): void {
