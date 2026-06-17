@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -594,10 +602,15 @@ export class GradesList {
   );
 
   constructor() {
-    this.classesApi
-      .list(this.schoolYear.value)
-      .subscribe({ next: (r) => this.classes.set(r.items) });
     this.bulkPeriod.valueChanges.subscribe((v) => this.bulkPeriodId.set(v ?? ''));
+    // Synchronise le champ année sur le sélecteur global et recharge.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.schoolYear.setValue(this.sy.filter());
+        this.reloadAll();
+      });
+    });
   }
 
   /* ------------------------------- Sélection ------------------------------- */

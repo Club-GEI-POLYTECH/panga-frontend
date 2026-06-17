@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -292,13 +300,17 @@ export class ClassesList {
   });
 
   constructor() {
-    this.load();
     this.teachersApi
       .list({ page: 1, limit: 200 })
       .subscribe({ next: (r) => this.teachers.set(r.items) });
     this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.eduLevelCtrl.valueChanges.subscribe(() => this.load());
     this.scheduleCtrl.valueChanges.subscribe(() => this.load());
+    // Recharge à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => this.load());
+    });
   }
 
   protected teacherName(t: unknown): string {

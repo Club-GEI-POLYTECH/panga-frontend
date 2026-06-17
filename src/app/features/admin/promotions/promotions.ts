@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -243,7 +251,17 @@ export class Promotions {
   );
 
   constructor() {
-    this.classesApi.list(this.sy.selected()).subscribe({ next: (r) => this.classes.set(r.items) });
+    // Synchronise le champ année sur le sélecteur global et recharge.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.schoolYear.setValue(this.sy.filter());
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+        this.reload();
+      });
+    });
   }
 
   selectClass(id: string): void {

@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
@@ -509,10 +516,18 @@ export class ExamsList {
   });
 
   constructor() {
-    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
-    this.reload();
     this.examsApi.sessions().subscribe({ next: (s) => this.sessions.set(s) });
     this.examsApi.rooms().subscribe({ next: (r) => this.rooms.set(r) });
+    // Recharge classes & examens à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+        this.reload();
+      });
+    });
   }
 
   /* -------------------------------- Examens --------------------------------- */

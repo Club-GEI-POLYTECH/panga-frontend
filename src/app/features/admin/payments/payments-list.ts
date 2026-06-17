@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -334,13 +342,23 @@ export class PaymentsList {
   });
 
   constructor() {
-    this.loadPayments();
-    this.loadFees();
-    this.paymentsApi.statsOverview(this.sy.filter()).subscribe({ next: (s) => this.stats.set(s) });
-    this.studentsApi.list({ page: 1, limit: 100, schoolYear: this.sy.filter() }).subscribe({
-      next: (r) => this.students.set(r.items),
+    // Recharge à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.loadPayments();
+        this.loadFees();
+        this.paymentsApi
+          .statsOverview(this.sy.filter())
+          .subscribe({ next: (s) => this.stats.set(s) });
+        this.studentsApi.list({ page: 1, limit: 100, schoolYear: this.sy.filter() }).subscribe({
+          next: (r) => this.students.set(r.items),
+        });
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+      });
     });
-    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
   }
 
   protected studentName(s: Student): string {

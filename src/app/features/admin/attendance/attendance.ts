@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -430,10 +438,18 @@ export class Attendance {
   protected readonly loadingReport = signal(false);
 
   constructor() {
-    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
-    this.studentsApi
-      .list({ page: 1, limit: 300, schoolYear: this.sy.filter() })
-      .subscribe({ next: (r) => this.allStudents.set(r.items) });
+    // Recharge classes & élèves à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+        this.studentsApi
+          .list({ page: 1, limit: 300, schoolYear: this.sy.filter() })
+          .subscribe({ next: (r) => this.allStudents.set(r.items) });
+      });
+    });
   }
 
   /* ------------------------------- Sélection ------------------------------- */

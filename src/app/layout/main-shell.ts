@@ -98,19 +98,13 @@ export class MainShell {
   }
 
   /**
-   * Change l'année scolaire active puis recharge la vue courante pour que les
-   * écrans rejouent leurs appels avec la nouvelle année (les GET de liste
-   * n'envoient l'année que si elle diffère de l'année courante de l'école).
+   * Change l'année scolaire active. Les écrans réagissent via un `effect` sur
+   * `SchoolYearStore.selected` et rejouent leurs appels (sans rechargement de
+   * route). Les GET de liste n'envoient l'année que si elle diffère de l'année
+   * courante de l'école.
    */
   setYear(year: string): void {
-    if (year === this.sy.selected()) {
-      return;
-    }
     this.sy.setSelected(year);
-    const url = this.router.url;
-    void this.router
-      .navigateByUrl('/', { skipLocationChange: true })
-      .then(() => this.router.navigateByUrl(url));
   }
 
   /** Année courante pour le pied de page (évalué une fois). */

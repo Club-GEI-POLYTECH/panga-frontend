@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -411,7 +419,15 @@ export class TeachersList {
 
   constructor() {
     this.load();
-    this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
+    // Recharge la liste des classes à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() =>
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) }),
+      );
+    });
     this.searchCtrl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe((v) => {
