@@ -18,8 +18,25 @@ import { normalizeOverview, normalizeTrends } from '../../super-admin/models/das
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { Avatar } from '../../../shared/ui/avatar';
 import { LineChart, type LineSeries } from '../../../shared/ui/charts/line-chart';
+import { auditView, type AuditView } from '../shared/audit-labels';
+
+const TONE_BG: Record<AuditView['tone'], string> = {
+  success: 'color-mix(in srgb, var(--success) 14%, transparent)',
+  warning: 'color-mix(in srgb, var(--warning) 16%, transparent)',
+  danger: 'color-mix(in srgb, var(--danger) 14%, transparent)',
+  info: 'color-mix(in srgb, #3b82f6 14%, transparent)',
+  brand: 'color-mix(in srgb, var(--brand-500) 14%, transparent)',
+  neutral: 'color-mix(in srgb, var(--text-muted) 12%, transparent)',
+};
+const TONE_FG: Record<AuditView['tone'], string> = {
+  success: 'var(--success)',
+  warning: 'var(--warning)',
+  danger: 'var(--danger)',
+  info: '#3b82f6',
+  brand: 'var(--brand-700)',
+  neutral: 'var(--text-muted)',
+};
 
 function fmt(n: number | null | undefined): string {
   return n === null || n === undefined ? '—' : n.toLocaleString('fr-FR');
@@ -38,7 +55,6 @@ function fmt(n: number | null | undefined): string {
     KpiCard,
     KeyValue,
     SectionHeader,
-    Avatar,
     LineChart,
   ],
   template: `
@@ -106,17 +122,19 @@ function fmt(n: number | null | undefined): string {
           @if (audit().length) {
             <ul class="divide-y divide-[var(--border)]">
               @for (a of audit(); track a.id || $index) {
+                @let view = auditView(a);
                 <li class="flex items-center gap-3 py-2.5">
-                  <panga-avatar [name]="a.actor || a.actorEmail || a.action || '?'" [size]="36" />
+                  <span
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                    [style.background]="toneBg(view.tone)"
+                    [style.color]="toneFg(view.tone)"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">{{ view.icon }}</span>
+                  </span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
-                      {{ a.action || 'Action' }}
-                      @if (a.entity || a.entityType) {
-                        · {{ a.entity || a.entityType }}
-                      }
-                    </p>
+                    <p class="text-sm font-medium text-[var(--text)] truncate">{{ view.title }}</p>
                     <p class="text-xs text-[var(--text-muted)] truncate">
-                      {{ a.actor || a.actorEmail || '—' }}
+                      {{ view.subtitle || '—' }}
                     </p>
                   </div>
                   @if (a.createdAt) {
@@ -159,6 +177,13 @@ export class AdminDashboard {
   private readonly auditApi = inject(AuditService);
 
   protected readonly fmt = fmt;
+  protected readonly auditView = auditView;
+  protected toneBg(t: AuditView['tone']): string {
+    return TONE_BG[t];
+  }
+  protected toneFg(t: AuditView['tone']): string {
+    return TONE_FG[t];
+  }
   protected readonly loading = signal(true);
   protected readonly overview = signal<OverviewData | null>(null);
   protected readonly trends = signal<TrendPoint[]>([]);

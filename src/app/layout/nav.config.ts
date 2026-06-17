@@ -109,6 +109,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    labelKey: 'nav.courseJournal',
+    icon: 'auto_stories',
+    path: 'course-journal',
+    roles: ['admin', 'teacher', 'parent'],
+    group: 'pedagogie',
+  },
+  {
     labelKey: 'nav.attendance',
     icon: 'fact_check',
     path: 'attendance',

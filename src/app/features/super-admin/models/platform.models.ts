@@ -127,11 +127,23 @@ export interface BillingMetrics {
 export interface AuditLog {
   id?: string;
   action?: string;
+  /** Champs réellement renvoyés par l'API. */
+  resourceType?: string;
+  resourceId?: string;
+  userId?: string;
+  userRole?: string;
+  schoolId?: string;
+  method?: string;
+  path?: string;
+  statusCode?: number;
+  isSensitive?: boolean;
+  /** Variantes héritées / optionnelles selon les routes. */
   actor?: string;
   actorEmail?: string;
   entity?: string;
   entityType?: string;
   ip?: string;
+  ipAddress?: string;
   createdAt?: string;
   [key: string]: unknown;
 }

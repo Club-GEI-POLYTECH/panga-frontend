@@ -125,6 +125,51 @@ const BULLETIN_TEMPLATE = `{
                     <panga-status-badge label="Officiel" tone="success" [dot]="false" />
                   }
                 </div>
+                <div class="mt-3 flex justify-end">
+                  <button mat-stroked-button class="!rounded-xl" (click)="openProgram(p)">
+                    <mat-icon fontSet="material-symbols-outlined">visibility</mat-icon> Détail &
+                    barème
+                  </button>
+                </div>
+
+                @if (selectedId() === p.id) {
+                  @if (loadingDetail()) {
+                    <p class="text-xs text-[var(--text-muted)] mt-3">Chargement du barème…</p>
+                  } @else if (slots().length) {
+                    <div class="mt-3 overflow-x-auto">
+                      <table class="w-full text-xs">
+                        <thead class="text-[var(--text-muted)] text-left">
+                          <tr>
+                            <th class="py-1 pr-2 font-medium">Cours</th>
+                            <th class="py-1 px-2 font-medium">Code</th>
+                            <th class="py-1 px-2 font-medium">Max/pér.</th>
+                            <th class="py-1 px-2 font-medium">Mode</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (s of slots(); track $index) {
+                            <tr class="border-t border-[var(--border)]">
+                              <td class="py-1 pr-2 text-[var(--text)]">
+                                {{ s['labelFr'] || s['programCode'] }}
+                              </td>
+                              <td class="py-1 px-2 text-[var(--text-muted)]">
+                                {{ s['programCode'] }}
+                              </td>
+                              <td class="py-1 px-2 text-[var(--text)]">{{ s['maxPerPeriod'] }}</td>
+                              <td class="py-1 px-2 text-[var(--text-muted)]">
+                                {{ scoringLabel(s['scoringMode']) }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <p class="text-xs text-[var(--text-muted)] mt-3">
+                      Aucun cours dans ce programme.
+                    </p>
+                  }
+                }
               </div>
             }
           </div>
@@ -146,7 +191,24 @@ const BULLETIN_TEMPLATE = `{
               <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
                 >description</span
               >
-              <span class="text-sm text-[var(--text)] truncate">{{ b.title || b.code }}</span>
+              <span class="text-sm text-[var(--text)] truncate flex-1">{{
+                b.title || b.code
+              }}</span>
+              @if (isPersisted(b)) {
+                <panga-status-badge label="Base" tone="brand" [dot]="false" />
+                <button
+                  mat-icon-button
+                  class="!h-8 !w-8"
+                  (click)="deleteBulletin(b)"
+                  aria-label="Supprimer"
+                >
+                  <mat-icon fontSet="material-symbols-outlined" class="!text-[18px]"
+                    >delete</mat-icon
+                  >
+                </button>
+              } @else {
+                <panga-status-badge label="Embarqué" tone="neutral" [dot]="false" />
+              }
             </div>
           } @empty {
             <p class="text-sm text-[var(--text-muted)]">Aucun référentiel.</p>
@@ -231,8 +293,68 @@ export class Curriculum {
   protected readonly importJson = new FormControl(IMPORT_TEMPLATE, { nonNullable: true });
   protected readonly bulletinJson = new FormControl(BULLETIN_TEMPLATE, { nonNullable: true });
 
+  /** Programme déplié (détail du barème) + ses slots. */
+  protected readonly selectedId = signal<string | null>(null);
+  protected readonly slots = signal<Record<string, unknown>[]>([]);
+  protected readonly loadingDetail = signal(false);
+
   constructor() {
     this.load();
+  }
+
+  /** Charge le barème (slots) d'un programme national, ou replie s'il est déjà ouvert. */
+  openProgram(p: NationalProgram): void {
+    if (this.selectedId() === p.id) {
+      this.selectedId.set(null);
+      return;
+    }
+    this.selectedId.set(p.id);
+    // Slots déjà présents sur la liste ? sinon on charge le détail.
+    const inline = (p.slots ?? []) as Record<string, unknown>[];
+    if (inline.length) {
+      this.slots.set(inline);
+      return;
+    }
+    this.loadingDetail.set(true);
+    this.slots.set([]);
+    this.curriculum.programDetail(p.id).subscribe({
+      next: (full) => {
+        this.slots.set((full.slots ?? []) as Record<string, unknown>[]);
+        this.loadingDetail.set(false);
+      },
+      error: () => this.loadingDetail.set(false),
+    });
+  }
+
+  protected scoringLabel(mode: unknown): string {
+    switch (mode) {
+      case 'semester_exam_double':
+        return 'Périodes + examen (×2)';
+      case 'two_periods_no_exam':
+        return '2 périodes, sans examen';
+      default:
+        return mode ? String(mode) : '—';
+    }
+  }
+
+  /** Un référentiel persisté (table) a un id UUID ; un embarqué a un code. */
+  protected isPersisted(b: BulletinProgram): boolean {
+    return (
+      !!b.id &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(b.id)
+    );
+  }
+
+  deleteBulletin(b: BulletinProgram): void {
+    if (!b.id) {
+      return;
+    }
+    this.curriculum.removeBulletinProgram(b.id).subscribe({
+      next: () => {
+        this.notify.success('Référentiel supprimé.');
+        this.load();
+      },
+    });
   }
 
   private load(): void {

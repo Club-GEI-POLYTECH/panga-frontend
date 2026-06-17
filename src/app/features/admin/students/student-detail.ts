@@ -11,7 +11,9 @@ import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
 import { ParentsService } from '../services/parents.service';
+import { GradesService } from '../services/grades.service';
 import type { ClassInstance, Parent, Student } from '../models/admin.models';
+import type { AnnualAverageResult } from '../models/grade.models';
 import { personLabel } from '../shared/labels';
 import {
   BLOOD_GROUP_OPTIONS,
@@ -293,7 +295,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </section>
 
       <!-- Dossier scolaire -->
-      <section class="grid gap-4 sm:grid-cols-3">
+      <section class="grid gap-4 sm:grid-cols-3 mb-4">
         <div class="panga-card p-5 text-center">
           <span class="material-symbols-outlined text-[var(--brand-500)]">grade</span>
           <p class="text-2xl font-semibold text-[var(--text)] mt-1">{{ gradesCount() }}</p>
@@ -310,6 +312,51 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <p class="text-xs text-[var(--text-muted)]">Présences</p>
         </div>
       </section>
+
+      <!-- Bulletin de moyennes (année) -->
+      <section class="panga-card p-5">
+        <panga-section-header
+          icon="leaderboard"
+          [title]="'Moyennes ' + schoolYear"
+          [count]="subjectAverages().length"
+        >
+          @if (overallPercent() !== null) {
+            <panga-status-badge
+              [label]="overallPercent() + '% — moy. générale'"
+              [tone]="averageTone(overallPercent())"
+              [dot]="false"
+            />
+          }
+        </panga-section-header>
+
+        @if (loadingAverages()) {
+          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Calcul des moyennes…</p>
+        } @else if (subjectAverages().length === 0) {
+          <p class="text-sm text-[var(--text-muted)] py-4 text-center">
+            Aucune moyenne disponible pour cette année.
+          </p>
+        } @else {
+          <div class="space-y-3">
+            @for (a of subjectAverages(); track $index) {
+              <div>
+                <div class="flex items-center justify-between gap-3 mb-1">
+                  <span class="text-sm text-[var(--text)] truncate">{{ subjLabel(a) }}</span>
+                  <span class="text-sm font-semibold shrink-0" [style.color]="avgColor(subjPct(a))">
+                    {{ subjPct(a) }}%
+                  </span>
+                </div>
+                <div class="h-2 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                  <div
+                    class="h-full rounded-full"
+                    [style.width.%]="subjPct(a)"
+                    [style.background]="avgColor(subjPct(a))"
+                  ></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
     }
   `,
 })
@@ -318,10 +365,12 @@ export class StudentDetail {
   private readonly studentsApi = inject(StudentsService);
   private readonly classesApi = inject(ClassesService);
   private readonly parentsApi = inject(ParentsService);
+  private readonly gradesApi = inject(GradesService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
+  protected readonly schoolYear = SCHOOL_YEAR;
   protected readonly groups = GROUPS;
   protected readonly label = personLabel;
   protected readonly student = signal<Student | null>(null);
@@ -333,6 +382,9 @@ export class StudentDetail {
   protected readonly gradesCount = signal(0);
   protected readonly paymentsCount = signal(0);
   protected readonly attendanceCount = signal(0);
+  protected readonly subjectAverages = signal<AnnualAverageResult[]>([]);
+  protected readonly overallPercent = signal<number | null>(null);
+  protected readonly loadingAverages = signal(false);
 
   protected readonly parentCtrl = new FormControl('', { nonNullable: true });
 
@@ -369,9 +421,59 @@ export class StudentDetail {
         this.student.set(s);
         this.patch(s);
         this.loading.set(false);
+        this.loadAverages(s);
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /** Moyennes annuelles par matière (nécessite le classId de l'élève). */
+  private loadAverages(s: Student): void {
+    const raw = s as Record<string, unknown>;
+    const classId = String(raw['classInstanceId'] ?? raw['classId'] ?? '');
+    if (!classId) {
+      this.subjectAverages.set([]);
+      this.overallPercent.set(null);
+      return;
+    }
+    this.loadingAverages.set(true);
+    this.gradesApi.studentAverages(this.id, classId, SCHOOL_YEAR).subscribe({
+      next: (r) => {
+        this.subjectAverages.set(r.subjectAverages ?? []);
+        const overall = r.overallAveragePercent ?? r.overallAverage;
+        this.overallPercent.set(overall === undefined ? null : Math.round(overall));
+        this.loadingAverages.set(false);
+      },
+      error: () => {
+        this.subjectAverages.set([]);
+        this.overallPercent.set(null);
+        this.loadingAverages.set(false);
+      },
+    });
+  }
+
+  protected subjLabel(a: AnnualAverageResult): string {
+    const o = a as Record<string, unknown>;
+    return (
+      (o['subjectLabel'] as string) ||
+      (o['labelFr'] as string) ||
+      (o['subject'] as string) ||
+      (o['programCode'] as string) ||
+      'Matière'
+    );
+  }
+  protected subjPct(a: AnnualAverageResult): number {
+    const v = a.annualAveragePercent ?? a.annualAverage ?? 0;
+    return Math.round(Math.max(0, Math.min(100, v)));
+  }
+  protected avgColor(p: number): string {
+    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-700)' : 'var(--danger)';
+  }
+  protected averageTone(p: number | null): 'success' | 'brand' | 'danger' | 'neutral' {
+    if (p === null) {
+      return 'neutral';
+    }
+    return p >= 75 ? 'success' : p >= 50 ? 'brand' : 'danger';
   }
 
   addParent(): void {
