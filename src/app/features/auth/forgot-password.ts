@@ -29,7 +29,7 @@ import { AuthLayout } from './auth-layout';
       <ng-container *transloco="let t">
         <div class="panga-brand">
           <div class="badge">P</div>
-          <h1 class="text-lg font-semibold" style="font-family: Poppins, sans-serif">
+          <h1 class="text-lg font-semibold" style="font-family: Urbanist, sans-serif">
             {{ t('app.name') }}
           </h1>
         </div>

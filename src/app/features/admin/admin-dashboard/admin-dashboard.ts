@@ -53,7 +53,7 @@ function fmt(n: number | null | undefined): string {
       <p class="text-sm opacity-90">Bonjour,</p>
       <h1
         class="text-2xl sm:text-3xl font-semibold mt-0.5"
-        style="font-family: Poppins, sans-serif"
+        style="font-family: Urbanist, sans-serif"
       >
         {{ store.fullName() }}
       </h1>
@@ -177,8 +177,8 @@ export class AdminDashboard {
   protected readonly trendSeries = computed<LineSeries[]>(() => {
     const t = this.trends();
     return [
-      { name: 'Nouveaux élèves', data: t.map((p) => p.newStudents), axis: 0, color: '#14b8a6' },
-      { name: 'Revenus', data: t.map((p) => p.revenue), axis: 1, color: '#a855f7', area: true },
+      { name: 'Nouveaux élèves', data: t.map((p) => p.newStudents), axis: 0, color: '#8fd34a' },
+      { name: 'Revenus', data: t.map((p) => p.revenue), axis: 1, color: '#5fb0d8', area: true },
     ];
   });
 
