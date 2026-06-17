@@ -222,8 +222,8 @@ export class Promotions {
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
-  /** Vide = année en cours (le backend applique l'année courante sur les GET). */
-  protected readonly schoolYear = new FormControl('', { nonNullable: true });
+  /** Initialisé sur le sélecteur global (vide = année en cours → GET sans année). */
+  protected readonly schoolYear = new FormControl(this.sy.filter(), { nonNullable: true });
   /** Année pour les actions qui exigent une année (calcul, finalisation, transfert). */
   private yr(): string {
     return this.schoolYear.value || this.sy.current();

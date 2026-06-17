@@ -459,8 +459,8 @@ export class CourseJournal {
     () => this.role() === 'teacher' || this.role() === 'super_admin',
   );
 
-  /** Vide = année en cours (le backend applique l'année courante sur les GET). */
-  protected readonly schoolYear = new FormControl('', { nonNullable: true });
+  /** Initialisé sur le sélecteur global (vide = année en cours → GET sans année). */
+  protected readonly schoolYear = new FormControl(this.sy.filter(), { nonNullable: true });
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classInstanceId = signal('');

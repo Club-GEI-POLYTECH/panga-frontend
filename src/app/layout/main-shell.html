@@ -217,7 +217,7 @@
                 Année scolaire
               </p>
               @for (o of sy.options(); track o.value) {
-                <button mat-menu-item (click)="sy.setSelected(o.value)">
+                <button mat-menu-item (click)="setYear(o.value)">
                   <mat-icon fontSet="material-symbols-outlined">
                     {{ sy.selected() === o.value ? 'check' : 'calendar_today' }}
                   </mat-icon>
