@@ -24,7 +24,7 @@ type Row = Record<string, unknown>;
   template: `
     <panga-page-header icon="notifications" title="Notifications" subtitle="Vos alertes & messages">
       @if (unreadCount() > 0) {
-        <button mat-stroked-button class="!rounded-xl" (click)="markAll()">
+        <button mat-stroked-button class="rounded-xl!" (click)="markAll()">
           <mat-icon fontSet="material-symbols-outlined">done_all</mat-icon> Tout marquer comme lu
         </button>
       }
@@ -41,11 +41,11 @@ type Row = Record<string, unknown>;
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (n of items(); track n['id'] || $index) {
           <button
             type="button"
-            class="w-full flex items-start gap-3 px-5 py-3.5 text-left hover:bg-[var(--background)] transition-colors"
+            class="w-full flex items-start gap-3 px-5 py-3.5 text-left hover:bg-(--background) transition-colors"
             (click)="open(n)"
           >
             <span
@@ -56,7 +56,7 @@ type Row = Record<string, unknown>;
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
               style="background: color-mix(in srgb, var(--brand-500) 12%, transparent)"
             >
-              <span class="material-symbols-outlined text-[18px] text-[var(--brand-700)]">{{
+              <span class="material-symbols-outlined text-[18px] text-(--brand-700)">{{
                 icon(n)
               }}</span>
             </span>
@@ -70,11 +70,11 @@ type Row = Record<string, unknown>;
                 {{ title(n) }}
               </p>
               @if (message(n)) {
-                <p class="text-xs text-[var(--text-muted)] line-clamp-2">{{ message(n) }}</p>
+                <p class="text-xs text-(--text-muted) line-clamp-2">{{ message(n) }}</p>
               }
             </div>
             @if (n['createdAt']) {
-              <span class="text-xs text-[var(--text-muted)] shrink-0">
+              <span class="text-xs text-(--text-muted) shrink-0">
                 {{ asDate(n['createdAt']) | date: 'dd/MM HH:mm' }}
               </span>
             }

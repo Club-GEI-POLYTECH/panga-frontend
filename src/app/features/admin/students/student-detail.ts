@@ -189,7 +189,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             }
             <button
               mat-stroked-button
-              class="!rounded-xl !text-white !border-white/40"
+              class="rounded-xl! text-white! border-white/40!"
               [disabled]="resetting() || !userId()"
               (click)="resetPassword()"
             >

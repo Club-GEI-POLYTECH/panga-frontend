@@ -21,7 +21,7 @@ const IMPORT_TEMPLATE = `{
   "optionLabel": "Agriculture generale",
   "subOptionLabel": "AG",
   "levelYear": 3,
-  "referenceYear": "2024-2025",
+  "referenceYear": "202-2025",
   "isOfficial": true,
   "slots": [
     {

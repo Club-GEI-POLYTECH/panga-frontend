@@ -58,7 +58,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
             <a mat-button routerLink="/ma-scolarite">Tout voir</a>
           </panga-section-header>
           @if (subjects().length === 0) {
-            <p class="text-sm text-[var(--text-muted)] py-4 text-center">
+            <p class="text-sm text-(--text-muted) py-4 text-center">
               Aucune moyenne disponible pour l'instant.
             </p>
           } @else {
@@ -66,7 +66,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
               @for (a of subjects().slice(0, 6); track $index) {
                 <div>
                   <div class="flex items-center justify-between gap-3 mb-1">
-                    <span class="text-sm text-[var(--text)] truncate">{{ subjLabel(a) }}</span>
+                    <span class="text-sm text-(--text) truncate">{{ subjLabel(a) }}</span>
                     <span
                       class="text-sm font-semibold shrink-0"
                       [style.color]="avgColor(subjPct(a))"
@@ -74,7 +74,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
                       {{ subjPct(a) }}%
                     </span>
                   </div>
-                  <div class="h-2 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                  <div class="h-2 w-full rounded-full bg-(--border) overflow-hidden">
                     <div
                       class="h-full rounded-full"
                       [style.width.%]="subjPct(a)"
@@ -97,18 +97,18 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
             <a mat-button routerLink="/ma-scolarite">Tout voir</a>
           </panga-section-header>
           @if (bulletins().length === 0) {
-            <p class="text-sm text-[var(--text-muted)] py-4 text-center">Aucun bulletin publié.</p>
+            <p class="text-sm text-(--text-muted) py-4 text-center">Aucun bulletin publié.</p>
           } @else {
-            <div class="divide-y divide-[var(--border)] -mx-5">
+            <div class="divide-y divide-(--border) -mx-5">
               @for (b of bulletins().slice(0, 5); track b.id) {
                 <div class="flex items-center gap-3 px-5 py-2.5">
-                  <span class="material-symbols-outlined text-[var(--brand-500)]">description</span>
+                  <span class="material-symbols-outlined text-(--brand-500)">description</span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">
                       {{ b.term || 'Bulletin' }} · {{ b.schoolYear || '' }}
                     </p>
                     @if (b.average !== undefined) {
-                      <p class="text-xs text-[var(--text-muted)]">
+                      <p class="text-xs text-(--text-muted)">
                         Moyenne : {{ b.average }}
                         @if (b.rank) {
                           · {{ b.rank }}<sup>e</sup>

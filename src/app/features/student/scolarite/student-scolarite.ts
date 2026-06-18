@@ -44,9 +44,7 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
       subtitle="Notes, bulletins & emploi du temps"
     />
 
-    <div
-      class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)]"
-    >
+    <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
       @for (t of tabs; track t.key) {
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium"
@@ -79,15 +77,13 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
               }
             </panga-section-header>
             @if (subjects().length === 0) {
-              <p class="text-sm text-[var(--text-muted)] py-4 text-center">
-                Aucune moyenne disponible.
-              </p>
+              <p class="text-sm text-(--text-muted) py-4 text-center">Aucune moyenne disponible.</p>
             } @else {
               <div class="space-y-3">
                 @for (a of subjects(); track $index) {
                   <div>
                     <div class="flex items-center justify-between gap-3 mb-1">
-                      <span class="text-sm text-[var(--text)] truncate">{{ subjLabel(a) }}</span>
+                      <span class="text-sm text-(--text) truncate">{{ subjLabel(a) }}</span>
                       <span
                         class="text-sm font-semibold shrink-0"
                         [style.color]="avgColor(subjPct(a))"
@@ -95,7 +91,7 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                         {{ subjPct(a) }}%
                       </span>
                     </div>
-                    <div class="h-2 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                    <div class="h-2 w-full rounded-full bg-(--border) overflow-hidden">
                       <div
                         class="h-full rounded-full"
                         [style.width.%]="subjPct(a)"
@@ -227,18 +223,18 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
         @case ('attendance') {
           <section class="grid gap-3 grid-cols-3 mb-6">
             <div class="panga-card p-4 text-center">
-              <p class="text-2xl font-semibold text-[var(--success)]">
+              <p class="text-2xl font-semibold text-(--success)">
                 {{ countStatus('present') }}
               </p>
-              <p class="text-xs text-[var(--text-muted)]">Présences</p>
+              <p class="text-xs text-(--text-muted)">Présences</p>
             </div>
             <div class="panga-card p-4 text-center">
-              <p class="text-2xl font-semibold text-[var(--warning)]">{{ countStatus('late') }}</p>
-              <p class="text-xs text-[var(--text-muted)]">Retards</p>
+              <p class="text-2xl font-semibold text-(--warning)">{{ countStatus('late') }}</p>
+              <p class="text-xs text-(--text-muted)">Retards</p>
             </div>
             <div class="panga-card p-4 text-center">
-              <p class="text-2xl font-semibold text-[var(--danger)]">{{ countStatus('absent') }}</p>
-              <p class="text-xs text-[var(--text-muted)]">Absences</p>
+              <p class="text-2xl font-semibold text-(--danger)">{{ countStatus('absent') }}</p>
+              <p class="text-xs text-(--text-muted)">Absences</p>
             </div>
           </section>
 

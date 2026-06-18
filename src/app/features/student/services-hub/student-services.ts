@@ -42,7 +42,7 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
     />
 
     <div
-      class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)] overflow-x-auto"
+      class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border) overflow-x-auto"
     >
       @for (t of tabs; track t.key) {
         <button
@@ -76,9 +76,9 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
             } @else {
               <div class="space-y-3">
                 @for (a of announcements(); track a['id'] || $index) {
-                  <div class="rounded-2xl border border-[var(--border)] p-4">
+                  <div class="rounded-2xl border border-(--border) p-4">
                     <div class="flex items-start justify-between gap-3">
-                      <p class="font-medium text-[var(--text)]">{{ a['title'] || 'Annonce' }}</p>
+                      <p class="font-medium text-(--text)">{{ a['title'] || 'Annonce' }}</p>
                       @if (a['priority']) {
                         <panga-status-badge
                           [label]="str(a['priority'])"
@@ -88,15 +88,15 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
                       }
                     </div>
                     @if (a['content']) {
-                      <p class="text-sm text-[var(--text-muted)] mt-1">{{ a['content'] }}</p>
+                      <p class="text-sm text-(--text-muted) mt-1">{{ a['content'] }}</p>
                     }
                     <div class="flex items-center justify-between gap-2 mt-2">
-                      <span class="text-xs text-[var(--text-muted)]">
+                      <span class="text-xs text-(--text-muted)">
                         @if (a['createdAt']) {
                           {{ asDate(a['createdAt']) | date: 'dd/MM/yyyy' }}
                         }
                       </span>
-                      <button mat-button class="!rounded-lg" (click)="acknowledge(a)">
+                      <button mat-button class="rounded-lg!" (click)="acknowledge(a)">
                         <mat-icon fontSet="material-symbols-outlined">done</mat-icon> Accuser
                         réception
                       </button>
@@ -112,17 +112,17 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
           <section class="panga-card p-5 mb-6">
             <panga-section-header icon="event" title="Événements" [count]="events().length" />
             @if (events().length === 0) {
-              <p class="text-sm text-[var(--text-muted)] py-2">Aucun événement.</p>
+              <p class="text-sm text-(--text-muted) py-2">Aucun événement.</p>
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (e of events(); track e['id'] || $index) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
-                    <span class="material-symbols-outlined text-[var(--brand-500)]">event</span>
+                    <span class="material-symbols-outlined text-(--brand-500)">event</span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ e['title'] || e['name'] }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)]">{{ eventDate(e) }}</p>
+                      <p class="text-xs text-(--text-muted)">{{ eventDate(e) }}</p>
                     </div>
                   </div>
                 }
@@ -136,15 +136,15 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
               [count]="holidays().length"
             />
             @if (holidays().length === 0) {
-              <p class="text-sm text-[var(--text-muted)] py-2">Aucun jour férié.</p>
+              <p class="text-sm text-(--text-muted) py-2">Aucun jour férié.</p>
             } @else {
               <div class="flex flex-wrap gap-2">
                 @for (h of holidays(); track h['id'] || $index) {
                   <span
-                    class="rounded-xl border border-[var(--border)] px-3 py-1.5 text-sm text-[var(--text)]"
+                    class="rounded-xl border border-(--border) px-3 py-1.5 text-sm text-(--text)"
                   >
                     {{ h['name'] || h['title'] }}
-                    <span class="text-xs text-[var(--text-muted)]">· {{ eventDate(h) }}</span>
+                    <span class="text-xs text-(--text-muted)">· {{ eventDate(h) }}</span>
                   </span>
                 }
               </div>
@@ -155,29 +155,25 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
         @case ('bibliotheque') {
           <section class="panga-card p-5 mb-6">
             <panga-section-header icon="menu_book" title="Catalogue" [count]="books().length">
-              <mat-form-field
-                appearance="outline"
-                class="w-[220px] !mb-[-1.25rem]"
-                subscriptSizing="dynamic"
-              >
+              <mat-form-field appearance="outline" class="w-55 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Rechercher</mat-label>
                 <input matInput [formControl]="bookSearch" (keyup.enter)="searchBooks()" />
               </mat-form-field>
             </panga-section-header>
             @if (books().length === 0) {
-              <p class="text-sm text-[var(--text-muted)] py-2">Aucun livre.</p>
+              <p class="text-sm text-(--text-muted) py-2">Aucun livre.</p>
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (b of books(); track b['id'] || $index) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
-                    <span class="material-symbols-outlined text-[var(--brand-500)]">book</span>
+                    <span class="material-symbols-outlined text-(--brand-500)">book</span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ b['title'] }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)] truncate">{{ b['author'] }}</p>
+                      <p class="text-xs text-(--text-muted) truncate">{{ b['author'] }}</p>
                     </div>
-                    <button mat-stroked-button class="!rounded-xl" (click)="reserveBook(b)">
+                    <button mat-stroked-button class="rounded-xl!" (click)="reserveBook(b)">
                       Réserver
                     </button>
                   </div>
@@ -193,15 +189,15 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
                 [count]="borrowed().length"
               />
               @if (borrowed().length === 0) {
-                <p class="text-sm text-[var(--text-muted)]">Aucun emprunt en cours.</p>
+                <p class="text-sm text-(--text-muted)">Aucun emprunt en cours.</p>
               } @else {
                 @for (b of borrowed(); track $index) {
                   <div
-                    class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+                    class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
                   >
-                    <span class="text-sm text-[var(--text)] truncate">{{ bookTitle(b) }}</span>
+                    <span class="text-sm text-(--text) truncate">{{ bookTitle(b) }}</span>
                     @if (b['dueDate']) {
-                      <span class="text-xs text-[var(--text-muted)]"
+                      <span class="text-xs text-(--text-muted)"
                         >à rendre le {{ asDate(b['dueDate']) | date: 'dd/MM' }}</span
                       >
                     }
@@ -212,18 +208,16 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
             <section class="panga-card p-5">
               <panga-section-header icon="gavel" title="Amendes" [count]="fines().length" />
               @if (fines().length === 0) {
-                <p class="text-sm text-[var(--text-muted)]">Aucune amende.</p>
+                <p class="text-sm text-(--text-muted)">Aucune amende.</p>
               } @else {
                 @for (f of fines(); track $index) {
                   <div
-                    class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+                    class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
                   >
-                    <span class="text-sm text-[var(--text)] truncate">{{
+                    <span class="text-sm text-(--text) truncate">{{
                       f['reason'] || 'Amende'
                     }}</span>
-                    <span class="text-sm font-semibold text-[var(--danger)]">{{
-                      f['amount']
-                    }}</span>
+                    <span class="text-sm font-semibold text-(--danger)">{{ f['amount'] }}</span>
                   </div>
                 }
               }
@@ -237,14 +231,14 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
               <panga-section-header icon="directions_bus" title="Mon transport" />
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p class="text-xs text-[var(--text-muted)]">Itinéraire</p>
-                  <p class="text-sm text-[var(--text)]">
+                  <p class="text-xs text-(--text-muted)">Itinéraire</p>
+                  <p class="text-sm text-(--text)">
                     {{ str(myTransport()!['routeName'] ?? myTransport()!['route']) || '—' }}
                   </p>
                 </div>
                 <div>
-                  <p class="text-xs text-[var(--text-muted)]">Arrêt</p>
-                  <p class="text-sm text-[var(--text)]">
+                  <p class="text-xs text-(--text-muted)">Arrêt</p>
+                  <p class="text-sm text-(--text)">
                     {{ str(myTransport()!['stopName'] ?? myTransport()!['stop']) || '—' }}
                   </p>
                 </div>
@@ -260,15 +254,15 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
                 description="Aucun itinéraire de transport."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (r of routes(); track r['id'] || $index) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
-                    <span class="material-symbols-outlined text-[var(--brand-500)]">route</span>
+                    <span class="material-symbols-outlined text-(--brand-500)">route</span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ r['name'] || r['routeName'] }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)] truncate">
+                      <p class="text-xs text-(--text-muted) truncate">
                         {{ r['description'] || '' }}
                       </p>
                     </div>
@@ -283,22 +277,22 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
           <section class="panga-card p-5 mb-6">
             <panga-section-header icon="restaurant_menu" title="Menus" [count]="menus().length" />
             @if (menus().length === 0) {
-              <p class="text-sm text-[var(--text-muted)] py-2">Aucun menu disponible.</p>
+              <p class="text-sm text-(--text-muted) py-2">Aucun menu disponible.</p>
             } @else {
               <div class="grid gap-3 sm:grid-cols-2">
                 @for (m of menus(); track m['id'] || $index) {
                   <div
-                    class="rounded-2xl border border-[var(--border)] p-4 flex items-center justify-between gap-3"
+                    class="rounded-2xl border border-(--border) p-4 flex items-center justify-between gap-3"
                   >
                     <div class="min-w-0">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ m['name'] || m['title'] }}
                       </p>
                       @if (m['price']) {
-                        <p class="text-xs text-[var(--text-muted)]">{{ m['price'] }}</p>
+                        <p class="text-xs text-(--text-muted)">{{ m['price'] }}</p>
                       }
                     </div>
-                    <button mat-stroked-button class="!rounded-xl" (click)="order(m)">
+                    <button mat-stroked-button class="rounded-xl!" (click)="order(m)">
                       Commander
                     </button>
                   </div>
@@ -314,16 +308,16 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
                 [count]="orders().length"
               />
               @if (orders().length === 0) {
-                <p class="text-sm text-[var(--text-muted)]">Aucune commande.</p>
+                <p class="text-sm text-(--text-muted)">Aucune commande.</p>
               } @else {
                 @for (o of orders(); track $index) {
                   <div
-                    class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+                    class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
                   >
-                    <span class="text-sm text-[var(--text)] truncate">{{
+                    <span class="text-sm text-(--text) truncate">{{
                       o['itemName'] || o['name'] || 'Repas'
                     }}</span>
-                    <span class="text-xs text-[var(--text-muted)]">{{ o['status'] }}</span>
+                    <span class="text-xs text-(--text-muted)">{{ o['status'] }}</span>
                   </div>
                 }
               }
@@ -335,12 +329,12 @@ type Tab = 'annonces' | 'calendrier' | 'bibliotheque' | 'transport' | 'cantine';
                 [count]="allergies().length"
               />
               @if (allergies().length === 0) {
-                <p class="text-sm text-[var(--text-muted)]">Aucune allergie déclarée.</p>
+                <p class="text-sm text-(--text-muted)">Aucune allergie déclarée.</p>
               } @else {
                 <div class="flex flex-wrap gap-2">
                   @for (al of allergies(); track $index) {
                     <span
-                      class="rounded-full bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-[var(--danger)] px-3 py-1 text-xs"
+                      class="rounded-full bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] text-(--danger) px-3 py-1 text-xs"
                     >
                       {{ al['name'] || al['allergen'] || al }}
                     </span>
