@@ -394,10 +394,12 @@ export class Curriculum {
     this.loading.set(true);
     forkJoin({
       published: this.curriculum.publishedPrograms().pipe(catchError(() => of({ items: [] }))),
+      drafts: this.curriculum.listPrograms('draft').pipe(catchError(() => of({ items: [] }))),
       bulletins: this.curriculum.bulletinPrograms().pipe(catchError(() => of({ items: [] }))),
       rdc: this.curriculum.rdcBulletinPrograms().pipe(catchError(() => of({ items: [] }))),
     }).subscribe((r) => {
       this.published.set(r.published.items);
+      this.drafts.set(r.drafts.items);
       this.bulletins.set(r.bulletins.items);
       this.rdc.set(r.rdc.items);
       this.loading.set(false);
@@ -422,23 +424,20 @@ export class Curriculum {
     this.curriculum.importProgram(dto).subscribe({
       next: (p) => {
         this.importing.set(false);
-        // Un programme importé est en brouillon : il n'apparaît PAS dans la liste
-        // /published. On le garde ici pour permettre de le publier.
-        if (p?.id && p.published !== true) {
-          this.drafts.update((list) => [p, ...list.filter((x) => x.id !== p.id)]);
-          this.notify.success(
-            'Programme importé (brouillon). Cliquez sur « Publier » pour l’activer.',
-          );
-        } else {
-          this.notify.success('Programme importé.');
-        }
+        // Un programme importé est en brouillon (persisté). Il apparaît dans la
+        // section « à publier » via le rechargement (GET ?status=draft).
+        this.notify.success(
+          p?.published === true
+            ? 'Programme importé et publié.'
+            : 'Programme importé (brouillon). Cliquez sur « Publier » pour l’activer.',
+        );
         this.load();
       },
       error: () => this.importing.set(false),
     });
   }
 
-  /** Publie un programme importé (brouillon) puis le bascule dans la liste publiée. */
+  /** Publie un programme importé (brouillon) ; il bascule alors dans la liste publiée. */
   publishDraft(p: NationalProgram): void {
     if (!p.id || this.publishingId()) {
       return;
@@ -448,7 +447,6 @@ export class Curriculum {
       next: () => {
         this.publishingId.set(null);
         this.notify.success('Programme publié.');
-        this.drafts.update((list) => list.filter((x) => x.id !== p.id));
         this.load();
       },
       error: () => this.publishingId.set(null),
