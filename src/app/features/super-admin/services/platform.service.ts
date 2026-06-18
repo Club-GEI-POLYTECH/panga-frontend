@@ -20,11 +20,18 @@ export class PlatformService {
   myDashboard(): Observable<StatBlock> {
     return this.get$('/dashboard/me');
   }
-  overview(): Observable<StatBlock> {
-    return this.get$('/dashboard/overview');
+
+  /**
+   * Vue d'ensemble. Partiellement scopée à l'année (comptes de classes) :
+   * `schoolYear` omis → année courante ; `'all'` → historique complet.
+   */
+  overview(schoolYear?: string): Observable<StatBlock> {
+    return this.http
+      .get<unknown>(`${this.base}/dashboard/overview`, { params: toHttpParams({ schoolYear }) })
+      .pipe(map((r) => unwrapEnvelope<StatBlock>(r)));
   }
 
-  /** Séries mensuelles pour les courbes (1 à 36 mois). */
+  /** Séries mensuelles pour les courbes (1 à 36 mois). Temporel, pas annuel. */
   trends(months = 12): Observable<StatBlock> {
     return this.http
       .get<unknown>(`${this.base}/dashboard/stats/trends`, { params: toHttpParams({ months }) })
@@ -39,8 +46,14 @@ export class PlatformService {
   teachersStats(): Observable<StatBlock> {
     return this.get$('/dashboard/stats/teachers');
   }
-  academicStats(): Observable<StatBlock> {
-    return this.get$('/dashboard/stats/academic');
+
+  /** Statistiques de notes — scopées à l'année (`grade.school_year`). */
+  academicStats(schoolYear?: string): Observable<StatBlock> {
+    return this.http
+      .get<unknown>(`${this.base}/dashboard/stats/academic`, {
+        params: toHttpParams({ schoolYear }),
+      })
+      .pipe(map((r) => unwrapEnvelope<StatBlock>(r)));
   }
   financialStats(): Observable<StatBlock> {
     return this.get$('/dashboard/stats/financial');

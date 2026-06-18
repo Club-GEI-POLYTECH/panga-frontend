@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +28,7 @@ import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { LineChart, type LineSeries } from '../../../shared/ui/charts/line-chart';
 import { auditView, type AuditView } from '../shared/audit-labels';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 const TONE_BG: Record<AuditView['tone'], string> = {
   success: 'color-mix(in srgb, var(--success) 14%, transparent)',
@@ -173,6 +182,7 @@ export class AdminDashboard {
   protected readonly store = inject(AuthStore);
   private readonly platform = inject(PlatformService);
   private readonly auditApi = inject(AuditService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly fmt = fmt;
   protected readonly auditView = auditView;
@@ -211,20 +221,43 @@ export class AdminDashboard {
   });
 
   constructor() {
-    const safe = <T>(o: Observable<T>): Observable<T | null> => o.pipe(catchError(() => of(null)));
+    // Données non annuelles (séries temporelles, finances, audit) : une seule fois.
+    this.loadStatic();
+    // Données scopées à l'année (overview = comptes de classes, academic = notes) :
+    // rechargées dès que l'année sélectionnée change. L'effect s'exécute aussitôt.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => this.loadYearScoped());
+    });
+  }
 
+  private static safe<T>(o: Observable<T>): Observable<T | null> {
+    return o.pipe(catchError(() => of(null)));
+  }
+
+  private loadStatic(): void {
+    const safe = AdminDashboard.safe;
     forkJoin({
-      overview: safe(this.platform.overview()),
       trends: safe(this.platform.trends(12)),
-      academic: safe(this.platform.academicStats()),
       financial: safe(this.platform.financialStats()),
       audit: safe(this.auditApi.list({ page: 1, limit: 8 })),
     }).subscribe((r) => {
-      this.overview.set(normalizeOverview(r.overview));
       this.trends.set(normalizeTrends(r.trends));
-      this.academic.set(r.academic);
       this.financial.set(r.financial);
       this.audit.set(r.audit?.items ?? []);
+    });
+  }
+
+  /** `sy.filter()` : '' quand l'année courante est sélectionnée (→ backend la résout). */
+  private loadYearScoped(): void {
+    const safe = AdminDashboard.safe;
+    const year = this.sy.filter();
+    forkJoin({
+      overview: safe(this.platform.overview(year)),
+      academic: safe(this.platform.academicStats(year)),
+    }).subscribe((r) => {
+      this.overview.set(normalizeOverview(r.overview));
+      this.academic.set(r.academic);
       this.loading.set(false);
     });
   }
