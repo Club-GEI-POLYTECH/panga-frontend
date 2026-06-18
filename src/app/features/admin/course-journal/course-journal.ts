@@ -177,6 +177,22 @@ interface SlotRow {
             <b>Lier ≠ peupler</b> : il reste à ouvrir les cours ci-dessous.
           </p>
 
+          <div class="flex flex-wrap items-center gap-2 mt-3">
+            <button
+              mat-stroked-button
+              class="rounded-xl!"
+              [disabled]="seedingPeriods()"
+              (click)="seedPeriods()"
+              matTooltip="Crée les périodes manquantes pour toutes les classes de l'école"
+            >
+              <mat-icon fontSet="material-symbols-outlined">event_repeat</mat-icon>
+              Générer les périodes
+            </button>
+            <span class="text-xs text-(--text-muted)">
+              Périodes manquantes pour {{ yr() }} — toutes les classes de l'école.
+            </span>
+          </div>
+
           <!-- Ouverture des cours depuis le programme -->
           @if (showOpenPanel()) {
             <div class="mt-4 rounded-2xl border border-(--border) p-4">
@@ -577,6 +593,7 @@ export class CourseJournal {
   protected readonly includedCount = computed(
     () => this.programSlots().length - this.excluded().size,
   );
+  protected readonly seedingPeriods = signal(false);
 
   protected readonly overview = signal<CourseOverviewRow[]>([]);
   protected readonly entries = signal<LessonLogEntry[]>([]);
@@ -856,6 +873,30 @@ export class CourseJournal {
         next.add(code);
       }
       return next;
+    });
+  }
+
+  /** Année cible pour les appels de calcul (seed) : champ rempli, sinon année en cours. */
+  protected yr(): string {
+    return this.schoolYear.value || this.sy.current();
+  }
+
+  /** Génère les périodes manquantes de l'année (toutes les classes de l'école). */
+  seedPeriods(): void {
+    if (this.seedingPeriods()) {
+      return;
+    }
+    const year = this.yr();
+    this.seedingPeriods.set(true);
+    this.academics.seedPeriods(year).subscribe({
+      next: () => {
+        this.seedingPeriods.set(false);
+        this.notify.success(`Périodes générées pour ${year}.`);
+        if (this.classInstanceId()) {
+          this.selectClass(this.classInstanceId());
+        }
+      },
+      error: () => this.seedingPeriods.set(false),
     });
   }
 
