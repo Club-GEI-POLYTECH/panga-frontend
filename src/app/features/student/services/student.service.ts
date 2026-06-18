@@ -3,6 +3,7 @@ import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
+import { computeSchoolYear } from '../../../core/school-year/school-year.store';
 import type { Bulletin, Grade } from '../../admin/models/admin.models';
 import type { AnnualAverageResult } from '../../admin/models/grade.models';
 
@@ -33,10 +34,10 @@ export class StudentService {
       .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
   }
 
-  /** Tableau de bord élève (vue serveur, forme libre). */
-  dashboard(): Observable<Record<string, unknown>> {
+  /** Tableau de bord élève (vue serveur). Scopé année (omis = courante, `'all'` = historique). */
+  dashboard(schoolYear?: string): Observable<Record<string, unknown>> {
     return this.http
-      .get<unknown>(`${this.base}/dashboard/student`)
+      .get<unknown>(`${this.base}/dashboard/student`, { params: toHttpParams({ schoolYear }) })
       .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
   }
 
@@ -169,8 +170,6 @@ export class StudentService {
   }
 }
 
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
-
 /** Dérive (studentId, classId, schoolYear) du profil `/students/me`, formes variables. */
 export function extractContext(me: Record<string, unknown>): StudentContext {
   const studentId = String(me['id'] ?? me['studentId'] ?? '');
@@ -192,7 +191,7 @@ export function extractContext(me: Record<string, unknown>): StudentContext {
     me['schoolYear'] ??
       firstEnrollment?.['schoolYear'] ??
       promo['schoolYear'] ??
-      DEFAULT_SCHOOL_YEAR,
+      computeSchoolYear(new Date()),
   );
   return { studentId, classId, schoolYear, raw: me };
 }

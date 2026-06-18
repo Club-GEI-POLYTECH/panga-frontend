@@ -17,8 +17,11 @@ export class PlatformService {
       .pipe(map((r) => unwrapEnvelope<StatBlock>(r)));
   }
 
-  myDashboard(): Observable<StatBlock> {
-    return this.get$('/dashboard/me');
+  /** Dashboard du rôle connecté. Scopé année (omis = courante, `'all'` = historique). */
+  myDashboard(schoolYear?: string): Observable<StatBlock> {
+    return this.http
+      .get<unknown>(`${this.base}/dashboard/me`, { params: toHttpParams({ schoolYear }) })
+      .pipe(map((r) => unwrapEnvelope<StatBlock>(r)));
   }
 
   /**
