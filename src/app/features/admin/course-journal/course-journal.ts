@@ -10,6 +10,7 @@ import {
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -29,6 +30,7 @@ import { ClassesService } from '../services/classes.service';
 import { CourseJournalService } from '../services/course-journal.service';
 import { ParentsService } from '../services/parents.service';
 import { SubjectsService } from '../services/subjects.service';
+import type { OpenFromProgramResult } from '../services/subjects.service';
 import { CurriculumService } from '../../super-admin/services/curriculum.service';
 import type { ClassInstance, Period } from '../models/admin.models';
 import type { NationalProgram } from '../../super-admin/models/platform.models';
@@ -40,6 +42,13 @@ interface ChildRef {
   name: string;
 }
 
+/** Ligne cochable de l'ouverture des cours (un slot de programme). */
+interface SlotRow {
+  id: string;
+  code: string;
+  label: string;
+}
+
 /** Journal de cours (cahier de texte) : progression, séances, heures prévues. */
 @Component({
   selector: 'panga-course-journal',
@@ -47,6 +56,7 @@ interface ChildRef {
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -151,11 +161,89 @@ interface ChildRef {
             >
               <mat-icon fontSet="material-symbols-outlined">link</mat-icon> Assigner à la classe
             </button>
+            <button
+              mat-stroked-button
+              class="rounded-xl!"
+              [disabled]="!programCtrl.value || busyProgram()"
+              (click)="prepareOpenCourses()"
+              matTooltip="Ouvrir les cours à partir du programme assigné"
+            >
+              <mat-icon fontSet="material-symbols-outlined">playlist_add</mat-icon> Ouvrir les cours
+            </button>
           </div>
           <p class="text-xs text-(--text-muted) mt-2">
             Le programme doit être <b>publié</b> puis <b>activé pour l'école</b> avant d'être
             assigné à la classe. L'assignation sur l'instance est prioritaire sur le modèle.
+            <b>Lier ≠ peupler</b> : il reste à ouvrir les cours ci-dessous.
           </p>
+
+          <!-- Ouverture des cours depuis le programme -->
+          @if (showOpenPanel()) {
+            <div class="mt-4 rounded-2xl border border-(--border) p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <p class="text-sm font-medium text-(--text)">
+                  Matières du programme — décochez celles non dispensées
+                </p>
+                <span class="text-xs text-(--text-muted)">
+                  {{ includedCount() }}/{{ programSlots().length }} à ouvrir
+                </span>
+              </div>
+
+              @if (programSlots().length) {
+                <div class="grid gap-1.5 sm:grid-cols-2">
+                  @for (s of programSlots(); track s.code) {
+                    <mat-checkbox
+                      [checked]="!excluded().has(s.code)"
+                      (change)="toggleExclude(s.code)"
+                    >
+                      <span class="text-sm text-(--text)">{{ s.label }}</span>
+                    </mat-checkbox>
+                  }
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mt-4">
+                  <button
+                    mat-flat-button
+                    class="rounded-xl!"
+                    [disabled]="openingCourses() || !includedCount()"
+                    (click)="openCourses()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">playlist_add_check</mat-icon>
+                    Ouvrir {{ includedCount() }} cours
+                  </button>
+                  <button mat-button class="rounded-xl!" (click)="showOpenPanel.set(false)">
+                    Fermer
+                  </button>
+                </div>
+
+                @if (openResult(); as r) {
+                  <div class="flex flex-wrap gap-1.5 mt-3">
+                    <panga-status-badge
+                      [label]="r.opened + ' ouverts'"
+                      tone="success"
+                      [dot]="false"
+                    />
+                    @if (r.skippedExisting) {
+                      <panga-status-badge
+                        [label]="r.skippedExisting + ' déjà ouverts'"
+                        tone="neutral"
+                        [dot]="false"
+                      />
+                    }
+                    @if (r.skippedExcluded) {
+                      <panga-status-badge
+                        [label]="r.skippedExcluded + ' exclus'"
+                        tone="warning"
+                        [dot]="false"
+                      />
+                    }
+                  </div>
+                }
+              } @else {
+                <p class="text-sm text-(--text-muted)">Ce programme n'a aucune matière.</p>
+              }
+            </div>
+          }
         </section>
       }
 
@@ -479,6 +567,17 @@ export class CourseJournal {
   protected readonly subjects = signal<ClassSubject[]>([]);
   protected readonly programs = signal<NationalProgram[]>([]);
 
+  /* --- Ouverture des cours depuis le programme lié --- */
+  protected readonly showOpenPanel = signal(false);
+  protected readonly programSlots = signal<SlotRow[]>([]);
+  /** Codes de matières décochées (= non dispensées → exclues de l'ouverture). */
+  protected readonly excluded = signal<Set<string>>(new Set());
+  protected readonly openingCourses = signal(false);
+  protected readonly openResult = signal<OpenFromProgramResult | null>(null);
+  protected readonly includedCount = computed(
+    () => this.programSlots().length - this.excluded().size,
+  );
+
   protected readonly overview = signal<CourseOverviewRow[]>([]);
   protected readonly entries = signal<LessonLogEntry[]>([]);
   protected readonly entriesMeta = signal<PaginationMeta | null>(null);
@@ -703,9 +802,82 @@ export class CourseJournal {
         this.busyProgram.set(false);
         this.notify.success('Programme assigné à la classe.');
         this.selectClass(instance);
+        // Lier ≠ peupler : on enchaîne sur l'ouverture des cours.
+        this.prepareOpenCourses();
       },
       error: () => this.busyProgram.set(false),
     });
+  }
+
+  /* --------------------- Ouverture des cours du programme ------------------- */
+
+  /** Charge les matières du programme sélectionné dans la liste cochable. */
+  prepareOpenCourses(): void {
+    const id = this.programCtrl.value;
+    if (!id) {
+      return;
+    }
+    const inline = (this.programs().find((p) => p.id === id)?.slots ?? []) as Record<
+      string,
+      unknown
+    >[];
+    if (inline.length) {
+      this.setProgramSlots(inline);
+      this.showOpenPanel.set(true);
+      return;
+    }
+    this.curriculum.programDetail(id).subscribe({
+      next: (full) => {
+        this.setProgramSlots((full.slots ?? []) as Record<string, unknown>[]);
+        this.showOpenPanel.set(true);
+      },
+    });
+  }
+
+  private setProgramSlots(raw: Record<string, unknown>[]): void {
+    this.programSlots.set(
+      raw.map((s) => ({
+        id: String(s['id'] ?? ''),
+        code: String(s['programCode'] ?? ''),
+        label: String(s['labelFr'] ?? s['programCode'] ?? ''),
+      })),
+    );
+    this.excluded.set(new Set());
+    this.openResult.set(null);
+  }
+
+  /** Coche / décoche une matière (décoché = exclu de l'ouverture). */
+  toggleExclude(code: string): void {
+    this.excluded.update((set) => {
+      const next = new Set(set);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  }
+
+  /** Ouvre les cours des matières cochées (idempotent côté backend). */
+  openCourses(): void {
+    const classId = this.classInstanceId();
+    if (!classId || this.openingCourses() || !this.includedCount()) {
+      return;
+    }
+    const excludeProgramCodes = [...this.excluded()];
+    this.openingCourses.set(true);
+    this.subjectsApi
+      .openFromProgram(classId, excludeProgramCodes.length ? { excludeProgramCodes } : {})
+      .subscribe({
+        next: (res) => {
+          this.openingCourses.set(false);
+          this.openResult.set(res);
+          this.notify.success(`${res.opened} cours ouvert${res.opened > 1 ? 's' : ''}.`);
+          this.selectClass(classId);
+        },
+        error: () => this.openingCourses.set(false),
+      });
   }
 
   /* ----------------------------- Heures prévues ---------------------------- */

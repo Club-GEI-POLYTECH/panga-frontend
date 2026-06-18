@@ -117,26 +117,22 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                 description="Aucune note enregistrée."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (g of grades(); track g.id) {
                   <div class="flex items-center gap-4 px-5 py-3">
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ courseLabel(g) }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)] truncate">
+                      <p class="text-xs text-(--text-muted) truncate">
                         {{ g.term || '' }}
                         @if (g.examName) {
                           · {{ g.examName }}
                         }
                       </p>
                     </div>
-                    <span class="text-base font-semibold text-[var(--text)]">{{
-                      num(g.score)
-                    }}</span>
-                    <span class="text-xs text-[var(--text-muted)]"
-                      >/{{ num(g.maxScore) || 20 }}</span
-                    >
+                    <span class="text-base font-semibold text-(--text)">{{ num(g.score) }}</span>
+                    <span class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</span>
                   </div>
                 }
               </div>
@@ -158,17 +154,15 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                 description="Aucun bulletin publié."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (b of bulletins(); track b.id) {
                   <div class="flex items-center gap-4 px-5 py-3">
-                    <span class="material-symbols-outlined text-[var(--brand-500)]"
-                      >description</span
-                    >
+                    <span class="material-symbols-outlined text-(--brand-500)">description</span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ b.term || 'Bulletin' }} · {{ b.schoolYear || '' }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)]">
+                      <p class="text-xs text-(--text-muted)">
                         @if (b.average !== undefined) {
                           Moyenne : {{ b.average }}
                         }
@@ -182,7 +176,7 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                       [tone]="b.published ? 'success' : 'neutral'"
                       [dot]="false"
                     />
-                    <button mat-stroked-button class="!rounded-xl" (click)="openPdf(b)">
+                    <button mat-stroked-button class="rounded-xl!" (click)="openPdf(b)">
                       <mat-icon fontSet="material-symbols-outlined">picture_as_pdf</mat-icon> PDF
                     </button>
                   </div>
@@ -205,22 +199,20 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
               <div class="space-y-5">
                 @for (d of scheduleDays(); track d) {
                   <div>
-                    <p class="text-sm font-semibold text-[var(--text)] mb-2">{{ dayName(d) }}</p>
+                    <p class="text-sm font-semibold text-(--text) mb-2">{{ dayName(d) }}</p>
                     <div class="space-y-2">
                       @for (s of slotsOfDay(d); track $index) {
                         <div
-                          class="flex items-center gap-3 rounded-xl border border-[var(--border)] px-3 py-2"
+                          class="flex items-center gap-3 rounded-xl border border-(--border) px-3 py-2"
                         >
                           <span
-                            class="text-xs font-medium tabular-nums text-[var(--brand-700)] w-24 shrink-0"
+                            class="text-xs font-medium tabular-nums text-(--brand-700) w-24 shrink-0"
                           >
                             {{ s.start }}–{{ s.end }}
                           </span>
-                          <span class="text-sm text-[var(--text)] truncate flex-1">{{
-                            s.label
-                          }}</span>
+                          <span class="text-sm text-(--text) truncate flex-1">{{ s.label }}</span>
                           @if (s.room) {
-                            <span class="text-xs text-[var(--text-muted)]">{{ s.room }}</span>
+                            <span class="text-xs text-(--text-muted)">{{ s.room }}</span>
                           }
                         </div>
                       }
@@ -263,14 +255,14 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                 description="Aucune présence enregistrée."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (a of attendance(); track $index) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
                     <span
                       class="h-2.5 w-2.5 rounded-full shrink-0"
                       [style.background]="color(a)"
                     ></span>
-                    <span class="text-sm text-[var(--text)] flex-1">
+                    <span class="text-sm text-(--text) flex-1">
                       {{ asDate(a['date']) | date: 'EEEE dd MMMM yyyy' }}
                     </span>
                     <panga-status-badge [label]="statusFr(a)" [tone]="'neutral'" [dot]="false" />
