@@ -126,9 +126,9 @@ const FROM_USER = new Set(
   template: `
     <a
       [routerLink]="['/', 'teachers']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Enseignants
@@ -171,7 +171,7 @@ const FROM_USER = new Set(
             }
             <button
               mat-icon-button
-              class="!text-white"
+              class="text-white!"
               (click)="remove()"
               matTooltip="Supprimer"
               aria-label="Supprimer"
@@ -229,7 +229,7 @@ const FROM_USER = new Set(
         <div class="sticky bottom-4 z-10 flex justify-end mb-6">
           <button
             mat-flat-button
-            class="!rounded-xl shadow-lg"
+            class="rounded-xl! shadow-lg"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -246,7 +246,7 @@ const FROM_USER = new Set(
           <div class="flex flex-col gap-3">
             @for (block of chips(); track block.label) {
               <div>
-                <p class="text-xs text-[var(--text-muted)] mb-1.5">{{ block.label }}</p>
+                <p class="text-xs text-(--text-muted) mb-1.5">{{ block.label }}</p>
                 <div class="flex flex-wrap gap-1.5">
                   @for (v of block.values; track v) {
                     <span
@@ -273,15 +273,15 @@ const FROM_USER = new Set(
           />
           @for (c of homerooms(); track $index) {
             <div
-              class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+              class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
             >
-              <span class="text-sm text-[var(--text)]">{{ str(c['schoolYear']) || 'Classe' }}</span>
-              <span class="text-xs text-[var(--text-muted)]"
+              <span class="text-sm text-(--text)">{{ str(c['schoolYear']) || 'Classe' }}</span>
+              <span class="text-xs text-(--text-muted)"
                 >{{ str(c['currentEnrollment']) || '0' }} inscrit(s)</span
               >
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucune classe.</p>
+            <p class="text-sm text-(--text-muted)">Aucune classe.</p>
           }
         </div>
         <div class="panga-card p-5">
@@ -292,18 +292,18 @@ const FROM_USER = new Set(
           />
           @for (c of courses(); track $index) {
             <div
-              class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+              class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
             >
-              <span class="text-sm text-[var(--text)]">
+              <span class="text-sm text-(--text)">
                 {{ str(c['hoursPerWeek']) || '—' }} h/sem
                 @if (c['roomNumber']) {
                   · {{ str(c['roomNumber']) }}
                 }
               </span>
-              <span class="text-xs text-[var(--text-muted)]">{{ str(c['schoolYear']) }}</span>
+              <span class="text-xs text-(--text-muted)">{{ str(c['schoolYear']) }}</span>
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucun cours.</p>
+            <p class="text-sm text-(--text-muted)">Aucun cours.</p>
           }
         </div>
       </section>

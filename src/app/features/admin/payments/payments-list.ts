@@ -77,11 +77,11 @@ function isPaid(p: Payment): boolean {
         <panga-section-header icon="query_stats" title="Vue d'ensemble" />
         <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
           @for (t of statTiles(); track t.label) {
-            <div class="rounded-2xl border border-[var(--border)] p-3.5">
-              <p class="text-xs text-[var(--text-muted)] truncate" [title]="t.label">
+            <div class="rounded-2xl border border-(--border) p-3.5">
+              <p class="text-xs text-(--text-muted) truncate" [title]="t.label">
                 {{ t.label }}
               </p>
-              <p class="text-xl font-semibold text-[var(--text)] mt-0.5">{{ t.value }}</p>
+              <p class="text-xl font-semibold text-(--text) mt-0.5">{{ t.value }}</p>
             </div>
           }
         </div>
@@ -95,7 +95,7 @@ function isPaid(p: Payment): boolean {
         title="Structures de frais"
         [count]="fees().length"
       >
-        <button mat-stroked-button class="!rounded-xl" (click)="showFeeForm.set(!showFeeForm())">
+        <button mat-stroked-button class="rounded-xl!" (click)="showFeeForm.set(!showFeeForm())">
           {{ showFeeForm() ? 'Annuler' : 'Nouvelle structure' }}
         </button>
       </panga-section-header>
@@ -142,7 +142,7 @@ function isPaid(p: Payment): boolean {
             </mat-select>
           </mat-form-field>
           <div class="sm:col-span-2 flex justify-end">
-            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="savingFee()">
+            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="savingFee()">
               Créer la structure
             </button>
           </div>
@@ -152,10 +152,10 @@ function isPaid(p: Payment): boolean {
       @if (fees().length) {
         <div class="grid gap-3 sm:grid-cols-2">
           @for (f of fees(); track f.id) {
-            <div class="rounded-2xl border border-[var(--border)] p-4">
+            <div class="rounded-2xl border border-(--border) p-4">
               <div class="flex items-start justify-between gap-2">
-                <p class="font-medium text-[var(--text)] truncate">{{ f.displayName || f.name }}</p>
-                <p class="font-semibold text-[var(--text)] whitespace-nowrap">
+                <p class="font-medium text-(--text) truncate">{{ f.displayName || f.name }}</p>
+                <p class="font-semibold text-(--text) whitespace-nowrap">
                   {{ (f.amount ?? 0).toLocaleString('fr-FR') }} {{ f.currency }}
                 </p>
               </div>
@@ -174,14 +174,14 @@ function isPaid(p: Payment): boolean {
           }
         </div>
       } @else {
-        <p class="text-sm text-[var(--text-muted)]">Aucune structure de frais.</p>
+        <p class="text-sm text-(--text-muted)">Aucune structure de frais.</p>
       }
     </section>
 
     <!-- Paiements -->
     <section class="panga-card p-5">
       <panga-section-header icon="receipt_long" title="Paiements">
-        <button mat-stroked-button class="!rounded-xl" (click)="showPayForm.set(!showPayForm())">
+        <button mat-stroked-button class="rounded-xl!" (click)="showPayForm.set(!showPayForm())">
           {{ showPayForm() ? 'Annuler' : 'Enregistrer un paiement' }}
         </button>
       </panga-section-header>
@@ -230,7 +230,7 @@ function isPaid(p: Payment): boolean {
             <input matInput type="date" formControlName="paymentDate" />
           </mat-form-field>
           <div class="sm:col-span-2 flex justify-end">
-            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="savingPay()">
+            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="savingPay()">
               Enregistrer
             </button>
           </div>
@@ -246,16 +246,16 @@ function isPaid(p: Payment): boolean {
           description="Enregistrez un premier paiement."
         />
       } @else {
-        <div class="divide-y divide-[var(--border)] -mx-5">
+        <div class="divide-y divide-(--border) -mx-5">
           @for (p of payments(); track p.id) {
             <div class="flex items-center gap-4 px-5 py-3">
               <panga-avatar [name]="p.studentName || p.studentId || '?'" [size]="38" />
               <div class="min-w-0 flex-1">
-                <p class="font-medium text-[var(--text)]">
+                <p class="font-medium text-(--text)">
                   {{ (p.amountPaid ?? 0).toLocaleString('fr-FR') }}
-                  <span class="text-sm text-[var(--text-muted)]">{{ p.currency }}</span>
+                  <span class="text-sm text-(--text-muted)">{{ p.currency }}</span>
                 </p>
-                <p class="text-xs text-[var(--text-muted)] truncate">
+                <p class="text-xs text-(--text-muted) truncate">
                   {{ p.studentName || p.studentId || '—' }}
                   @if (p.paymentMethod) {
                     · {{ p.paymentMethod }}

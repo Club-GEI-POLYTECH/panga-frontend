@@ -15,14 +15,14 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
             class="flex h-8 w-8 items-center justify-center rounded-lg shrink-0"
             style="background: color-mix(in srgb, var(--brand-500) 12%, transparent)"
           >
-            <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">{{
+            <span class="material-symbols-outlined text-[18px] text-(--brand-500)">{{
               icon()
             }}</span>
           </span>
         }
-        <h2 class="text-base font-semibold text-[var(--text)] truncate">{{ title() }}</h2>
+        <h2 class="text-base font-semibold text-(--text) truncate">{{ title() }}</h2>
         @if (count() !== null) {
-          <span class="text-sm font-normal text-[var(--text-muted)] shrink-0">({{ count() }})</span>
+          <span class="text-sm font-normal text-(--text-muted) shrink-0">({{ count() }})</span>
         }
       </div>
       <div class="flex items-center gap-2 shrink-0">

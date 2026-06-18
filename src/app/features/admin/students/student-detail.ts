@@ -141,9 +141,9 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
   template: `
     <a
       [routerLink]="['/', 'students']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Élèves
@@ -229,7 +229,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         <div class="sticky bottom-4 z-10 flex justify-end mb-6">
           <button
             mat-flat-button
-            class="!rounded-xl shadow-lg"
+            class="rounded-xl! shadow-lg"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -250,20 +250,17 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <div class="flex flex-wrap gap-2 mb-4">
             @for (p of linkedParents(); track p.id) {
               <span
-                class="inline-flex items-center gap-2 rounded-full border border-[var(--border)] pl-1.5 pr-1 py-1"
+                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1 py-1"
               >
                 <panga-avatar [name]="label(p)" [size]="24" />
-                <span class="text-sm text-[var(--text)]">{{ label(p) }}</span>
+                <span class="text-sm text-(--text)">{{ label(p) }}</span>
                 <button
                   type="button"
                   class="grid h-6 w-6 place-items-center rounded-full hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
-                  <mat-icon
-                    fontSet="material-symbols-outlined"
-                    class="!text-base text-[var(--danger)]"
-                  >
+                  <mat-icon fontSet="material-symbols-outlined" class="text-base! text-(--danger)">
                     close
                   </mat-icon>
                 </button>
@@ -271,10 +268,10 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             }
           </div>
         } @else {
-          <p class="text-sm text-[var(--text-muted)] mb-4">Aucun parent lié.</p>
+          <p class="text-sm text-(--text-muted) mb-4">Aucun parent lié.</p>
         }
         <div class="flex flex-wrap items-end gap-3">
-          <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+          <mat-form-field appearance="outline" class="flex-1 min-w-55">
             <mat-label>Lier un parent</mat-label>
             <mat-select [formControl]="parentCtrl">
               @for (p of parents(); track p.id) {
@@ -284,7 +281,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </mat-form-field>
           <button
             mat-flat-button
-            class="!rounded-xl !mb-1"
+            class="rounded-xl! mb-1!"
             (click)="addParent()"
             [disabled]="!parentCtrl.value || linking()"
           >
@@ -296,19 +293,19 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <!-- Dossier scolaire -->
       <section class="grid gap-4 sm:grid-cols-3 mb-4">
         <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">grade</span>
-          <p class="text-2xl font-semibold text-[var(--text)] mt-1">{{ gradesCount() }}</p>
-          <p class="text-xs text-[var(--text-muted)]">Notes</p>
+          <span class="material-symbols-outlined text-(--brand-500)">grade</span>
+          <p class="text-2xl font-semibold text-(--text) mt-1">{{ gradesCount() }}</p>
+          <p class="text-xs text-(--text-muted)">Notes</p>
         </div>
         <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">payments</span>
-          <p class="text-2xl font-semibold text-[var(--text)] mt-1">{{ paymentsCount() }}</p>
-          <p class="text-xs text-[var(--text-muted)]">Paiements</p>
+          <span class="material-symbols-outlined text-(--brand-500)">payments</span>
+          <p class="text-2xl font-semibold text-(--text) mt-1">{{ paymentsCount() }}</p>
+          <p class="text-xs text-(--text-muted)">Paiements</p>
         </div>
         <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-[var(--brand-500)]">fact_check</span>
-          <p class="text-2xl font-semibold text-[var(--text)] mt-1">{{ attendanceCount() }}</p>
-          <p class="text-xs text-[var(--text-muted)]">Présences</p>
+          <span class="material-symbols-outlined text-(--brand-500)">fact_check</span>
+          <p class="text-2xl font-semibold text-(--text) mt-1">{{ attendanceCount() }}</p>
+          <p class="text-xs text-(--text-muted)">Présences</p>
         </div>
       </section>
 
@@ -329,9 +326,9 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </panga-section-header>
 
         @if (loadingAverages()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Calcul des moyennes…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Calcul des moyennes…</p>
         } @else if (subjectAverages().length === 0) {
-          <p class="text-sm text-[var(--text-muted)] py-4 text-center">
+          <p class="text-sm text-(--text-muted) py-4 text-center">
             Aucune moyenne disponible pour cette année.
           </p>
         } @else {
@@ -339,12 +336,12 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             @for (a of subjectAverages(); track $index) {
               <div>
                 <div class="flex items-center justify-between gap-3 mb-1">
-                  <span class="text-sm text-[var(--text)] truncate">{{ subjLabel(a) }}</span>
+                  <span class="text-sm text-(--text) truncate">{{ subjLabel(a) }}</span>
                   <span class="text-sm font-semibold shrink-0" [style.color]="avgColor(subjPct(a))">
                     {{ subjPct(a) }}%
                   </span>
                 </div>
-                <div class="h-2 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                <div class="h-2 w-full rounded-full bg-(--border) overflow-hidden">
                   <div
                     class="h-full rounded-full"
                     [style.width.%]="subjPct(a)"

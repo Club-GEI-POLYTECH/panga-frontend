@@ -67,7 +67,7 @@ function today(): string {
 
     <!-- Contexte -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+      <mat-form-field appearance="outline" class="flex-1 min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -75,11 +75,11 @@ function today(): string {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-[160px]">
+      <mat-form-field appearance="outline" class="min-w-40">
         <mat-label>Date</mat-label>
         <input matInput type="date" [formControl]="dateCtrl" (change)="reload()" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-[150px]">
+      <mat-form-field appearance="outline" class="min-w-37.5">
         <mat-label>Mode</mat-label>
         <mat-select [value]="mode()" (selectionChange)="setMode($event.value)">
           @for (m of modes; track m.value) {
@@ -88,7 +88,7 @@ function today(): string {
         </mat-select>
       </mat-form-field>
       @if (mode() === 'period') {
-        <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+        <mat-form-field appearance="outline" class="flex-1 min-w-55">
           <mat-label>Créneau</mat-label>
           <mat-select [value]="slotId()" (selectionChange)="slotId.set($event.value)">
             @for (s of slots(); track s.id) {
@@ -109,9 +109,7 @@ function today(): string {
       </div>
     } @else {
       <!-- Onglets -->
-      <div
-        class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)]"
-      >
+      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
         @for (t of tabs; track t.key) {
           <button
             class="px-4 py-2 rounded-lg text-sm font-medium"
@@ -147,7 +145,7 @@ function today(): string {
               <panga-section-header icon="fact_check" title="Appel" [count]="roster().length">
                 <button
                   mat-stroked-button
-                  class="!rounded-xl"
+                  class="rounded-xl!"
                   (click)="markAllPresent()"
                   [disabled]="saving()"
                 >
@@ -155,12 +153,12 @@ function today(): string {
                 </button>
               </panga-section-header>
 
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (s of roster(); track s.id) {
                   <div class="px-5 py-3">
                     <div class="flex items-center gap-4">
                       <panga-avatar [name]="studentName(s)" [size]="38" />
-                      <p class="min-w-0 flex-1 text-sm font-medium text-[var(--text)] truncate">
+                      <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
                         {{ studentName(s) }}
                       </p>
                       <span
@@ -169,7 +167,7 @@ function today(): string {
                           entryFor(s.id) ? color(statusOf(s.id)) : 'var(--border)'
                         "
                       ></span>
-                      <mat-form-field appearance="outline" class="!w-40" subscriptSizing="dynamic">
+                      <mat-form-field appearance="outline" class="w-40!" subscriptSizing="dynamic">
                         <mat-select
                           [value]="statusOf(s.id)"
                           (selectionChange)="setStatus(s.id, $event.value)"
@@ -184,10 +182,10 @@ function today(): string {
                     <!-- Justification -->
                     @if (entryFor(s.id); as e) {
                       @if (needsJustify(e)) {
-                        <div class="flex items-center gap-2 mt-2 pl-[54px]">
+                        <div class="flex items-center gap-2 mt-2 pl-13.5">
                           @if (!e.isExcused) {
-                            <button mat-button class="!rounded-lg" (click)="openJustify(e)">
-                              <mat-icon fontSet="material-symbols-outlined" class="!text-[18px]"
+                            <button mat-button class="rounded-lg!" (click)="openJustify(e)">
+                              <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!"
                                 >note_add</mat-icon
                               >
                               Justifier
@@ -199,21 +197,21 @@ function today(): string {
                               [dot]="false"
                             />
                             @if (e.excuseReason) {
-                              <span class="text-xs text-[var(--text-muted)] truncate">{{
+                              <span class="text-xs text-(--text-muted) truncate">{{
                                 e.excuseReason
                               }}</span>
                             }
                             @if (isAdmin()) {
                               <button
                                 mat-button
-                                class="!rounded-lg !text-[var(--success)]"
+                                class="rounded-lg! text-(--success)!"
                                 (click)="review(e, true)"
                               >
                                 Approuver
                               </button>
                               <button
                                 mat-button
-                                class="!rounded-lg !text-[var(--danger)]"
+                                class="rounded-lg! text-(--danger)!"
                                 (click)="review(e, false)"
                               >
                                 Rejeter
@@ -232,7 +230,7 @@ function today(): string {
                       <!-- Formulaire de justification -->
                       @if (justifyId() === e.id) {
                         <div
-                          class="mt-3 ml-[54px] rounded-2xl border border-[var(--brand-300)] bg-[var(--brand-50)] p-4"
+                          class="mt-3 ml-13.5 rounded-2xl border border-(--brand-300) bg-(--brand-50) p-4"
                         >
                           <mat-form-field appearance="outline" class="w-full">
                             <mat-label>Motif</mat-label>
@@ -249,7 +247,7 @@ function today(): string {
                             <button
                               type="button"
                               mat-stroked-button
-                              class="!rounded-xl"
+                              class="rounded-xl!"
                               (click)="fileInput.click()"
                             >
                               <mat-icon fontSet="material-symbols-outlined">attach_file</mat-icon>
@@ -266,7 +264,7 @@ function today(): string {
                             <button mat-button (click)="closeJustify()">Annuler</button>
                             <button
                               mat-flat-button
-                              class="!rounded-xl"
+                              class="rounded-xl!"
                               [disabled]="!reasonCtrl.value || submittingJustify()"
                               (click)="submitJustify(e)"
                             >
@@ -290,25 +288,17 @@ function today(): string {
               title="Rapport d'absences"
               [count]="report().length"
             >
-              <mat-form-field
-                appearance="outline"
-                class="w-[150px] !mb-[-1.25rem]"
-                subscriptSizing="dynamic"
-              >
+              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Du</mat-label>
                 <input matInput type="date" [formControl]="fromCtrl" />
               </mat-form-field>
-              <mat-form-field
-                appearance="outline"
-                class="w-[150px] !mb-[-1.25rem]"
-                subscriptSizing="dynamic"
-              >
+              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Au</mat-label>
                 <input matInput type="date" [formControl]="toCtrl" />
               </mat-form-field>
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 (click)="loadReport()"
                 [disabled]="loadingReport()"
               >
@@ -317,7 +307,7 @@ function today(): string {
             </panga-section-header>
 
             @if (loadingReport()) {
-              <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+              <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
             } @else if (report().length === 0) {
               <panga-empty-state
                 icon="summarize"
@@ -327,8 +317,8 @@ function today(): string {
             } @else {
               <div class="overflow-x-auto -mx-5">
                 <table class="w-full text-sm">
-                  <thead class="text-[var(--text-muted)] text-left text-xs">
-                    <tr class="border-b border-[var(--border)]">
+                  <thead class="text-(--text-muted) text-left text-xs">
+                    <tr class="border-b border-(--border)">
                       <th class="px-5 py-2 font-medium">Élève</th>
                       <th class="px-2 py-2 font-medium text-center">Absences</th>
                       <th class="px-2 py-2 font-medium text-center">Justifiées</th>
@@ -340,7 +330,7 @@ function today(): string {
                   <tbody>
                     @for (r of report(); track r.studentId || $index) {
                       <tr
-                        class="border-b border-[var(--border)] last:border-0"
+                        class="border-b border-(--border) last:border-0"
                         [style.background]="
                           r.overLimit ? 'color-mix(in srgb, var(--danger) 6%, transparent)' : ''
                         "
@@ -348,7 +338,7 @@ function today(): string {
                         <td class="px-5 py-2.5">
                           <div class="flex items-center gap-2">
                             <panga-avatar [name]="r.studentName || '?'" [size]="28" />
-                            <span class="text-[var(--text)] truncate">{{
+                            <span class="text-(--text) truncate">{{
                               r.studentName || r.studentId
                             }}</span>
                             @if (r.overLimit) {
@@ -360,19 +350,19 @@ function today(): string {
                             }
                           </div>
                         </td>
-                        <td class="px-2 py-2.5 text-center text-[var(--text)]">
+                        <td class="px-2 py-2.5 text-center text-(--text)">
                           {{ r.absences ?? 0 }}
                         </td>
-                        <td class="px-2 py-2.5 text-center text-[var(--success)]">
+                        <td class="px-2 py-2.5 text-center text-(--success)">
                           {{ r.justifiedAbsences ?? 0 }}
                         </td>
-                        <td class="px-2 py-2.5 text-center text-[var(--danger)]">
+                        <td class="px-2 py-2.5 text-center text-(--danger)">
                           {{ r.unjustifiedAbsences ?? 0 }}
                         </td>
-                        <td class="px-2 py-2.5 text-center text-[var(--warning)]">
+                        <td class="px-2 py-2.5 text-center text-(--warning)">
                           {{ r.lates ?? 0 }}
                         </td>
-                        <td class="px-5 py-2.5 text-center font-medium text-[var(--text)]">
+                        <td class="px-5 py-2.5 text-center font-medium text-(--text)">
                           {{ rate(r) }}
                         </td>
                       </tr>

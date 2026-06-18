@@ -60,10 +60,10 @@ function statusTone(status?: string): BadgeTone {
   ],
   template: `
     <panga-page-header icon="meeting_room" title="Classes" [subtitle]="'Année ' + schoolYear">
-      <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'class-options']">
+      <a mat-stroked-button class="rounded-xl!" [routerLink]="['/', 'class-options']">
         <mat-icon fontSet="material-symbols-outlined">account_tree</mat-icon> Filières
       </a>
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{ showForm() ? 'close' : 'add' }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Nouvelle classe' }}
       </button>
@@ -78,7 +78,7 @@ function statusTone(status?: string): BadgeTone {
 
     <!-- Filtres -->
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[180px]">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
         <mat-label>Niveau d'éducation</mat-label>
         <mat-select [formControl]="eduLevelCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -87,7 +87,7 @@ function statusTone(status?: string): BadgeTone {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[180px]">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
         <mat-label>Horaire</mat-label>
         <mat-select [formControl]="scheduleCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -180,7 +180,7 @@ function statusTone(status?: string): BadgeTone {
           </mat-form-field>
         </div>
         <div class="flex justify-end mt-1">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Créer la classe
           </button>
         </div>
@@ -208,8 +208,8 @@ function statusTone(status?: string): BadgeTone {
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="font-semibold text-[var(--text)] truncate">{{ label(c) }}</p>
-                <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                <p class="font-semibold text-(--text) truncate">{{ label(c) }}</p>
+                <p class="text-xs text-(--text-muted) mt-0.5">
                   {{ c.schoolYear || schoolYear }}
                 </p>
               </div>
@@ -219,22 +219,20 @@ function statusTone(status?: string): BadgeTone {
             </div>
 
             @if (teacherName(c.classTeacher)) {
-              <p class="mt-3 text-sm text-[var(--text-muted)] inline-flex items-center gap-1.5">
+              <p class="mt-3 text-sm text-(--text-muted) inline-flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">badge</span>
                 {{ teacherName(c.classTeacher) }}
               </p>
             }
 
             <div class="mt-3 flex items-center gap-4 text-sm">
-              <span class="inline-flex items-center gap-1.5 text-[var(--text)]">
-                <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
-                  >school</span
-                >
+              <span class="inline-flex items-center gap-1.5 text-(--text)">
+                <span class="material-symbols-outlined text-[18px] text-(--brand-500)">school</span>
                 {{ c.currentEnrollment ?? 0
-                }}<span class="text-[var(--text-muted)]">/{{ capacity(c) }}</span>
+                }}<span class="text-(--text-muted)">/{{ capacity(c) }}</span>
               </span>
               @if (c.template?.level !== undefined && c.template?.level !== null) {
-                <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)]">
+                <span class="inline-flex items-center gap-1.5 text-(--text-muted)">
                   <span class="material-symbols-outlined text-[18px]">stairs</span> Niveau
                   {{ c.template?.level }}
                 </span>

@@ -160,20 +160,20 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       title="Enseignants"
       subtitle="Corps enseignant de l'établissement"
     >
-      <button mat-stroked-button class="!rounded-xl" (click)="downloadTemplate()">
+      <button mat-stroked-button class="rounded-xl!" (click)="downloadTemplate()">
         <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
       </button>
       <input #fileInput type="file" class="hidden" accept=".xlsx,.xls" (change)="onFile($event)" />
       <button
         mat-stroked-button
-        class="!rounded-xl"
+        class="rounded-xl!"
         (click)="fileInput.click()"
         [disabled]="importing()"
       >
         <mat-icon fontSet="material-symbols-outlined">upload_file</mat-icon>
         {{ importing() ? 'Import…' : 'Importer (Excel)' }}
       </button>
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
@@ -192,8 +192,8 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
         <panga-section-header icon="person_add" title="Nouvel enseignant" />
         @for (group of groups; track group.title) {
-          <p class="text-sm font-semibold text-[var(--text)] mt-3 mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">{{
+          <p class="text-sm font-semibold text-(--text) mt-3 mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-(--brand-500)">{{
               group.icon
             }}</span>
             {{ group.title }}
@@ -243,7 +243,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </div>
         }
         <div class="flex justify-end mt-2">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Ajouter l'enseignant
           </button>
         </div>
@@ -251,7 +251,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     }
 
     <mat-form-field appearance="outline" class="w-full mb-4" subscriptSizing="dynamic">
-      <mat-icon matPrefix fontSet="material-symbols-outlined" class="text-[var(--text-muted)] mr-1"
+      <mat-icon matPrefix fontSet="material-symbols-outlined" class="text-(--text-muted) mr-1"
         >search</mat-icon
       >
       <input matInput [formControl]="searchCtrl" placeholder="Rechercher (nom, prénom, e-mail)…" />
@@ -270,7 +270,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (t of teachers(); track t.id) {
           <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
@@ -281,9 +281,9 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             >
               <panga-avatar [name]="name(t)" [size]="46" />
               <div class="min-w-0 flex-1">
-                <p class="font-medium text-[var(--text)] truncate">{{ name(t) || '—' }}</p>
+                <p class="font-medium text-(--text) truncate">{{ name(t) || '—' }}</p>
                 <div
-                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-(--text-muted)"
                 >
                   @if (t.employeeNumber) {
                     <span class="inline-flex items-center gap-1">
@@ -327,12 +327,12 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
               aria-label="Changer le statut"
               class="shrink-0"
             >
-              <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]">
+              <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
                 more_vert
               </mat-icon>
             </button>
             <mat-menu #statusMenu="matMenu" class="panga-menu">
-              <p class="px-4 pt-2 pb-1 text-xs text-[var(--text-muted)]">Changer le statut</p>
+              <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
               @for (s of statusOptions; track s.value) {
                 <button
                   mat-menu-item

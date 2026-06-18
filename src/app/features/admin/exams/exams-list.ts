@@ -63,9 +63,7 @@ interface CourseRef {
     <panga-page-header icon="quiz" title="Examens" subtitle="Sessions, salles & épreuves" />
 
     <!-- Onglets -->
-    <div
-      class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)]"
-    >
+    <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
       @for (t of tabs; track t.key) {
         <button
           class="px-4 py-2 rounded-lg text-sm font-medium"
@@ -82,7 +80,7 @@ interface CourseRef {
       @case ('exams') {
         <!-- Filtres -->
         <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-          <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+          <mat-form-field appearance="outline" class="flex-1 min-w-50">
             <mat-label>Classe</mat-label>
             <mat-select [formControl]="filterClass" (selectionChange)="onClassChange()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -91,7 +89,7 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="min-w-[150px]">
+          <mat-form-field appearance="outline" class="min-w-37.5">
             <mat-label>Période</mat-label>
             <mat-select [formControl]="filterTerm" (selectionChange)="reload()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -100,7 +98,7 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="min-w-[150px]">
+          <mat-form-field appearance="outline" class="min-w-37.5">
             <mat-label>Type</mat-label>
             <mat-select [formControl]="filterType" (selectionChange)="reload()">
               <mat-option [value]="''">Tous</mat-option>
@@ -109,7 +107,7 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="min-w-[150px]">
+          <mat-form-field appearance="outline" class="min-w-37.5">
             <mat-label>Statut</mat-label>
             <mat-select [formControl]="filterStatus" (selectionChange)="reload()">
               <mat-option [value]="''">Tous</mat-option>
@@ -118,7 +116,7 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <button mat-flat-button class="!rounded-xl" (click)="toggleCreate()">
+          <button mat-flat-button class="rounded-xl!" (click)="toggleCreate()">
             <mat-icon fontSet="material-symbols-outlined">{{
               showCreate() ? 'close' : 'add'
             }}</mat-icon>
@@ -199,7 +197,7 @@ interface CourseRef {
             <div class="flex justify-end mt-2">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="form.invalid || saving()"
               >
@@ -217,7 +215,7 @@ interface CourseRef {
             [count]="meta()?.total ?? exams().length"
           />
           @if (loading()) {
-            <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+            <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
           } @else if (exams().length === 0) {
             <panga-empty-state
               icon="quiz"
@@ -225,11 +223,11 @@ interface CourseRef {
               description="Créez un examen pour cette classe."
             />
           } @else {
-            <div class="divide-y divide-[var(--border)] -mx-5">
+            <div class="divide-y divide-(--border) -mx-5">
               @for (e of exams(); track e.id) {
                 <a
                   [routerLink]="['/', 'exams', e.id]"
-                  class="flex items-center gap-4 px-5 py-3 hover:bg-[var(--background)] transition-colors"
+                  class="flex items-center gap-4 px-5 py-3 hover:bg-(--background) transition-colors"
                 >
                   <div
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
@@ -238,10 +236,10 @@ interface CourseRef {
                     <span class="material-symbols-outlined text-[20px]">quiz</span>
                   </div>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">
                       {{ e.name || '—' }}
                     </p>
-                    <p class="text-xs text-[var(--text-muted)] truncate">
+                    <p class="text-xs text-(--text-muted) truncate">
                       {{ courseLabel(e) }}
                       @if (e.examDate) {
                         · {{ e.examDate }}
@@ -260,7 +258,7 @@ interface CourseRef {
                   @if (e.isResultsPublished) {
                     <panga-status-badge label="Résultats publiés" tone="success" [dot]="false" />
                   }
-                  <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]"
+                  <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)"
                     >chevron_right</mat-icon
                   >
                 </a>
@@ -280,7 +278,7 @@ interface CourseRef {
             title="Sessions d'examen"
             [count]="sessions().length"
           >
-            <button mat-flat-button class="!rounded-xl" (click)="showSession.set(!showSession())">
+            <button mat-flat-button class="rounded-xl!" (click)="showSession.set(!showSession())">
               <mat-icon fontSet="material-symbols-outlined">{{
                 showSession() ? 'close' : 'add'
               }}</mat-icon>
@@ -317,7 +315,7 @@ interface CourseRef {
               <div class="flex items-end">
                 <button
                   mat-flat-button
-                  class="!rounded-xl"
+                  class="rounded-xl!"
                   type="submit"
                   [disabled]="sessionForm.invalid || saving()"
                 >
@@ -328,17 +326,15 @@ interface CourseRef {
           }
 
           @if (sessions().length === 0) {
-            <p class="text-sm text-[var(--text-muted)]">Aucune session.</p>
+            <p class="text-sm text-(--text-muted)">Aucune session.</p>
           } @else {
             <div class="grid gap-3 sm:grid-cols-2">
               @for (s of sessions(); track s.id) {
-                <div class="rounded-2xl border border-[var(--border)] p-4">
+                <div class="rounded-2xl border border-(--border) p-4">
                   <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                      <p class="font-medium text-[var(--text)] truncate">{{ s.name }}</p>
-                      <p class="text-xs text-[var(--text-muted)]">
-                        {{ s.schoolYear }} · {{ s.term }}
-                      </p>
+                      <p class="font-medium text-(--text) truncate">{{ s.name }}</p>
+                      <p class="text-xs text-(--text-muted)">{{ s.schoolYear }} · {{ s.term }}</p>
                     </div>
                     <panga-status-badge
                       [label]="sessionStatusLabel(s.status)"
@@ -346,7 +342,7 @@ interface CourseRef {
                       [dot]="false"
                     />
                   </div>
-                  <p class="text-xs text-[var(--text-muted)] mt-2">
+                  <p class="text-xs text-(--text-muted) mt-2">
                     {{ s.startDate }} → {{ s.endDate }} · {{ s.totalExams ?? 0 }} examen(s)
                   </p>
                 </div>
@@ -363,7 +359,7 @@ interface CourseRef {
             title="Salles d'examen"
             [count]="rooms().length"
           >
-            <button mat-flat-button class="!rounded-xl" (click)="showRoom.set(!showRoom())">
+            <button mat-flat-button class="rounded-xl!" (click)="showRoom.set(!showRoom())">
               <mat-icon fontSet="material-symbols-outlined">{{
                 showRoom() ? 'close' : 'add'
               }}</mat-icon>
@@ -400,7 +396,7 @@ interface CourseRef {
               <div class="flex items-end">
                 <button
                   mat-flat-button
-                  class="!rounded-xl"
+                  class="rounded-xl!"
                   type="submit"
                   [disabled]="roomForm.invalid || saving()"
                 >
@@ -411,13 +407,13 @@ interface CourseRef {
           }
 
           @if (rooms().length === 0) {
-            <p class="text-sm text-[var(--text-muted)]">Aucune salle.</p>
+            <p class="text-sm text-(--text-muted)">Aucune salle.</p>
           } @else {
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               @for (r of rooms(); track r.id) {
-                <div class="rounded-2xl border border-[var(--border)] p-4">
+                <div class="rounded-2xl border border-(--border) p-4">
                   <div class="flex items-center justify-between gap-2">
-                    <p class="font-medium text-[var(--text)] truncate">
+                    <p class="font-medium text-(--text) truncate">
                       {{ r.roomName || r.roomNumber }}
                     </p>
                     <panga-status-badge
@@ -426,7 +422,7 @@ interface CourseRef {
                       [dot]="false"
                     />
                   </div>
-                  <p class="text-xs text-[var(--text-muted)] mt-1">
+                  <p class="text-xs text-(--text-muted) mt-1">
                     N° {{ r.roomNumber }} · {{ r.capacity }} places
                     @if (r.building) {
                       · {{ r.building }}

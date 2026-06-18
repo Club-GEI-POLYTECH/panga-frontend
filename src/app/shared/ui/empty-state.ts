@@ -17,9 +17,9 @@ import { MatIconModule } from '@angular/material/icon';
           {{ icon() }}
         </mat-icon>
       </div>
-      <h3 class="text-lg font-semibold text-[var(--text)]">{{ title() }}</h3>
+      <h3 class="text-lg font-semibold text-(--text)">{{ title() }}</h3>
       @if (description()) {
-        <p class="text-sm text-[var(--text-muted)] mt-1 max-w-sm">{{ description() }}</p>
+        <p class="text-sm text-(--text-muted) mt-1 max-w-sm">{{ description() }}</p>
       }
       @if (actionLabel()) {
         <button mat-flat-button class="mt-5" (click)="action.emit()">{{ actionLabel() }}</button>

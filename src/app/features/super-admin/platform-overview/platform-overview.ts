@@ -106,18 +106,14 @@ function fmt(n: number | null | undefined): string {
             <span class="material-symbols-outlined text-[20px]">show_chart</span>
           </div>
           <div>
-            <h2 class="text-base font-semibold text-[var(--text)]">Croissance</h2>
-            <p class="text-xs text-[var(--text-muted)]">
-              Nouvelles écoles, élèves et revenus — 12 mois
-            </p>
+            <h2 class="text-base font-semibold text-(--text)">Croissance</h2>
+            <p class="text-xs text-(--text-muted)">Nouvelles écoles, élèves et revenus — 12 mois</p>
           </div>
         </div>
         @if (trends().length) {
           <panga-line-chart [categories]="trendMonths()" [series]="trendSeries()" [height]="300" />
         } @else {
-          <p class="text-sm text-[var(--text-muted)] py-8 text-center">
-            Aucune donnée de tendance.
-          </p>
+          <p class="text-sm text-(--text-muted) py-8 text-center">Aucune donnée de tendance.</p>
         }
       </section>
 
@@ -128,7 +124,7 @@ function fmt(n: number | null | undefined): string {
           @if (billing()?.mrrByPlan?.length) {
             <panga-donut-chart [data]="billing()!.mrrByPlan" centerLabel="MRR" [height]="240" />
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-10 text-center">Aucune donnée.</p>
+            <p class="text-sm text-(--text-muted) py-10 text-center">Aucune donnée.</p>
           }
         </div>
 
@@ -153,8 +149,8 @@ function fmt(n: number | null | undefined): string {
             "
           >
             <div>
-              <p class="text-xs text-[var(--text-muted)]">Écoles impayées (past due)</p>
-              <p class="text-2xl font-semibold text-[var(--text)]">{{ fmt(billing()?.pastDue) }}</p>
+              <p class="text-xs text-(--text-muted)">Écoles impayées (past due)</p>
+              <p class="text-2xl font-semibold text-(--text)">{{ fmt(billing()?.pastDue) }}</p>
             </div>
             <span
               class="material-symbols-outlined text-3xl"
@@ -164,21 +160,21 @@ function fmt(n: number | null | undefined): string {
             </span>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-2xl border border-[var(--border)] p-3">
-              <p class="text-xs text-[var(--text-muted)]">Période d'essai</p>
-              <p class="text-xl font-semibold text-[var(--text)]">{{ fmt(billing()?.trial) }}</p>
+            <div class="rounded-2xl border border-(--border) p-3">
+              <p class="text-xs text-(--text-muted)">Période d'essai</p>
+              <p class="text-xl font-semibold text-(--text)">{{ fmt(billing()?.trial) }}</p>
             </div>
-            <div class="rounded-2xl border border-[var(--border)] p-3">
-              <p class="text-xs text-[var(--text-muted)]">Encours factures</p>
-              <p class="text-xl font-semibold text-[var(--text)]">
+            <div class="rounded-2xl border border-(--border) p-3">
+              <p class="text-xs text-(--text-muted)">Encours factures</p>
+              <p class="text-xl font-semibold text-(--text)">
                 {{ fmt(billing()?.outstanding) }}
               </p>
             </div>
           </div>
           @if (billing()?.arr !== null && billing()?.arr !== undefined) {
-            <p class="text-xs text-[var(--text-muted)]">
+            <p class="text-xs text-(--text-muted)">
               ARR estimé :
-              <span class="font-medium text-[var(--text)]">{{ fmt(billing()?.arr) }}</span>
+              <span class="font-medium text-(--text)">{{ fmt(billing()?.arr) }}</span>
             </p>
           }
         </div>
@@ -191,7 +187,7 @@ function fmt(n: number | null | undefined): string {
           @if (overview()?.topSchools?.length) {
             <panga-bar-chart [data]="overview()!.topSchools" [height]="260" />
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-10 text-center">Aucune donnée.</p>
+            <p class="text-sm text-(--text-muted) py-10 text-center">Aucune donnée.</p>
           }
         </div>
         <div class="panga-card p-5">
@@ -199,7 +195,7 @@ function fmt(n: number | null | undefined): string {
           @if (cycleSplit().length) {
             <panga-donut-chart [data]="cycleSplit()" centerLabel="Classes" [height]="240" />
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-10 text-center">Aucune donnée.</p>
+            <p class="text-sm text-(--text-muted) py-10 text-center">Aucune donnée.</p>
           }
         </div>
       </section>
@@ -221,23 +217,23 @@ function fmt(n: number | null | undefined): string {
         <div class="panga-card p-5 lg:col-span-2">
           <panga-section-header icon="history" title="Activité récente" />
           @if (audit().length) {
-            <ul class="divide-y divide-[var(--border)]">
+            <ul class="divide-y divide-(--border)">
               @for (a of audit(); track a.id || $index) {
                 <li class="flex items-center gap-3 py-2.5">
                   <panga-avatar [name]="a.actor || a.actorEmail || a.action || '?'" [size]="36" />
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">
                       {{ a.action || 'Action' }}
                       @if (a.entity || a.entityType) {
                         · {{ a.entity || a.entityType }}
                       }
                     </p>
-                    <p class="text-xs text-[var(--text-muted)] truncate">
+                    <p class="text-xs text-(--text-muted) truncate">
                       {{ a.actor || a.actorEmail || '—' }}
                     </p>
                   </div>
                   @if (a.createdAt) {
-                    <span class="text-xs text-[var(--text-muted)] shrink-0">
+                    <span class="text-xs text-(--text-muted) shrink-0">
                       {{ a.createdAt | date: 'dd/MM HH:mm' }}
                     </span>
                   }
@@ -245,12 +241,12 @@ function fmt(n: number | null | undefined): string {
               }
             </ul>
           } @else if (auditNeedsSchool) {
-            <div class="flex flex-col items-center text-center text-[var(--text-muted)] py-8 gap-1">
-              <span class="material-symbols-outlined text-[var(--brand-500)]">apartment</span>
+            <div class="flex flex-col items-center text-center text-(--text-muted) py-8 gap-1">
+              <span class="material-symbols-outlined text-(--brand-500)">apartment</span>
               <p class="text-sm">Sélectionnez une école pour consulter son journal d'audit.</p>
             </div>
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-8 text-center">Aucun événement récent.</p>
+            <p class="text-sm text-(--text-muted) py-8 text-center">Aucun événement récent.</p>
           }
         </div>
 
@@ -258,7 +254,7 @@ function fmt(n: number | null | undefined): string {
           <panga-section-header icon="monitor_heart" title="Système" />
           @if (health()) {
             <div class="flex items-center justify-between mb-3">
-              <span class="text-sm text-[var(--text-muted)]">Statut</span>
+              <span class="text-sm text-(--text-muted)">Statut</span>
               <panga-status-badge
                 [label]="healthLabel()"
                 [tone]="healthOk() ? 'success' : 'danger'"
@@ -266,8 +262,8 @@ function fmt(n: number | null | undefined): string {
             </div>
             <panga-key-value [data]="health()?.info || health()?.details || health()" />
           } @else {
-            <div class="flex items-center gap-2 text-sm text-[var(--text-muted)]">
-              <span class="material-symbols-outlined text-[var(--warning)]">cloud_off</span>
+            <div class="flex items-center gap-2 text-sm text-(--text-muted)">
+              <span class="material-symbols-outlined text-(--warning)">cloud_off</span>
               Santé indisponible
             </div>
           }
@@ -278,18 +274,18 @@ function fmt(n: number | null | undefined): string {
       <section class="panga-card p-5">
         <panga-section-header icon="bolt" title="Actions rapides" />
         <div class="flex flex-wrap gap-3">
-          <a mat-flat-button class="!rounded-xl" [routerLink]="['/', 'platform', 'schools']">
+          <a mat-flat-button class="rounded-xl!" [routerLink]="['/', 'platform', 'schools']">
             <mat-icon fontSet="material-symbols-outlined">add_business</mat-icon> Onboarder une
             école
           </a>
-          <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'platform', 'billing']">
+          <a mat-stroked-button class="rounded-xl!" [routerLink]="['/', 'platform', 'billing']">
             <mat-icon fontSet="material-symbols-outlined">receipt_long</mat-icon> Émettre une
             facture
           </a>
-          <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'platform', 'users']">
+          <a mat-stroked-button class="rounded-xl!" [routerLink]="['/', 'platform', 'users']">
             <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon> Créer un compte
           </a>
-          <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'platform', 'curriculum']">
+          <a mat-stroked-button class="rounded-xl!" [routerLink]="['/', 'platform', 'curriculum']">
             <mat-icon fontSet="material-symbols-outlined">menu_book</mat-icon> Curriculum
           </a>
         </div>

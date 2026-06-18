@@ -81,7 +81,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   ],
   template: `
     <panga-page-header icon="grade" title="Notes" subtitle="Saisie, périodes & moyennes">
-      <button mat-stroked-button class="!rounded-xl" [matMenuTriggerFor]="excelMenu">
+      <button mat-stroked-button class="rounded-xl!" [matMenuTriggerFor]="excelMenu">
         <mat-icon fontSet="material-symbols-outlined">table_view</mat-icon> Excel
       </button>
       <mat-menu #excelMenu="matMenu" class="panga-menu">
@@ -109,7 +109,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
     <!-- Contexte -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+      <mat-form-field appearance="outline" class="flex-1 min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -117,7 +117,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Année scolaire</mat-label>
         <input
           matInput
@@ -140,12 +140,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       <!-- Périodes -->
       <section class="panga-card p-5 mb-6">
         <panga-section-header icon="event" title="Périodes" [count]="periods().length">
-          <button mat-stroked-button class="!rounded-xl" (click)="seedPeriods()">
+          <button mat-stroked-button class="rounded-xl!" (click)="seedPeriods()">
             <mat-icon fontSet="material-symbols-outlined">event_repeat</mat-icon> Générer
           </button>
         </panga-section-header>
         @if (periods().length === 0) {
-          <p class="text-sm text-[var(--text-muted)]">
+          <p class="text-sm text-(--text-muted)">
             Aucune période. Cliquez sur « Générer » pour créer les périodes de l'année.
           </p>
         } @else {
@@ -156,22 +156,22 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 [class.opacity-60]="p.isLocked"
                 [style.border-color]="p.isLocked ? 'var(--warning)' : 'var(--border)'"
               >
-                <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">
+                <span class="material-symbols-outlined text-[18px] text-(--brand-500)">
                   {{ p.periodType === 'exam' ? 'quiz' : 'menu_book' }}
                 </span>
                 <div class="leading-tight">
-                  <p class="text-sm font-medium text-[var(--text)]">{{ periodLabel(p) }}</p>
-                  <p class="text-[11px] text-[var(--text-muted)]">
+                  <p class="text-sm font-medium text-(--text)">{{ periodLabel(p) }}</p>
+                  <p class="text-[11px] text-(--text-muted)">
                     {{ p.term }} · n°{{ p.periodNumber }}
                   </p>
                 </div>
                 <button
                   mat-icon-button
-                  class="!h-8 !w-8"
+                  class="h-8! w-8!"
                   [matTooltip]="p.isLocked ? 'Déverrouiller' : 'Verrouiller'"
                   (click)="toggleLock(p)"
                 >
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-[18px]">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!">
                     {{ p.isLocked ? 'lock' : 'lock_open' }}
                   </mat-icon>
                 </button>
@@ -182,9 +182,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       </section>
 
       <!-- Onglets -->
-      <div
-        class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)]"
-      >
+      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
         @for (t of tabs; track t.key) {
           <button
             class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -251,8 +249,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             </div>
 
             @if (selectedBulkPeriod()?.isLocked) {
-              <p class="text-sm text-[var(--warning)] mb-3 flex items-center gap-1">
-                <mat-icon fontSet="material-symbols-outlined" class="!text-[18px]">lock</mat-icon>
+              <p class="text-sm text-(--warning) mb-3 flex items-center gap-1">
+                <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!">lock</mat-icon>
                 Période verrouillée : saisie impossible.
               </p>
             }
@@ -264,16 +262,16 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 description="Cette classe n'a pas d'élèves inscrits."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5 mb-4">
+              <div class="divide-y divide-(--border) -mx-5 mb-4">
                 @for (s of classStudents(); track s.id) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
                     <panga-avatar [name]="studentName(s)" [size]="34" />
-                    <span class="flex-1 min-w-0 text-sm text-[var(--text)] truncate">{{
+                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
                       studentName(s)
                     }}</span>
                     <input
                       type="number"
-                      class="w-24 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-right text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)] disabled:opacity-50"
+                      class="w-24 rounded-lg border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-right text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400) disabled:opacity-50"
                       [value]="scores()[s.id] || ''"
                       (input)="setScore(s.id, $event)"
                       [disabled]="!!selectedBulkPeriod()?.isLocked"
@@ -285,12 +283,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 }
               </div>
               <div class="flex items-center justify-between gap-3">
-                <p class="text-xs text-[var(--text-muted)]">
+                <p class="text-xs text-(--text-muted)">
                   {{ filledCount() }} / {{ classStudents().length }} note(s) saisie(s)
                 </p>
                 <button
                   mat-flat-button
-                  class="!rounded-xl"
+                  class="rounded-xl!"
                   [disabled]="!canSubmitBulk() || savingBulk()"
                   (click)="submitBulk()"
                 >
@@ -310,11 +308,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
               title="Notes saisies"
               [count]="gradesMeta()?.total ?? grades().length"
             >
-              <mat-form-field
-                appearance="outline"
-                class="w-[180px] !mb-[-1.25rem]"
-                subscriptSizing="dynamic"
-              >
+              <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Cours</mat-label>
                 <mat-select [formControl]="filterSlot" (selectionChange)="reloadGrades()">
                   <mat-option [value]="''">Tous</mat-option>
@@ -323,11 +317,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field
-                appearance="outline"
-                class="w-[150px] !mb-[-1.25rem]"
-                subscriptSizing="dynamic"
-              >
+              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Période</mat-label>
                 <mat-select [formControl]="filterTerm" (selectionChange)="reloadGrades()">
                   <mat-option [value]="''">Toutes</mat-option>
@@ -339,10 +329,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             </panga-section-header>
 
             @if (editing(); as g) {
-              <div
-                class="rounded-2xl border border-[var(--brand-300)] bg-[var(--brand-50)] p-4 mb-4"
-              >
-                <p class="text-sm font-medium text-[var(--text)] mb-3">
+              <div class="rounded-2xl border border-(--brand-300) bg-(--brand-50) p-4 mb-4">
+                <p class="text-sm font-medium text-(--text) mb-3">
                   Modifier la note — {{ gradeStudent(g) }} · {{ courseLabel(g) }}
                 </p>
                 <div class="grid gap-3 sm:grid-cols-3">
@@ -359,7 +347,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   <button mat-button (click)="editing.set(null)">Annuler</button>
                   <button
                     mat-flat-button
-                    class="!rounded-xl"
+                    class="rounded-xl!"
                     [disabled]="savingEdit()"
                     (click)="saveEdit()"
                   >
@@ -370,7 +358,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             }
 
             @if (loadingGrades()) {
-              <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+              <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
             } @else if (grades().length === 0) {
               <panga-empty-state
                 icon="grade"
@@ -378,15 +366,15 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 description="Aucune note pour ce filtre."
               />
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (g of grades(); track g.id) {
                   <div class="flex items-center gap-4 px-5 py-3">
                     <panga-avatar [name]="gradeStudent(g)" [size]="36" />
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-[var(--text)] truncate">
+                      <p class="text-sm font-medium text-(--text) truncate">
                         {{ gradeStudent(g) }}
                       </p>
-                      <p class="text-xs text-[var(--text-muted)] truncate">
+                      <p class="text-xs text-(--text-muted) truncate">
                         {{ courseLabel(g) }}
                         @if (g.term) {
                           · {{ termLabel(g.term) }}
@@ -397,12 +385,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                       </p>
                     </div>
                     <div class="text-right shrink-0">
-                      <span class="text-base font-semibold text-[var(--text)]">{{
-                        num(g.score)
-                      }}</span>
-                      <span class="text-xs text-[var(--text-muted)]"
-                        >/{{ num(g.maxScore) || 20 }}</span
-                      >
+                      <span class="text-base font-semibold text-(--text)">{{ num(g.score) }}</span>
+                      <span class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</span>
                     </div>
                     @if (g.isExamGrade) {
                       <panga-status-badge label="Examen" tone="warning" [dot]="false" />
@@ -440,7 +424,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             <panga-section-header icon="leaderboard" title="Moyennes & proclamation">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 [disabled]="loadingAverages()"
                 (click)="loadProclamation(true)"
               >
@@ -449,7 +433,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             </panga-section-header>
 
             @if (loadingAverages()) {
-              <p class="text-sm text-[var(--text-muted)] py-6 text-center">Calcul en cours…</p>
+              <p class="text-sm text-(--text-muted) py-6 text-center">Calcul en cours…</p>
             } @else if (!proclamation()) {
               <panga-empty-state
                 icon="leaderboard"
@@ -458,27 +442,27 @@ const STATUS_TONE: Record<string, BadgeTone> = {
               />
             } @else {
               <div class="grid gap-4 sm:grid-cols-3 mb-5">
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Réussite &gt; 75 %</p>
-                  <p class="text-2xl font-semibold text-[var(--success)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Réussite &gt; 75 %</p>
+                  <p class="text-2xl font-semibold text-(--success)">
                     {{ tranche75().length }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Entre 50 % et 75 %</p>
-                  <p class="text-2xl font-semibold text-[var(--brand-700)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Entre 50 % et 75 %</p>
+                  <p class="text-2xl font-semibold text-(--brand-700)">
                     {{ tranche50().length }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">En échec &lt; 50 %</p>
-                  <p class="text-2xl font-semibold text-[var(--danger)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">En échec &lt; 50 %</p>
+                  <p class="text-2xl font-semibold text-(--danger)">
                     {{ trancheLow().length }}
                   </p>
                 </div>
               </div>
 
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (r of ranking(); track r.studentId || $index; let i = $index) {
                   <div class="flex items-center gap-4 px-5 py-2.5">
                     <span
@@ -489,7 +473,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                       {{ r.rank || i + 1 }}
                     </span>
                     <panga-avatar [name]="r.studentName || '?'" [size]="32" />
-                    <span class="flex-1 min-w-0 text-sm text-[var(--text)] truncate">
+                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">
                       {{ r.studentName || r.studentId || '—' }}
                     </span>
                     <span class="text-sm font-semibold" [style.color]="avgColor(r.overallAverage)">

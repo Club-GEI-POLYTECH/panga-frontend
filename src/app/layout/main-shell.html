@@ -3,7 +3,7 @@
   @if (loading.isLoading()) {
     <mat-progress-bar
       mode="indeterminate"
-      class="!fixed top-0 left-0 right-0 z-50"
+      class="fixed! top-0 left-0 right-0 z-50"
     ></mat-progress-bar>
   }
 
@@ -31,7 +31,7 @@
           @if (!collapsed()) {
             <div class="leading-tight">
               <p class="text-lg font-semibold" style="font-family: Urbanist, sans-serif">Panga</p>
-              <p class="text-[11px] text-[var(--text-muted)]">{{ roleKey() | transloco }}</p>
+              <p class="text-[11px] text-(--text-muted)">{{ roleKey() | transloco }}</p>
             </div>
           }
         </div>
@@ -41,7 +41,7 @@
           @for (section of navSections(); track section.group) {
             @if (!collapsed()) {
               <p
-                class="px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] opacity-60"
+                class="px-3 pt-4 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-(--text-muted) opacity-60"
               >
                 {{ 'nav.groups.' + section.group | transloco }}
               </p>
@@ -54,7 +54,7 @@
                 routerLinkActive="panga-nav-active"
                 [matTooltip]="collapsed() ? (item.labelKey | transloco) : ''"
                 matTooltipPosition="right"
-                class="group flex items-center gap-3 rounded-xl py-2.5 mb-0.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--brand-500)_8%,transparent)] hover:text-[var(--text)]"
+                class="group flex items-center gap-3 rounded-xl py-2.5 mb-0.5 text-sm font-medium text-(--text-muted) transition-colors hover:bg-[color-mix(in_srgb,var(--brand-500)_8%,transparent)] hover:text-(--text)"
                 [class.px-3]="!collapsed()"
                 [class.justify-center]="collapsed()"
               >
@@ -89,7 +89,7 @@
                   class="mt-3 inline-flex items-center gap-1 rounded-full bg-white/20 px-3 py-1 text-xs font-medium hover:bg-white/30 transition-colors"
                 >
                   Centre d'aide
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!">
                     arrow_forward
                   </mat-icon>
                 </a>
@@ -118,7 +118,7 @@
                 matTooltipPosition="right"
                 aria-label="Déconnexion"
               >
-                <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]">
+                <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
                   logout
                 </mat-icon>
               </button>
@@ -138,10 +138,10 @@
                 }
               </div>
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium truncate text-[var(--text)]">
+                <p class="text-sm font-medium truncate text-(--text)">
                   {{ store.fullName() }}
                 </p>
-                <p class="text-xs truncate text-[var(--text-muted)]">{{ roleKey() | transloco }}</p>
+                <p class="text-xs truncate text-(--text-muted)">{{ roleKey() | transloco }}</p>
               </div>
               <button
                 mat-icon-button
@@ -149,7 +149,7 @@
                 matTooltip="Déconnexion"
                 aria-label="Déconnexion"
               >
-                <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]"
+                <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)"
                   >logout</mat-icon
                 >
               </button>
@@ -162,7 +162,7 @@
     <mat-sidenav-content style="background: var(--app-surface-glow), var(--background)">
       <!-- Topbar -->
       <mat-toolbar
-        class="!sticky top-0 z-40 gap-2 !h-16"
+        class="sticky! top-0 z-40 gap-2 h-16!"
         style="
           background: color-mix(in srgb, var(--surface) 80%, transparent);
           backdrop-filter: blur(12px);
@@ -184,12 +184,12 @@
           <button
             mat-button
             [matMenuTriggerFor]="yearMenu"
-            class="!rounded-xl !min-w-0 !px-2"
+            class="rounded-xl! min-w-0! px-2!"
             matTooltip="Année scolaire"
             aria-label="Année scolaire"
           >
             <span class="flex items-center gap-1.5">
-              <mat-icon fontSet="material-symbols-outlined" class="!text-[20px]"
+              <mat-icon fontSet="material-symbols-outlined" class="text-[20px]!"
                 >calendar_month</mat-icon
               >
               <span class="hidden sm:inline text-xs font-semibold tabular-nums">
@@ -202,18 +202,14 @@
                   matTooltip="Année non configurée"
                 ></span>
               }
-              <mat-icon
-                fontSet="material-symbols-outlined"
-                class="!text-lg text-[var(--text-muted)]"
+              <mat-icon fontSet="material-symbols-outlined" class="text-lg! text-(--text-muted)"
                 >expand_more</mat-icon
               >
             </span>
           </button>
           <mat-menu #yearMenu="matMenu" class="panga-menu" xPosition="before">
             <div class="w-52 py-1">
-              <p
-                class="px-4 pt-1 pb-1.5 text-[11px] uppercase tracking-wide text-[var(--text-muted)]"
-              >
+              <p class="px-4 pt-1 pb-1.5 text-[11px] uppercase tracking-wide text-(--text-muted)">
                 Année scolaire
               </p>
               @for (o of sy.options(); track o.value) {
@@ -241,12 +237,12 @@
           <button
             mat-button
             [matMenuTriggerFor]="langMenu"
-            class="!rounded-full !min-w-0 !px-2"
+            class="rounded-full! min-w-0! px-2!"
             matTooltip="Langue"
             aria-label="Langue"
           >
             <span class="flex items-center gap-1">
-              <mat-icon fontSet="material-symbols-outlined" class="!text-[20px]">language</mat-icon>
+              <mat-icon fontSet="material-symbols-outlined" class="text-[20px]!">language</mat-icon>
               <span class="text-xs font-bold uppercase tracking-wide">{{ lang() }}</span>
             </span>
           </button>
@@ -299,15 +295,13 @@
         </mat-menu>
         <mat-menu #notifMenu="matMenu" class="panga-menu" xPosition="before">
           <div class="w-80 max-w-[92vw]">
-            <div
-              class="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]"
-            >
-              <span class="font-semibold text-[var(--text)]">{{
+            <div class="flex items-center justify-between px-4 py-3 border-b border-(--border)">
+              <span class="font-semibold text-(--text)">{{
                 'notifications.title' | transloco
               }}</span>
               @if (notify.history().length) {
                 <button
-                  class="text-xs font-medium text-[var(--brand-600)] hover:text-[var(--brand-800)] transition-colors"
+                  class="text-xs font-medium text-(--brand-600) hover:text-(--brand-800) transition-colors"
                   (click)="notify.clear()"
                 >
                   {{ 'notifications.clear' | transloco }}
@@ -318,7 +312,7 @@
               <div class="max-h-80 overflow-y-auto">
                 @for (n of notify.history(); track n.id) {
                   <div
-                    class="flex items-start gap-3 px-4 py-2.5 border-b border-[var(--border)] last:border-0"
+                    class="flex items-start gap-3 px-4 py-2.5 border-b border-(--border) last:border-0"
                   >
                     <span
                       class="material-symbols-outlined text-[20px] mt-0.5 shrink-0"
@@ -327,8 +321,8 @@
                       {{ notify.iconFor(n.tone) }}
                     </span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm text-[var(--text)]">{{ n.message }}</p>
-                      <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                      <p class="text-sm text-(--text)">{{ n.message }}</p>
+                      <p class="text-xs text-(--text-muted) mt-0.5">
                         {{ n.createdAt | date: 'dd/MM HH:mm' }}
                       </p>
                     </div>
@@ -336,8 +330,8 @@
                 }
               </div>
             } @else {
-              <div class="px-4 py-10 text-center text-sm text-[var(--text-muted)]">
-                <span class="material-symbols-outlined text-3xl text-[var(--brand-500)] mb-1 block">
+              <div class="px-4 py-10 text-center text-sm text-(--text-muted)">
+                <span class="material-symbols-outlined text-3xl text-(--brand-500) mb-1 block">
                   notifications_off
                 </span>
                 {{ 'notifications.empty' | transloco }}
@@ -347,14 +341,14 @@
         </mat-menu>
 
         <!-- Profil -->
-        <button mat-button [matMenuTriggerFor]="userMenu" class="!rounded-xl !min-w-0 !px-1.5">
+        <button mat-button [matMenuTriggerFor]="userMenu" class="rounded-xl! min-w-0! px-1.5!">
           <span class="flex items-center gap-2">
             <panga-avatar [name]="store.fullName()" [size]="32" />
             <span class="hidden sm:flex flex-col items-start leading-tight">
-              <span class="text-sm font-medium text-[var(--text)]">{{ store.fullName() }}</span>
-              <span class="text-[11px] text-[var(--text-muted)]">{{ roleKey() | transloco }}</span>
+              <span class="text-sm font-medium text-(--text)">{{ store.fullName() }}</span>
+              <span class="text-[11px] text-(--text-muted)">{{ roleKey() | transloco }}</span>
             </span>
-            <mat-icon fontSet="material-symbols-outlined" class="!text-lg text-[var(--text-muted)]">
+            <mat-icon fontSet="material-symbols-outlined" class="text-lg! text-(--text-muted)">
               expand_more
             </mat-icon>
           </span>
@@ -394,29 +388,29 @@
             </div>
 
             <!-- Détails -->
-            <div class="px-4 py-2.5 text-sm border-b border-[var(--border)]">
+            <div class="px-4 py-2.5 text-sm border-b border-(--border)">
               @if (store.user()?.phone) {
-                <div class="flex items-center gap-2 py-1 text-[var(--text-muted)]">
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+                <div class="flex items-center gap-2 py-1 text-(--text-muted)">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
                     >call</mat-icon
                   >
-                  <span class="text-[var(--text)]">{{ store.user()?.phone }}</span>
+                  <span class="text-(--text)">{{ store.user()?.phone }}</span>
                 </div>
               }
               @if (location()) {
-                <div class="flex items-center gap-2 py-1 text-[var(--text-muted)]">
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+                <div class="flex items-center gap-2 py-1 text-(--text-muted)">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
                     >location_on</mat-icon
                   >
-                  <span class="text-[var(--text)]">{{ location() }}</span>
+                  <span class="text-(--text)">{{ location() }}</span>
                 </div>
               }
               @if (store.user()?.lastLoginAt) {
-                <div class="flex items-center gap-2 py-1 text-[var(--text-muted)]">
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+                <div class="flex items-center gap-2 py-1 text-(--text-muted)">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
                     >schedule</mat-icon
                   >
-                  <span class="text-[var(--text)]">{{
+                  <span class="text-(--text)">{{
                     store.user()?.lastLoginAt | date: 'dd/MM/yyyy HH:mm'
                   }}</span>
                 </div>
@@ -437,13 +431,13 @@
 
       <!-- Contenu + pied de page -->
       <div class="flex flex-col min-h-[calc(100dvh-4rem)]">
-        <main class="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6">
+        <main class="flex-1 w-full max-w-350 mx-auto p-4 sm:p-6">
           <router-outlet />
         </main>
 
         <footer class="border-t px-4 sm:px-6 py-5" style="border-color: var(--border)">
           <div
-            class="max-w-[1400px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--text-muted)]"
+            class="max-w-350 mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-(--text-muted)"
           >
             <div class="flex items-center gap-2">
               <div
@@ -455,10 +449,10 @@
               <span>© {{ year }} Panga · Gestion scolaire</span>
             </div>
             <div class="flex items-center gap-4">
-              <a routerLink="/communications" class="hover:text-[var(--text)] transition-colors">
+              <a routerLink="/communications" class="hover:text-(--text) transition-colors">
                 Aide
               </a>
-              <a routerLink="/profile" class="hover:text-[var(--text)] transition-colors">
+              <a routerLink="/profile" class="hover:text-(--text) transition-colors">
                 Mon profil
               </a>
               <span class="opacity-70">v1.0</span>

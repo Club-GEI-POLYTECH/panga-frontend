@@ -47,8 +47,8 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           </h1>
         </div>
 
-        <h2 class="text-2xl font-semibold text-[var(--text)]">{{ t('auth.reset.title') }}</h2>
-        <p class="text-sm text-[var(--text-muted)] mt-1 mb-6">{{ t('auth.reset.subtitle') }}</p>
+        <h2 class="text-2xl font-semibold text-(--text)">{{ t('auth.reset.title') }}</h2>
+        <p class="text-sm text-(--text-muted) mt-1 mb-6">{{ t('auth.reset.subtitle') }}</p>
 
         @if (!token()) {
           <p class="text-sm" style="color: var(--danger)">{{ t('auth.reset.invalidToken') }}</p>
@@ -106,7 +106,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           class="mt-6 flex items-center justify-center gap-1 text-sm"
           style="color: var(--brand-500)"
         >
-          <mat-icon fontSet="material-symbols-outlined" class="!text-base !h-4 !w-4"
+          <mat-icon fontSet="material-symbols-outlined" class="text-base! h-4! w-4!"
             >arrow_back</mat-icon
           >
           {{ t('auth.backToLogin') }}

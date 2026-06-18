@@ -13,8 +13,8 @@ import type { School } from '../../core/models/auth.models';
   template: `
     <div class="min-h-screen grid place-items-center p-6" style="background: var(--background)">
       <div class="panga-card w-full max-w-lg p-8">
-        <h1 class="text-xl font-semibold text-[var(--text)]">Choisir une école</h1>
-        <p class="text-sm text-[var(--text-muted)] mt-1 mb-6">
+        <h1 class="text-xl font-semibold text-(--text)">Choisir une école</h1>
+        <p class="text-sm text-(--text-muted) mt-1 mb-6">
           Vous avez accès à plusieurs établissements. Sélectionnez celui à consulter.
         </p>
         <div class="space-y-3">
@@ -31,7 +31,7 @@ import type { School } from '../../core/models/auth.models';
               >
                 <mat-icon fontSet="material-symbols-outlined">apartment</mat-icon>
               </span>
-              <span class="font-medium text-[var(--text)]">{{ school.name }}</span>
+              <span class="font-medium text-(--text)">{{ school.name }}</span>
             </button>
           }
         </div>

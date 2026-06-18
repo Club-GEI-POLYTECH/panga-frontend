@@ -176,9 +176,9 @@ const PHYS_KEYS = [
   template: `
     <a
       [routerLink]="['/', 'classes']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Classes
@@ -216,7 +216,7 @@ const PHYS_KEYS = [
             }
             <button
               mat-icon-button
-              class="!text-white"
+              class="text-white!"
               (click)="remove()"
               matTooltip="Archiver"
               aria-label="Archiver"
@@ -230,24 +230,24 @@ const PHYS_KEYS = [
       <!-- KPIs -->
       <section class="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-5">
         <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-[var(--text)]">
+          <p class="text-2xl font-semibold text-(--text)">
             {{ cls()?.currentEnrollment ?? 0 }}
           </p>
-          <p class="text-xs text-[var(--text-muted)]">Élèves inscrits</p>
+          <p class="text-xs text-(--text-muted)">Élèves inscrits</p>
         </div>
         <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-[var(--text)]">
+          <p class="text-2xl font-semibold text-(--text)">
             {{ cls()?.template?.capacity ?? '—' }}
           </p>
-          <p class="text-xs text-[var(--text-muted)]">Capacité</p>
+          <p class="text-xs text-(--text-muted)">Capacité</p>
         </div>
         <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-[var(--text)]">{{ subjects().length }}</p>
-          <p class="text-xs text-[var(--text-muted)]">Cours</p>
+          <p class="text-2xl font-semibold text-(--text)">{{ subjects().length }}</p>
+          <p class="text-xs text-(--text-muted)">Cours</p>
         </div>
         <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-[var(--text)]">{{ slots().length }}</p>
-          <p class="text-xs text-[var(--text-muted)]">Créneaux</p>
+          <p class="text-2xl font-semibold text-(--text)">{{ slots().length }}</p>
+          <p class="text-xs text-(--text-muted)">Créneaux</p>
         </div>
       </section>
 
@@ -294,7 +294,7 @@ const PHYS_KEYS = [
         <div class="sticky bottom-4 z-10 flex justify-end mb-6">
           <button
             mat-flat-button
-            class="!rounded-xl shadow-lg"
+            class="rounded-xl! shadow-lg"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -313,12 +313,12 @@ const PHYS_KEYS = [
             [count]="slots().length"
           />
           <div class="flex gap-2">
-            <button mat-stroked-button class="!rounded-xl" (click)="addSlot()">
+            <button mat-stroked-button class="rounded-xl!" (click)="addSlot()">
               <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créneau
             </button>
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               (click)="saveSlots()"
               [disabled]="savingSlots()"
             >
@@ -327,7 +327,7 @@ const PHYS_KEYS = [
           </div>
         </div>
         @if (slots().length === 0) {
-          <p class="text-sm text-[var(--text-muted)] py-4 text-center">
+          <p class="text-sm text-(--text-muted) py-4 text-center">
             Aucun créneau. Ajoutez-en pour bâtir la grille.
           </p>
         } @else {
@@ -382,7 +382,7 @@ const PHYS_KEYS = [
                   />
                 </mat-form-field>
                 <button mat-icon-button (click)="removeSlot($index)" aria-label="Retirer">
-                  <mat-icon fontSet="material-symbols-outlined" class="text-[var(--danger)]"
+                  <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)"
                     >delete</mat-icon
                   >
                 </button>
@@ -398,7 +398,7 @@ const PHYS_KEYS = [
           <panga-section-header icon="chair" title="Aspects physiques" />
           <button
             mat-flat-button
-            class="!rounded-xl"
+            class="rounded-xl!"
             (click)="savePhysical()"
             [disabled]="savingPhys()"
           >
@@ -489,7 +489,7 @@ const PHYS_KEYS = [
             </mat-select>
           </mat-form-field>
           <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
-            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="promoting()">
+            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="promoting()">
               Enregistrer la promotion
             </button>
           </div>
@@ -497,14 +497,14 @@ const PHYS_KEYS = [
 
         @if (history().length) {
           <div class="mt-5">
-            <p class="text-sm font-medium text-[var(--text)] mb-2">Historique</p>
-            <ul class="divide-y divide-[var(--border)]">
+            <p class="text-sm font-medium text-(--text) mb-2">Historique</p>
+            <ul class="divide-y divide-(--border)">
               @for (h of history(); track $index) {
                 <li class="flex items-center justify-between gap-2 py-2 text-sm">
-                  <span class="text-[var(--text)]"
+                  <span class="text-(--text)"
                     >{{ str(h['action']) }} → {{ str(h['toSchoolYear']) }}</span
                   >
-                  <span class="text-xs text-[var(--text-muted)]">{{ str(h['reason']) }}</span>
+                  <span class="text-xs text-(--text-muted)">{{ str(h['reason']) }}</span>
                 </li>
               }
             </ul>
@@ -518,26 +518,24 @@ const PHYS_KEYS = [
           <panga-section-header icon="menu_book" title="Cours" [count]="subjects().length" />
           @for (s of subjects(); track $index) {
             <div
-              class="flex items-center justify-between gap-2 py-2 border-b border-[var(--border)] last:border-0"
+              class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
             >
-              <span class="text-sm text-[var(--text)]"
-                >{{ str(s['hoursPerWeek']) || '—' }} h/sem</span
-              >
-              <span class="text-xs text-[var(--text-muted)]">{{ str(s['roomNumber']) }}</span>
+              <span class="text-sm text-(--text)">{{ str(s['hoursPerWeek']) || '—' }} h/sem</span>
+              <span class="text-xs text-(--text-muted)">{{ str(s['roomNumber']) }}</span>
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucun cours.</p>
+            <p class="text-sm text-(--text-muted)">Aucun cours.</p>
           }
         </div>
         <div class="panga-card p-5">
           <panga-section-header icon="groups" title="Élèves" [count]="students().length" />
           @for (st of students(); track $index) {
-            <div class="flex items-center gap-3 py-2 border-b border-[var(--border)] last:border-0">
+            <div class="flex items-center gap-3 py-2 border-b border-(--border) last:border-0">
               <panga-avatar [name]="studentName(st)" [size]="30" />
-              <span class="text-sm text-[var(--text)] truncate">{{ studentName(st) }}</span>
+              <span class="text-sm text-(--text) truncate">{{ studentName(st) }}</span>
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucun élève inscrit.</p>
+            <p class="text-sm text-(--text-muted)">Aucun élève inscrit.</p>
           }
         </div>
       </section>

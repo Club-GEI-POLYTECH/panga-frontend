@@ -48,7 +48,7 @@ function isActive(s: PlatformSchool): boolean {
       title="Écoles"
       subtitle="Gérez les établissements de la plateforme"
     >
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{ showForm() ? 'close' : 'add' }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Nouvelle école' }}
       </button>
@@ -94,7 +94,7 @@ function isActive(s: PlatformSchool): boolean {
           </mat-form-field>
         </div>
         <div class="flex justify-end">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Créer l'école
           </button>
         </div>
@@ -114,7 +114,7 @@ function isActive(s: PlatformSchool): boolean {
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (s of schools(); track s.id) {
           <a
             [routerLink]="['/', 'platform', 'schools', s.id]"
@@ -122,10 +122,10 @@ function isActive(s: PlatformSchool): boolean {
           >
             <panga-avatar [name]="s.name || s.code || '?'" [size]="44" />
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-[var(--text)] truncate">
+              <p class="font-medium text-(--text) truncate">
                 {{ s.displayName || s.name || '—' }}
               </p>
-              <p class="text-xs text-[var(--text-muted)] truncate">
+              <p class="text-xs text-(--text-muted) truncate">
                 {{ s.code || '—' }}
                 @if (s.city) {
                   · {{ s.city }}
@@ -141,7 +141,7 @@ function isActive(s: PlatformSchool): boolean {
             />
             <mat-icon
               fontSet="material-symbols-outlined"
-              class="text-[var(--text-muted)] hidden sm:block"
+              class="text-(--text-muted) hidden sm:block"
             >
               chevron_right
             </mat-icon>

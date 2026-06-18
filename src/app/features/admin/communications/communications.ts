@@ -41,7 +41,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
   template: `
     <panga-page-header icon="forum" title="Communications" subtitle="Annonces et notifications">
       @if (isAdmin()) {
-        <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+        <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
           <mat-icon fontSet="material-symbols-outlined">{{
             showForm() ? 'close' : 'campaign'
           }}</mat-icon>
@@ -83,7 +83,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
           </div>
         </div>
         <div class="flex justify-end mt-2">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Publier
           </button>
         </div>
@@ -98,7 +98,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
             @for (a of announcements(); track a.id) {
               <div class="panga-card p-5">
                 <div class="flex items-start justify-between gap-3">
-                  <p class="font-semibold text-[var(--text)]">{{ a.title || 'Annonce' }}</p>
+                  <p class="font-semibold text-(--text)">{{ a.title || 'Annonce' }}</p>
                   @if (a.priority) {
                     <panga-status-badge
                       [label]="a.priority"
@@ -108,12 +108,12 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
                   }
                 </div>
                 @if (a.content) {
-                  <p class="text-sm text-[var(--text-muted)] mt-1.5 whitespace-pre-line">
+                  <p class="text-sm text-(--text-muted) mt-1.5 whitespace-pre-line">
                     {{ a.content }}
                   </p>
                 }
                 <div
-                  class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--text-muted)]"
+                  class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-(--text-muted)"
                 >
                   @if (a.targetAudience) {
                     <span class="inline-flex items-center gap-1">
@@ -144,7 +144,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
 
       <section>
         <panga-section-header icon="notifications" title="Mes notifications" />
-        <div class="panga-card divide-y divide-[var(--border)]">
+        <div class="panga-card divide-y divide-(--border)">
           @for (n of notifications(); track n.id) {
             <div class="px-4 py-3">
               <div class="flex items-center gap-2">
@@ -154,21 +154,21 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
                     style="background: var(--brand-500)"
                   ></span>
                 }
-                <p class="text-sm font-medium text-[var(--text)] truncate">
+                <p class="text-sm font-medium text-(--text) truncate">
                   {{ n.title || n.type || 'Notification' }}
                 </p>
               </div>
               @if (n.message) {
-                <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ n.message }}</p>
+                <p class="text-xs text-(--text-muted) mt-0.5">{{ n.message }}</p>
               }
               @if (n.createdAt) {
-                <p class="text-[11px] text-[var(--text-muted)] mt-1">
+                <p class="text-[11px] text-(--text-muted) mt-1">
                   {{ n.createdAt | date: 'dd/MM HH:mm' }}
                 </p>
               }
             </div>
           } @empty {
-            <div class="px-4 py-8 text-center text-sm text-[var(--text-muted)]">
+            <div class="px-4 py-8 text-center text-sm text-(--text-muted)">
               Aucune notification.
             </div>
           }

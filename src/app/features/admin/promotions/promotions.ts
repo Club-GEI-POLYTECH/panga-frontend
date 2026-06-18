@@ -63,7 +63,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
     <!-- Contexte -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+      <mat-form-field appearance="outline" class="flex-1 min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -71,11 +71,11 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Année scolaire</mat-label>
         <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Seuil (%)</mat-label>
         <input
           matInput
@@ -87,12 +87,12 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         />
       </mat-form-field>
       @if (isAdmin() && classId()) {
-        <button mat-stroked-button class="!rounded-xl" (click)="compute()" [disabled]="busy()">
+        <button mat-stroked-button class="rounded-xl!" (click)="compute()" [disabled]="busy()">
           <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
         </button>
         <button
           mat-flat-button
-          class="!rounded-xl"
+          class="rounded-xl!"
           (click)="finalize()"
           [disabled]="busy() || !hasDraft()"
         >
@@ -118,7 +118,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
               <p class="text-2xl font-semibold" [style.color]="countColor(o.value)">
                 {{ countOf(o.value) }}
               </p>
-              <p class="text-xs text-[var(--text-muted)]">{{ o.label }}</p>
+              <p class="text-xs text-(--text-muted)">{{ o.label }}</p>
             </div>
           }
         </section>
@@ -130,11 +130,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           title="Décisions"
           [count]="meta()?.total ?? decisions().length"
         >
-          <mat-form-field
-            appearance="outline"
-            class="w-[180px] !mb-[-1.25rem]"
-            subscriptSizing="dynamic"
-          >
+          <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
             <mat-label>Filtrer</mat-label>
             <mat-select [formControl]="filterDecision" (selectionChange)="reload()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -146,7 +142,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         </panga-section-header>
 
         @if (loading()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (decisions().length === 0) {
           <panga-empty-state
             icon="how_to_reg"
@@ -154,15 +150,15 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
             description="Cliquez sur « Calculer » pour générer les décisions de la classe."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (d of decisions(); track d.id || $index) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <panga-avatar [name]="studentName(d)" [size]="38" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ studentName(d) }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)]">
+                  <p class="text-xs text-(--text-muted)">
                     Moyenne :
                     <span class="font-medium" [style.color]="avgColor(d)">{{ avg(d) }}</span>
                     @if (d.passThreshold !== null && d.passThreshold !== undefined) {
@@ -208,7 +204,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         }
       </section>
 
-      <p class="text-xs text-[var(--text-muted)] mt-3">
+      <p class="text-xs text-(--text-muted) mt-3">
         La décision (admis / non admis) est calculée ici ; le passage effectif des élèves vers la
         classe de l'année suivante se fait depuis la fiche de la classe (promotion).
       </p>

@@ -42,8 +42,8 @@ function schoolYearValidator(c: { value: string }) {
       >
         <mat-icon fontSet="material-symbols-outlined" style="color: var(--warning)">info</mat-icon>
         <div>
-          <p class="text-sm font-medium text-[var(--text)]">Année scolaire non configurée</p>
-          <p class="text-xs text-[var(--text-muted)]">
+          <p class="text-sm font-medium text-(--text)">Année scolaire non configurée</p>
+          <p class="text-xs text-(--text-muted)">
             L'année <b>{{ sy.current() }}</b> est actuellement <b>déduite</b> de la date.
             Définissez-la ci-dessous pour figer le comportement de l'application.
           </p>
@@ -61,16 +61,16 @@ function schoolYearValidator(c: { value: string }) {
       </panga-section-header>
       <div class="grid gap-4 sm:grid-cols-3">
         <div>
-          <p class="text-xs text-[var(--text-muted)]">Année en cours</p>
-          <p class="text-lg font-semibold text-[var(--text)]">{{ sy.current() }}</p>
+          <p class="text-xs text-(--text-muted)">Année en cours</p>
+          <p class="text-lg font-semibold text-(--text)">{{ sy.current() }}</p>
         </div>
         <div>
-          <p class="text-xs text-[var(--text-muted)]">Année suivante</p>
-          <p class="text-lg font-semibold text-[var(--text)]">{{ sy.next() || '—' }}</p>
+          <p class="text-xs text-(--text-muted)">Année suivante</p>
+          <p class="text-lg font-semibold text-(--text)">{{ sy.next() || '—' }}</p>
         </div>
         <div>
-          <p class="text-xs text-[var(--text-muted)]">Période</p>
-          <p class="text-sm text-[var(--text)]">
+          <p class="text-xs text-(--text-muted)">Période</p>
+          <p class="text-sm text-(--text)">
             {{ sy.startDate() || '—' }} → {{ sy.endDate() || '—' }}
           </p>
         </div>
@@ -106,14 +106,14 @@ function schoolYearValidator(c: { value: string }) {
       <div class="flex justify-end mt-2">
         <button
           mat-flat-button
-          class="!rounded-xl"
+          class="rounded-xl!"
           type="submit"
           [disabled]="form.invalid || saving()"
         >
           <mat-icon fontSet="material-symbols-outlined">save</mat-icon> Enregistrer
         </button>
       </div>
-      <p class="text-xs text-[var(--text-muted)] mt-3">
+      <p class="text-xs text-(--text-muted) mt-3">
         Renseigner l'<b>année suivante</b> prépare la fin d'année (cohérent avec le module
         Promotions).
       </p>

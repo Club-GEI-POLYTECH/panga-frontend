@@ -27,9 +27,9 @@ import { SectionHeader } from '../../../shared/ui/section-header';
   template: `
     <a
       [routerLink]="['/', 'classes']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Classes
@@ -46,7 +46,7 @@ import { SectionHeader } from '../../../shared/ui/section-header';
       <section class="panga-card p-5">
         <panga-section-header icon="category" title="Options" [count]="options().length" />
         @if (options().length) {
-          <ul class="divide-y divide-[var(--border)] mb-4">
+          <ul class="divide-y divide-(--border) mb-4">
             @for (o of options(); track o.id) {
               <li
                 class="flex items-center gap-3 py-2.5 px-2 rounded-lg cursor-pointer transition-colors"
@@ -60,15 +60,15 @@ import { SectionHeader } from '../../../shared/ui/section-header';
                 (click)="select(o.id)"
                 (keydown.enter)="select(o.id)"
               >
-                <span class="material-symbols-outlined text-[var(--brand-500)]">folder</span>
+                <span class="material-symbols-outlined text-(--brand-500)">folder</span>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">{{ o.name }}</p>
+                  <p class="text-sm font-medium text-(--text) truncate">{{ o.name }}</p>
                   @if (o.description) {
-                    <p class="text-xs text-[var(--text-muted)] truncate">{{ o.description }}</p>
+                    <p class="text-xs text-(--text-muted) truncate">{{ o.description }}</p>
                   }
                 </div>
                 <button mat-icon-button (click)="removeOption(o, $event)" aria-label="Supprimer">
-                  <mat-icon fontSet="material-symbols-outlined" class="text-[var(--danger)]"
+                  <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)"
                     >delete</mat-icon
                   >
                 </button>
@@ -76,24 +76,20 @@ import { SectionHeader } from '../../../shared/ui/section-header';
             }
           </ul>
         } @else {
-          <p class="text-sm text-[var(--text-muted)] mb-4">Aucune option.</p>
+          <p class="text-sm text-(--text-muted) mb-4">Aucune option.</p>
         }
         <form
           [formGroup]="optionForm"
           (ngSubmit)="addOption()"
           class="flex flex-wrap items-start gap-2"
         >
-          <mat-form-field
-            appearance="outline"
-            subscriptSizing="dynamic"
-            class="flex-1 min-w-[160px]"
-          >
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-40">
             <mat-label>Nouvelle option</mat-label>
             <input matInput formControlName="name" placeholder="Scientifique" />
           </mat-form-field>
           <button
             mat-flat-button
-            class="!rounded-xl !mt-1"
+            class="rounded-xl! mt-1!"
             type="submit"
             [disabled]="optionForm.invalid"
           >
@@ -110,21 +106,21 @@ import { SectionHeader } from '../../../shared/ui/section-header';
           [count]="subOptions().length"
         />
         @if (!selectedId()) {
-          <p class="text-sm text-[var(--text-muted)]">Sélectionnez une option à gauche.</p>
+          <p class="text-sm text-(--text-muted)">Sélectionnez une option à gauche.</p>
         } @else {
           @if (subOptions().length) {
-            <ul class="divide-y divide-[var(--border)] mb-4">
+            <ul class="divide-y divide-(--border) mb-4">
               @for (s of subOptions(); track s.id) {
                 <li class="flex items-center gap-3 py-2.5">
-                  <span class="material-symbols-outlined text-[var(--brand-500)]">label</span>
+                  <span class="material-symbols-outlined text-(--brand-500)">label</span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">{{ s.name }}</p>
+                    <p class="text-sm font-medium text-(--text) truncate">{{ s.name }}</p>
                     @if (s.description) {
-                      <p class="text-xs text-[var(--text-muted)] truncate">{{ s.description }}</p>
+                      <p class="text-xs text-(--text-muted) truncate">{{ s.description }}</p>
                     }
                   </div>
                   <button mat-icon-button (click)="removeSub(s)" aria-label="Supprimer">
-                    <mat-icon fontSet="material-symbols-outlined" class="text-[var(--danger)]"
+                    <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)"
                       >delete</mat-icon
                     >
                   </button>
@@ -132,24 +128,20 @@ import { SectionHeader } from '../../../shared/ui/section-header';
               }
             </ul>
           } @else {
-            <p class="text-sm text-[var(--text-muted)] mb-4">Aucune sous-option.</p>
+            <p class="text-sm text-(--text-muted) mb-4">Aucune sous-option.</p>
           }
           <form
             [formGroup]="subForm"
             (ngSubmit)="addSub()"
             class="flex flex-wrap items-start gap-2"
           >
-            <mat-form-field
-              appearance="outline"
-              subscriptSizing="dynamic"
-              class="flex-1 min-w-[160px]"
-            >
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-40">
               <mat-label>Nouvelle sous-option</mat-label>
               <input matInput formControlName="name" placeholder="Bio-chimie" />
             </mat-form-field>
             <button
               mat-flat-button
-              class="!rounded-xl !mt-1"
+              class="rounded-xl! mt-1!"
               type="submit"
               [disabled]="subForm.invalid"
             >

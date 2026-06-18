@@ -11,25 +11,25 @@ import type { PaginationMeta } from '../../core/models/api.models';
   template: `
     @if (meta(); as m) {
       <div class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-        <span class="text-[var(--text-muted)]">
+        <span class="text-(--text-muted)">
           {{ from() }}–{{ to() }} <span class="opacity-70">sur</span> {{ m.total }}
         </span>
         <div class="flex items-center gap-1">
           <button
             mat-icon-button
-            class="!h-9 !w-9"
+            class="h-9! w-9!"
             [disabled]="m.page <= 1"
             (click)="go(m.page - 1)"
             aria-label="Page précédente"
           >
             <mat-icon fontSet="material-symbols-outlined">chevron_left</mat-icon>
           </button>
-          <span class="px-2 text-[var(--text-muted)] tabular-nums">
+          <span class="px-2 text-(--text-muted) tabular-nums">
             {{ m.page }} / {{ m.totalPages || 1 }}
           </span>
           <button
             mat-icon-button
-            class="!h-9 !w-9"
+            class="h-9! w-9!"
             [disabled]="m.page >= (m.totalPages || 1)"
             (click)="go(m.page + 1)"
             aria-label="Page suivante"

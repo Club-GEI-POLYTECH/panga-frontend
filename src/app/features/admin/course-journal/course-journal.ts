@@ -68,13 +68,13 @@ interface ChildRef {
 
     <!-- Filtres -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Année scolaire</mat-label>
         <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
 
       @if (isParent()) {
-        <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+        <mat-form-field appearance="outline" class="flex-1 min-w-55">
           <mat-label>Enfant</mat-label>
           <mat-select [value]="studentId()" (selectionChange)="selectStudent($event.value)">
             @for (c of children(); track c.studentId) {
@@ -83,7 +83,7 @@ interface ChildRef {
           </mat-select>
         </mat-form-field>
       } @else {
-        <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+        <mat-form-field appearance="outline" class="flex-1 min-w-55">
           <mat-label>Classe</mat-label>
           <mat-select [value]="classInstanceId()" (selectionChange)="selectClass($event.value)">
             @for (c of classes(); track c.id) {
@@ -94,7 +94,7 @@ interface ChildRef {
       }
 
       @if (periods().length) {
-        <mat-form-field appearance="outline" class="min-w-[180px]">
+        <mat-form-field appearance="outline" class="min-w-45">
           <mat-label>Période</mat-label>
           <mat-select [value]="periodId()" (selectionChange)="selectPeriod($event.value)">
             <mat-option [value]="''">Toutes les périodes</mat-option>
@@ -120,7 +120,7 @@ interface ChildRef {
         <section class="panga-card p-5 mb-6">
           <panga-section-header icon="menu_book" title="Programme national de la classe" />
           <div class="flex flex-wrap items-end gap-3">
-            <mat-form-field appearance="outline" class="flex-1 min-w-[260px]">
+            <mat-form-field appearance="outline" class="flex-1 min-w-65">
               <mat-label>Programme publié</mat-label>
               <mat-select [formControl]="programCtrl">
                 @for (p of programs(); track p.id) {
@@ -135,7 +135,7 @@ interface ChildRef {
             </mat-form-field>
             <button
               mat-stroked-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="activateProgram()"
               matTooltip="Activer ce programme pour l'école"
@@ -144,7 +144,7 @@ interface ChildRef {
             </button>
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="assignProgram()"
               matTooltip="Lier le programme à cette classe (instance)"
@@ -152,7 +152,7 @@ interface ChildRef {
               <mat-icon fontSet="material-symbols-outlined">link</mat-icon> Assigner à la classe
             </button>
           </div>
-          <p class="text-xs text-[var(--text-muted)] mt-2">
+          <p class="text-xs text-(--text-muted) mt-2">
             Le programme doit être <b>publié</b> puis <b>activé pour l'école</b> avant d'être
             assigné à la classe. L'assignation sur l'instance est prioritaire sur le modèle.
           </p>
@@ -178,7 +178,7 @@ interface ChildRef {
         </panga-section-header>
 
         @if (loadingOverview()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (overview().length === 0) {
           <panga-empty-state
             icon="trending_up"
@@ -187,35 +187,35 @@ interface ChildRef {
           />
         } @else {
           <div class="grid gap-4 sm:grid-cols-3 mb-5">
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures prévues</p>
-              <p class="text-2xl font-semibold text-[var(--text)]">{{ totalPlanned() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures prévues</p>
+              <p class="text-2xl font-semibold text-(--text)">{{ totalPlanned() }}</p>
             </div>
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures réalisées</p>
-              <p class="text-2xl font-semibold text-[var(--brand-700)]">{{ totalDelivered() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures réalisées</p>
+              <p class="text-2xl font-semibold text-(--brand-700)">{{ totalDelivered() }}</p>
             </div>
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures restantes</p>
-              <p class="text-2xl font-semibold text-[var(--text)]">{{ totalRemaining() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures restantes</p>
+              <p class="text-2xl font-semibold text-(--text)">{{ totalRemaining() }}</p>
             </div>
           </div>
 
           <div class="space-y-4">
             @for (row of overview(); track row.classSubjectId) {
-              <div class="rounded-2xl border border-[var(--border)] p-4">
+              <div class="rounded-2xl border border-(--border) p-4">
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <div class="min-w-0">
-                    <p class="font-medium text-[var(--text)] truncate">{{ row.subjectLabel }}</p>
+                    <p class="font-medium text-(--text) truncate">{{ row.subjectLabel }}</p>
                     @if (row.teacherName) {
-                      <p class="text-xs text-[var(--text-muted)] truncate">{{ row.teacherName }}</p>
+                      <p class="text-xs text-(--text-muted) truncate">{{ row.teacherName }}</p>
                     }
                   </div>
-                  <span class="text-sm font-semibold text-[var(--text)] shrink-0">
+                  <span class="text-sm font-semibold text-(--text) shrink-0">
                     {{ pct(row.completionRatio) }}%
                   </span>
                 </div>
-                <div class="h-2.5 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                <div class="h-2.5 w-full rounded-full bg-(--border) overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all"
                     [style.width.%]="pct(row.completionRatio)"
@@ -228,15 +228,15 @@ interface ChildRef {
                     "
                   ></div>
                 </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-[var(--text-muted)]">
+                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-(--text-muted)">
                   <span
-                    >Prévu : <b class="text-[var(--text)]">{{ row.plannedHours }}h</b></span
+                    >Prévu : <b class="text-(--text)">{{ row.plannedHours }}h</b></span
                   >
                   <span
-                    >Réalisé : <b class="text-[var(--text)]">{{ row.deliveredHours }}h</b></span
+                    >Réalisé : <b class="text-(--text)">{{ row.deliveredHours }}h</b></span
                   >
                   <span
-                    >Restant : <b class="text-[var(--text)]">{{ row.remainingHours }}h</b></span
+                    >Restant : <b class="text-(--text)">{{ row.remainingHours }}h</b></span
                   >
                   @if (row.entriesCount !== undefined) {
                     <span>{{ row.entriesCount }} séance(s)</span>
@@ -257,7 +257,7 @@ interface ChildRef {
             (ngSubmit)="saveTarget()"
             class="flex flex-wrap items-end gap-3"
           >
-            <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+            <mat-form-field appearance="outline" class="flex-1 min-w-55">
               <mat-label>Cours</mat-label>
               <mat-select formControlName="classSubjectId">
                 @for (cs of subjects(); track cs.id) {
@@ -265,7 +265,7 @@ interface ChildRef {
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="min-w-[180px]">
+            <mat-form-field appearance="outline" class="min-w-45">
               <mat-label>Période</mat-label>
               <mat-select formControlName="periodId">
                 @for (p of periods(); track p.id) {
@@ -273,13 +273,13 @@ interface ChildRef {
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="w-[140px]">
+            <mat-form-field appearance="outline" class="w-35">
               <mat-label>Heures prévues</mat-label>
               <input matInput type="number" formControlName="plannedHours" min="0" />
             </mat-form-field>
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               type="submit"
               [disabled]="targetForm.invalid || savingTarget()"
             >
@@ -287,7 +287,7 @@ interface ChildRef {
             </button>
           </form>
           @if (subjects().length === 0) {
-            <p class="text-sm text-[var(--warning)] mt-3">
+            <p class="text-sm text-(--warning) mt-3">
               Aucun cours ouvert sur cette classe. Assignez un programme puis ouvrez les cours
               (matières).
             </p>
@@ -303,7 +303,7 @@ interface ChildRef {
           [count]="entriesMeta()?.total ?? entries().length"
         >
           @if (canEdit() && classInstanceId()) {
-            <button mat-flat-button class="!rounded-xl" (click)="toggleForm()">
+            <button mat-flat-button class="rounded-xl!" (click)="toggleForm()">
               <mat-icon fontSet="material-symbols-outlined">{{
                 showForm() ? 'close' : 'add'
               }}</mat-icon>
@@ -365,7 +365,7 @@ interface ChildRef {
             <div class="flex justify-end gap-2">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="entryForm.invalid || savingEntry()"
               >
@@ -376,7 +376,7 @@ interface ChildRef {
         }
 
         @if (loadingEntries()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (entries().length === 0) {
           <panga-empty-state
             icon="event_note"
@@ -384,7 +384,7 @@ interface ChildRef {
             description="Aucune séance enregistrée pour ce contexte."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (e of entries(); track e.id) {
               <div class="px-5 py-3 flex items-start gap-3">
                 <div
@@ -395,7 +395,7 @@ interface ChildRef {
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">
                       {{ e.title || '—' }}
                     </p>
                     <panga-status-badge
@@ -404,17 +404,17 @@ interface ChildRef {
                       [dot]="false"
                     />
                   </div>
-                  <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                  <p class="text-xs text-(--text-muted) mt-0.5">
                     {{ e.lessonDate || '—' }}
                     @if (e.subjectLabel) {
                       · {{ e.subjectLabel }}
                     }
                   </p>
                   @if (e.summary) {
-                    <p class="text-sm text-[var(--text)] mt-1 line-clamp-2">{{ e.summary }}</p>
+                    <p class="text-sm text-(--text) mt-1 line-clamp-2">{{ e.summary }}</p>
                   }
                   @if (e.homework) {
-                    <p class="text-xs text-[var(--text-muted)] mt-1">
+                    <p class="text-xs text-(--text-muted) mt-1">
                       <b>Devoirs :</b> {{ e.homework }}
                     </p>
                   }

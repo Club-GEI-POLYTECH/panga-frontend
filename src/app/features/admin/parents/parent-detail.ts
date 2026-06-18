@@ -128,9 +128,9 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
   template: `
     <a
       [routerLink]="['/', 'parents']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Parents
@@ -219,7 +219,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         <div class="sticky bottom-4 z-10 flex justify-end mb-6">
           <button
             mat-flat-button
-            class="!rounded-xl shadow-lg"
+            class="rounded-xl! shadow-lg"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -233,20 +233,20 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <section class="panga-card p-5">
         <panga-section-header icon="school" title="Enfants liés" [count]="children().length" />
         @if (children().length === 0) {
-          <p class="text-sm text-[var(--text-muted)]">Aucun enfant lié.</p>
+          <p class="text-sm text-(--text-muted)">Aucun enfant lié.</p>
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (c of children(); track $index) {
               <a
                 [routerLink]="['/', 'students', childId(c)]"
-                class="flex items-center gap-3 px-5 py-3 hover:bg-[var(--background)] transition-colors"
+                class="flex items-center gap-3 px-5 py-3 hover:bg-(--background) transition-colors"
               >
                 <panga-avatar [name]="childLabel(c)" [size]="34" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">{{ childLabel(c) }}</p>
-                  <p class="text-xs text-[var(--text-muted)]">{{ childMeta(c) }}</p>
+                  <p class="text-sm font-medium text-(--text) truncate">{{ childLabel(c) }}</p>
+                  <p class="text-xs text-(--text-muted)">{{ childMeta(c) }}</p>
                 </div>
-                <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]"
+                <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)"
                   >chevron_right</mat-icon
                 >
               </a>

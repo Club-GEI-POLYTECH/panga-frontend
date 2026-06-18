@@ -35,8 +35,8 @@ import { AuthLayout } from './auth-layout';
         </div>
 
         @if (!sent()) {
-          <h2 class="text-2xl font-semibold text-[var(--text)]">{{ t('auth.forgot.title') }}</h2>
-          <p class="text-sm text-[var(--text-muted)] mt-1 mb-6">{{ t('auth.forgot.subtitle') }}</p>
+          <h2 class="text-2xl font-semibold text-(--text)">{{ t('auth.forgot.title') }}</h2>
+          <p class="text-sm text-(--text-muted) mt-1 mb-6">{{ t('auth.forgot.subtitle') }}</p>
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
             <mat-form-field appearance="outline" class="w-full">
@@ -70,10 +70,10 @@ import { AuthLayout } from './auth-layout';
                 mark_email_read
               </mat-icon>
             </div>
-            <h2 class="text-xl font-semibold text-[var(--text)]">
+            <h2 class="text-xl font-semibold text-(--text)">
               {{ t('auth.forgot.sentTitle') }}
             </h2>
-            <p class="text-sm text-[var(--text-muted)] mt-2">{{ t('auth.forgot.sentBody') }}</p>
+            <p class="text-sm text-(--text-muted) mt-2">{{ t('auth.forgot.sentBody') }}</p>
           </div>
         }
 
@@ -82,7 +82,7 @@ import { AuthLayout } from './auth-layout';
           class="mt-6 flex items-center justify-center gap-1 text-sm"
           style="color: var(--brand-500)"
         >
-          <mat-icon fontSet="material-symbols-outlined" class="!text-base !h-4 !w-4"
+          <mat-icon fontSet="material-symbols-outlined" class="text-base! h-4! w-4!"
             >arrow_back</mat-icon
           >
           {{ t('auth.backToLogin') }}

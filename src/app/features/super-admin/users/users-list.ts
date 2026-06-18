@@ -80,7 +80,7 @@ function isActive(u: PlatformUser): boolean {
   ],
   template: `
     <panga-page-header icon="group" title="Utilisateurs" subtitle="Comptes de toute la plateforme">
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
@@ -129,7 +129,7 @@ function isActive(u: PlatformUser): boolean {
           </mat-form-field>
         </div>
         <div class="flex justify-end">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Créer le compte
           </button>
         </div>
@@ -141,11 +141,11 @@ function isActive(u: PlatformUser): boolean {
         <panga-section-header icon="bar_chart" title="Statistiques" />
         <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
           @for (tile of statTiles(); track tile.label) {
-            <div class="rounded-2xl border border-[var(--border)] p-3.5">
-              <p class="text-xs text-[var(--text-muted)] truncate" [title]="tile.label">
+            <div class="rounded-2xl border border-(--border) p-3.5">
+              <p class="text-xs text-(--text-muted) truncate" [title]="tile.label">
                 {{ tile.label }}
               </p>
-              <p class="text-xl font-semibold text-[var(--text)] mt-0.5">{{ tile.value }}</p>
+              <p class="text-xl font-semibold text-(--text) mt-0.5">{{ tile.value }}</p>
             </div>
           }
         </div>
@@ -153,11 +153,11 @@ function isActive(u: PlatformUser): boolean {
     }
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
-      <span class="text-sm text-[var(--text-muted)]">Filtrer par rôle :</span>
+      <span class="text-sm text-(--text-muted)">Filtrer par rôle :</span>
       <mat-button-toggle-group
         [value]="activeRole()"
         (change)="filterByRole($event.value)"
-        class="!rounded-xl"
+        class="rounded-xl!"
       >
         <mat-button-toggle value="">Tous</mat-button-toggle>
         @for (r of roles; track r) {
@@ -177,28 +177,26 @@ function isActive(u: PlatformUser): boolean {
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (u of users(); track u.id) {
           <div class="flex items-center gap-4 px-4 sm:px-5 py-3.5">
             <panga-avatar [name]="fullName(u)" [size]="46" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="font-medium text-[var(--text)] truncate">{{ fullName(u) || '—' }}</p>
+                <p class="font-medium text-(--text) truncate">{{ fullName(u) || '—' }}</p>
                 @if (u.username) {
-                  <span class="text-xs text-[var(--text-muted)] truncate">{{
-                    '@' + u.username
-                  }}</span>
+                  <span class="text-xs text-(--text-muted) truncate">{{ '@' + u.username }}</span>
                 }
               </div>
               <div
-                class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-(--text-muted)"
               >
                 <span class="inline-flex items-center gap-1 truncate">
                   <span class="material-symbols-outlined text-[14px]">mail</span>
                   {{ u.email || '—' }}
                 </span>
                 @if (u.schoolId) {
-                  <span class="inline-flex items-center gap-1 truncate max-w-[200px]">
+                  <span class="inline-flex items-center gap-1 truncate max-w-50">
                     <span class="material-symbols-outlined text-[14px]">apartment</span>
                     {{ u.schoolId }}
                   </span>

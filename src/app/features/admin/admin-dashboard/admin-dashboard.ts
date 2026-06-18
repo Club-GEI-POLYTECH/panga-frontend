@@ -99,9 +99,7 @@ function fmt(n: number | null | undefined): string {
         @if (trends().length) {
           <panga-line-chart [categories]="trendMonths()" [series]="trendSeries()" [height]="280" />
         } @else {
-          <p class="text-sm text-[var(--text-muted)] py-8 text-center">
-            Aucune donnée de tendance.
-          </p>
+          <p class="text-sm text-(--text-muted) py-8 text-center">Aucune donnée de tendance.</p>
         }
       </section>
 
@@ -120,7 +118,7 @@ function fmt(n: number | null | undefined): string {
         <div class="panga-card p-5 lg:col-span-2">
           <panga-section-header icon="history" title="Activité récente" />
           @if (audit().length) {
-            <ul class="divide-y divide-[var(--border)]">
+            <ul class="divide-y divide-(--border)">
               @for (a of audit(); track a.id || $index) {
                 @let view = auditView(a);
                 <li class="flex items-center gap-3 py-2.5">
@@ -132,13 +130,13 @@ function fmt(n: number | null | undefined): string {
                     <span class="material-symbols-outlined text-[18px]">{{ view.icon }}</span>
                   </span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">{{ view.title }}</p>
-                    <p class="text-xs text-[var(--text-muted)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">{{ view.title }}</p>
+                    <p class="text-xs text-(--text-muted) truncate">
                       {{ view.subtitle || '—' }}
                     </p>
                   </div>
                   @if (a.createdAt) {
-                    <span class="text-xs text-[var(--text-muted)] shrink-0">
+                    <span class="text-xs text-(--text-muted) shrink-0">
                       {{ a.createdAt | date: 'dd/MM HH:mm' }}
                     </span>
                   }
@@ -146,23 +144,23 @@ function fmt(n: number | null | undefined): string {
               }
             </ul>
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-8 text-center">Aucun événement récent.</p>
+            <p class="text-sm text-(--text-muted) py-8 text-center">Aucun événement récent.</p>
           }
         </div>
 
         <div class="panga-card p-5">
           <panga-section-header icon="bolt" title="Actions rapides" />
           <div class="flex flex-col gap-2">
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/students">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/students">
               <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon> Ajouter un élève
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/classes">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/classes">
               <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créer une classe
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/teachers">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/teachers">
               <mat-icon fontSet="material-symbols-outlined">badge</mat-icon> Ajouter un enseignant
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/communications">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/communications">
               <mat-icon fontSet="material-symbols-outlined">campaign</mat-icon> Publier une annonce
             </a>
           </div>

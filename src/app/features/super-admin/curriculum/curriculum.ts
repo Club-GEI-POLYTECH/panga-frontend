@@ -100,7 +100,7 @@ const BULLETIN_TEMPLATE = `{
           />
           <div class="grid gap-3 sm:grid-cols-2">
             @for (p of drafts(); track p.id) {
-              <div class="rounded-2xl border border-[var(--border)] p-4">
+              <div class="rounded-2xl border border-(--border) p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
                     <p class="font-medium text-(--text) truncate">{{ p.title || p.code }}</p>
@@ -134,10 +134,10 @@ const BULLETIN_TEMPLATE = `{
         @if (published().length) {
           <div class="grid gap-3 sm:grid-cols-2">
             @for (p of published(); track p.id) {
-              <div class="rounded-2xl border border-[var(--border)] p-4">
+              <div class="rounded-2xl border border-(--border) p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="font-medium text-[var(--text)] truncate">{{ p.title || p.code }}</p>
+                    <p class="font-medium text-(--text) truncate">{{ p.title || p.code }}</p>
                     <p class="text-xs text-(--text-muted) mt-0.5">{{ p.code }}</p>
                   </div>
                   <mat-slide-toggle
@@ -182,14 +182,14 @@ const BULLETIN_TEMPLATE = `{
                         </thead>
                         <tbody>
                           @for (s of slots(); track $index) {
-                            <tr class="border-t border-[var(--border)]">
-                              <td class="py-1 pr-2 text-[var(--text)]">
+                            <tr class="border-t border-(--border)">
+                              <td class="py-1 pr-2 text-(--text)">
                                 {{ s['labelFr'] || s['programCode'] }}
                               </td>
                               <td class="py-1 px-2 text-(--text-muted)">
                                 {{ s['programCode'] }}
                               </td>
-                              <td class="py-1 px-2 text-[var(--text)]">{{ s['maxPerPeriod'] }}</td>
+                              <td class="py-1 px-2 text-(--text)">{{ s['maxPerPeriod'] }}</td>
                               <td class="py-1 px-2 text-(--text-muted)">
                                 {{ scoringLabel(s['scoringMode']) }}
                               </td>
@@ -219,18 +219,16 @@ const BULLETIN_TEMPLATE = `{
             [count]="bulletins().length"
           />
           @for (b of bulletins(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
-              <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
+            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
+              <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
                 >description</span
               >
-              <span class="text-sm text-[var(--text)] truncate flex-1">{{
-                b.title || b.code
-              }}</span>
+              <span class="text-sm text-(--text) truncate flex-1">{{ b.title || b.code }}</span>
               @if (isPersisted(b)) {
                 <panga-status-badge label="Base" tone="brand" [dot]="false" />
                 <button
                   mat-icon-button
-                  class="h-8! !w-8"
+                  class="h-8! w-8!"
                   (click)="deleteBulletin(b)"
                   aria-label="Supprimer"
                 >
@@ -254,11 +252,11 @@ const BULLETIN_TEMPLATE = `{
             [count]="rdc().length"
           />
           @for (b of rdc(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
-              <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
+            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
+              <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
                 >description</span
               >
-              <span class="text-sm text-[var(--text)] truncate">{{ b.title || b.code }}</span>
+              <span class="text-sm text-(--text) truncate">{{ b.title || b.code }}</span>
             </div>
           } @empty {
             <p class="text-sm text-(--text-muted)">Aucun référentiel embarqué.</p>
@@ -274,7 +272,7 @@ const BULLETIN_TEMPLATE = `{
             [formControl]="importJson"
             rows="12"
             spellcheck="false"
-            class="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs font-mono text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
+            class="w-full rounded-xl border border-(--border) bg-(--background) p-3 text-xs font-mono text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400)"
           ></textarea>
           <div class="flex justify-end mt-3">
             <button
@@ -294,7 +292,7 @@ const BULLETIN_TEMPLATE = `{
             [formControl]="bulletinJson"
             rows="12"
             spellcheck="false"
-            class="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs font-mono text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
+            class="w-full rounded-xl border border-(--border) bg-(--background) p-3 text-xs font-mono text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400)"
           ></textarea>
           <div class="flex justify-end mt-3">
             <button
