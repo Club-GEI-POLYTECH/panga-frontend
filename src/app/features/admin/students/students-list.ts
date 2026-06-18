@@ -33,6 +33,7 @@ import {
 } from '../../../core/models/student.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
@@ -150,6 +151,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     MatSelectModule,
     MatTooltipModule,
     Avatar,
+    CredentialReveal,
     EmptyState,
     KpiCard,
     PageHeader,
@@ -180,6 +182,15 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
         {{ showForm() ? 'Annuler' : 'Nouvel élève' }}
       </button>
     </panga-page-header>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Compte élève créé"
+        [identifier]="c.identifier"
+        [password]="c.password"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Élèves" [value]="total()" icon="school" />
@@ -373,6 +384,8 @@ export class StudentsList {
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
   protected readonly showForm = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois à la création d'un compte. */
+  protected readonly credential = signal<{ identifier: string; password: string } | null>(null);
 
   protected readonly boys = computed(() => this.students().filter((s) => s.gender === 'M').length);
   protected readonly girls = computed(() => this.students().filter((s) => s.gender === 'F').length);
@@ -504,6 +517,7 @@ export class StudentsList {
 
     this.studentsApi.create(payload).subscribe({
       next: (student) => {
+        this.revealCredential(student);
         const done = () => {
           this.submitting.set(false);
           this.notify.success('Élève inscrit.');
@@ -521,5 +535,20 @@ export class StudentsList {
       },
       error: () => this.submitting.set(false),
     });
+  }
+
+  /** Affiche le mot de passe temporaire si le backend en a généré un. */
+  private revealCredential(student: Record<string, unknown>): void {
+    const user = (student?.['user'] ?? {}) as Record<string, unknown>;
+    const password = (student?.['temporaryPassword'] ?? user['temporaryPassword']) as
+      | string
+      | undefined;
+    if (!password) {
+      return;
+    }
+    const identifier = String(
+      student['studentNumber'] ?? student['matricule'] ?? user['username'] ?? user['email'] ?? '',
+    );
+    this.credential.set({ identifier, password });
   }
 }

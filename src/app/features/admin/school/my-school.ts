@@ -201,7 +201,6 @@ const READONLY: Group[] = [
   selector: 'panga-my-school',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,

@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ParentsService } from '../services/parents.service';
+import { UsersService } from '../services/users.service';
 import type { Parent } from '../models/admin.models';
 import type { EnumOption } from '../../../core/models/school.enums';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
@@ -20,6 +21,7 @@ import {
 } from '../../../core/models/parent.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
@@ -122,6 +124,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatSelectModule,
     MatSlideToggleModule,
     Avatar,
+    CredentialReveal,
     SectionHeader,
     StatusBadge,
   ],
@@ -135,6 +138,15 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       >
       Parents
     </a>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Nouveau mot de passe — accès parent"
+        [identifier]="ro('email')"
+        [password]="c"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -160,9 +172,20 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
               }
             </p>
           </div>
-          @if (ro('status'); as st) {
-            <panga-status-badge [label]="statusLabel(st)" [tone]="statusTone(st)" />
-          }
+          <div class="flex flex-col items-end gap-2">
+            @if (ro('status'); as st) {
+              <panga-status-badge [label]="statusLabel(st)" [tone]="statusTone(st)" />
+            }
+            <button
+              mat-stroked-button
+              class="!rounded-xl !text-white !border-white/40"
+              [disabled]="resetting() || !userId()"
+              (click)="resetPassword()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+              Réinitialiser le mot de passe
+            </button>
+          </div>
         </div>
       </div>
 
@@ -260,6 +283,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
 export class ParentDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly parentsApi = inject(ParentsService);
+  private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -269,6 +293,28 @@ export class ParentDetail {
   protected readonly parent = signal<Parent | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly resetting = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois par la réinitialisation. */
+  protected readonly credential = signal<string | null>(null);
+  protected readonly userId = computed(() => this.parent()?.userId);
+
+  resetPassword(): void {
+    const uid = this.userId();
+    if (!uid || this.resetting()) {
+      return;
+    }
+    this.resetting.set(true);
+    this.usersApi.resetPassword(uid).subscribe({
+      next: (r) => {
+        this.resetting.set(false);
+        if (r.temporaryPassword) {
+          this.credential.set(r.temporaryPassword);
+        }
+        this.notify.success('Mot de passe réinitialisé.');
+      },
+      error: () => this.resetting.set(false),
+    });
+  }
 
   protected readonly children = computed(
     () => (this.parent()?.students ?? []) as Record<string, unknown>[],
