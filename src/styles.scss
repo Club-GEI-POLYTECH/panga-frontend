@@ -304,7 +304,61 @@ html.dark {
     height: 44px;
     border-radius: 0.9rem;
     color: #fff;
+    font-family: 'Urbanist', sans-serif;
     font-weight: 700;
     background: var(--brand-gradient);
+    box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--brand-700) 70%, transparent);
+  }
+}
+
+/* Le panneau marque (desktop) porte déjà le logo : on masque le doublon. */
+@media (min-width: 1024px) {
+  .panga-brand {
+    display: none;
+  }
+}
+
+/* Lien « retour » des écrans auth. */
+.panga-auth-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 1.5rem;
+  width: 100%;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--brand-700);
+  }
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+/* CTA principal des formulaires auth — dégradé marque, relief au survol. */
+.panga-auth-submit {
+  height: 48px;
+  border-radius: 0.85rem !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #fff !important;
+  background: var(--brand-gradient) !important;
+  box-shadow: 0 12px 26px -14px color-mix(in srgb, var(--brand-700) 75%, transparent);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.04);
+    box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--brand-700) 80%, transparent);
+  }
+  &:disabled {
+    opacity: 0.7;
   }
 }

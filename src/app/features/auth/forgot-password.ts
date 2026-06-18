@@ -51,7 +51,7 @@ import { AuthLayout } from './auth-layout';
             <button
               type="submit"
               mat-flat-button
-              class="panga-btn-primary mt-2"
+              class="panga-auth-submit mt-2"
               [disabled]="submitting()"
             >
               @if (submitting()) {
@@ -77,14 +77,8 @@ import { AuthLayout } from './auth-layout';
           </div>
         }
 
-        <a
-          routerLink="/auth/login"
-          class="mt-6 flex items-center justify-center gap-1 text-sm"
-          style="color: var(--brand-500)"
-        >
-          <mat-icon fontSet="material-symbols-outlined" class="text-base! h-4! w-4!"
-            >arrow_back</mat-icon
-          >
+        <a routerLink="/auth/login" class="panga-auth-back">
+          <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
           {{ t('auth.backToLogin') }}
         </a>
       </ng-container>

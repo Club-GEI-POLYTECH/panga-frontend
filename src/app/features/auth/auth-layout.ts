@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 
 /**
- * Coquille visuelle des écrans d'authentification : fond dégradé turquoise
- * animé + carte centrée. Le contenu (formulaire) est projeté.
+ * Coquille visuelle des écrans d'authentification : panneau marque (dégradé
+ * turquoise animé, texture, lignes « glass ») + carte formulaire projetée.
  */
 @Component({
   selector: 'panga-auth-layout',
@@ -10,15 +10,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   template: `
     <div class="wrap">
       <aside class="brand-panel" aria-hidden="true">
+        <span class="grid-overlay"></span>
         <span class="blob blob-1"></span>
         <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
+
         <div class="brand-inner">
           <div class="mark">
             <span class="badge">P</span>
             <span class="name">Panga</span>
           </div>
+
           <div class="hero">
+            <span class="eyebrow">Plateforme de gestion scolaire</span>
             <h2>Toute votre école,<br />réunie en un seul endroit.</h2>
             <p>
               Élèves, notes, présences, paiements et communications — dans une plateforme claire,
@@ -26,20 +29,27 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
             </p>
             <ul class="feats">
               <li>
-                <span class="material-symbols-outlined">school</span> Élèves &amp; classes
-                centralisés
+                <span class="material-symbols-outlined">school</span>
+                <span>Élèves &amp; classes centralisés</span>
               </li>
               <li>
-                <span class="material-symbols-outlined">grade</span> Notes &amp; bulletins
-                automatisés
+                <span class="material-symbols-outlined">grade</span>
+                <span>Notes &amp; bulletins automatisés</span>
               </li>
               <li>
-                <span class="material-symbols-outlined">payments</span> Paiements &amp; facturation
-                SaaS
+                <span class="material-symbols-outlined">payments</span>
+                <span>Paiements &amp; facturation SaaS</span>
               </li>
             </ul>
           </div>
-          <p class="foot">© Panga · Gestion scolaire</p>
+
+          <div class="foot">
+            <span class="trust">
+              <span class="material-symbols-outlined">verified_user</span> Sécurisé · Temps réel ·
+              Multi-écoles
+            </span>
+            <p class="copy">© Panga · Gestion scolaire</p>
+          </div>
         </div>
       </aside>
 

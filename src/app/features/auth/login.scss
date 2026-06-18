@@ -109,6 +109,16 @@
   font-weight: 600;
   background: var(--brand-gradient) !important;
   color: #fff !important;
+  box-shadow: 0 12px 26px -14px color-mix(in srgb, var(--brand-700) 75%, transparent);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+.submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--brand-700) 80%, transparent);
 }
 .inline-spinner {
   display: inline-block;
