@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, of, shareReplay, tap, throwError } from 'rxjs';
-import { catchError, finalize, map } from 'rxjs/operators';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import type { LoginHistoryEntry, LoginRequest, Role, School, User } from '../models/auth.models';
 import { AuthStore } from './auth.store';
@@ -76,7 +76,10 @@ export class AuthService {
       return of(false);
     }
     return this.refreshAccessToken().pipe(
-      tap(() => this.loadMe().subscribe()),
+      // On DOIT attendre le profil : c'est loadMe() qui passe le store à
+      // « authenticated ». Un fire-and-forget laisserait le guard rediriger
+      // vers /login avant que la session soit posée (→ déconnexion à chaque refresh).
+      switchMap(() => this.loadMe()),
       map(() => true),
       catchError(() => {
         this.tokens.clear();
