@@ -17,6 +17,8 @@ import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
@@ -124,6 +126,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     EmptyState,
     KpiCard,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -250,7 +253,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </div>
     } @else {
       <div class="panga-card divide-y divide-(--border)">
-        @for (p of parents(); track p.id) {
+        @for (p of visibleParents(); track p.id) {
           <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
           >
@@ -328,6 +331,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             </mat-menu>
           </div>
         }
+        <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
       </div>
     }
   `,
@@ -341,6 +345,10 @@ export class ParentsList {
   protected readonly statusOptions = PARENT_STATUS_OPTIONS;
 
   protected readonly parents = signal<Parent[]>([]);
+  /** Pagination client (l'endpoint /parents renvoie tout le lot). */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.parents().length, this.page()));
+  protected readonly visibleParents = computed(() => pageSlice(this.parents(), this.page()));
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
@@ -402,6 +410,7 @@ export class ParentsList {
     this.parentsApi.list().subscribe({
       next: (res) => {
         this.parents.set(res.items);
+        this.page.set(1);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),

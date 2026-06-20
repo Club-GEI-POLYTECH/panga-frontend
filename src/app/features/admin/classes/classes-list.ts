@@ -29,6 +29,8 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
@@ -54,6 +56,7 @@ function statusTone(status?: string): BadgeTone {
     EmptyState,
     KpiCard,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -201,7 +204,7 @@ function statusTone(status?: string): BadgeTone {
       </div>
     } @else {
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        @for (c of classes(); track c.id) {
+        @for (c of visibleClasses(); track c.id) {
           <a
             [routerLink]="['/', 'classes', c.id]"
             class="panga-card panga-card--interactive p-5 block"
@@ -241,6 +244,9 @@ function statusTone(status?: string): BadgeTone {
           </a>
         }
       </div>
+      <div class="panga-card mt-4">
+        <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
+      </div>
     }
   `,
 })
@@ -260,6 +266,10 @@ export class ClassesList {
   protected readonly tone = statusTone;
 
   protected readonly classes = signal<ClassInstance[]>([]);
+  /** Pagination client (l'endpoint classes renvoie tout le lot). */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.classes().length, this.page()));
+  protected readonly visibleClasses = computed(() => pageSlice(this.classes(), this.page()));
   protected readonly teachers = signal<Teacher[]>([]);
   protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly loading = signal(true);
@@ -332,6 +342,7 @@ export class ClassesList {
       .subscribe({
         next: (res) => {
           this.classes.set(res.items);
+          this.page.set(1);
           this.loading.set(false);
         },
         error: () => this.loading.set(false),

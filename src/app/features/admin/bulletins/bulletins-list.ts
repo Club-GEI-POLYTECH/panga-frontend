@@ -20,6 +20,8 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
@@ -41,6 +43,7 @@ function isPublished(b: Bulletin): boolean {
     Avatar,
     EmptyState,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
   ],
@@ -116,7 +119,7 @@ function isPublished(b: Bulletin): boolean {
           />
         } @else {
           <div class="divide-y divide-(--border) -mx-5">
-            @for (b of bulletins(); track b.id) {
+            @for (b of visibleBulletins(); track b.id) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <panga-avatar [name]="b.studentName || b.studentId || '?'" [size]="38" />
                 <div class="min-w-0 flex-1">
@@ -145,6 +148,7 @@ function isPublished(b: Bulletin): boolean {
               </div>
             }
           </div>
+          <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
         }
       </section>
     }
@@ -164,6 +168,10 @@ export class BulletinsList {
   protected readonly classId = signal('');
   protected readonly term = signal('TERM1');
   protected readonly bulletins = signal<Bulletin[]>([]);
+  /** Pagination client de la liste des bulletins de la classe. */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.bulletins().length, this.page()));
+  protected readonly visibleBulletins = computed(() => pageSlice(this.bulletins(), this.page()));
   private readonly allStudents = signal<Student[]>([]);
   protected readonly loading = signal(false);
   protected readonly generating = signal(false);
@@ -218,6 +226,7 @@ export class BulletinsList {
     this.academics.classBulletins(this.classId(), this.sy.filter(), this.term()).subscribe({
       next: (r) => {
         this.bulletins.set(r.items);
+        this.page.set(1);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),

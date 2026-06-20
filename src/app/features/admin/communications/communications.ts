@@ -12,6 +12,8 @@ import type { Announcement, UserNotification } from '../models/admin.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 
@@ -35,6 +37,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
     MatSelectModule,
     EmptyState,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
   ],
@@ -95,7 +98,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
         <panga-section-header icon="campaign" title="Annonces" [count]="announcements().length" />
         @if (announcements().length) {
           <div class="flex flex-col gap-3">
-            @for (a of announcements(); track a.id) {
+            @for (a of visibleAnnouncements(); track a.id) {
               <div class="panga-card p-5">
                 <div class="flex items-start justify-between gap-3">
                   <p class="font-semibold text-(--text)">{{ a.title || 'Annonce' }}</p>
@@ -130,6 +133,9 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
                 </div>
               </div>
             }
+          </div>
+          <div class="panga-card mt-3">
+            <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
           </div>
         } @else {
           <div class="panga-card">
@@ -184,6 +190,14 @@ export class Communications {
   private readonly notify = inject(NotificationService);
 
   protected readonly announcements = signal<Announcement[]>([]);
+  /** Pagination client de la liste des annonces. */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() =>
+    clientMeta(this.announcements().length, this.page()),
+  );
+  protected readonly visibleAnnouncements = computed(() =>
+    pageSlice(this.announcements(), this.page()),
+  );
   protected readonly notifications = signal<UserNotification[]>([]);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -206,7 +220,12 @@ export class Communications {
   }
 
   private loadAnnouncements(): void {
-    this.comms.announcements().subscribe({ next: (r) => this.announcements.set(r.items) });
+    this.comms.announcements().subscribe({
+      next: (r) => {
+        this.announcements.set(r.items);
+        this.page.set(1);
+      },
+    });
   }
 
   publish(): void {
