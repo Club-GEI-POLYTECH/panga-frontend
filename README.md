@@ -4,6 +4,7 @@ Frontend de **Panga**, application de gestion scolaire multi-tenant (SaaS, 5 rô
 PWA consommant l'API REST `/v1` du backend NestJS. UI turquoise épurée, mode clair/sombre,
 i18n FR/EN, signals partout.
 
+
 > **Phase actuelle : P0 — Fondations** (scaffolding, design system, interceptors, auth animée,
 > shells de layout, PWA installable). Les modules métier (P1+) sont branchés sur des écrans
 > placeholder « Module en construction ».
