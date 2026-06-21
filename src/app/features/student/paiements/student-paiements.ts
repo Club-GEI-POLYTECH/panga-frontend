@@ -49,7 +49,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   ],
   template: `
     <panga-page-header icon="payments" title="Mes paiements" subtitle="Frais, échéances & reçus">
-      <button mat-flat-button class="!rounded-xl" (click)="showPay.set(!showPay())">
+      <button mat-flat-button class="rounded-xl!" (click)="showPay.set(!showPay())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showPay() ? 'close' : 'smartphone'
         }}</mat-icon>
@@ -84,7 +84,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           <div class="flex items-end">
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               type="submit"
               [disabled]="payForm.invalid || paying()"
             >
@@ -94,21 +94,19 @@ const STATUS_TONE: Record<string, BadgeTone> = {
         </form>
 
         @if (tx(); as t) {
-          <div class="mt-4 rounded-2xl border border-[var(--border)] p-4 flex items-center gap-3">
+          <div class="mt-4 rounded-2xl border border-(--border) p-4 flex items-center gap-3">
             <mat-icon fontSet="material-symbols-outlined" [style.color]="txColor()">{{
               txIcon()
             }}</mat-icon>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-[var(--text)]">
-                Transaction {{ txStatusLabel() }}
-              </p>
-              <p class="text-xs text-[var(--text-muted)] truncate">
+              <p class="text-sm font-medium text-(--text)">Transaction {{ txStatusLabel() }}</p>
+              <p class="text-xs text-(--text-muted) truncate">
                 Réf : {{ t['transactionId'] || t['id'] || '—' }}
               </p>
             </div>
             <button
               mat-stroked-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               [disabled]="polling()"
               (click)="refreshStatus()"
             >
@@ -136,22 +134,20 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             title="Échéances"
             [count]="installments().length"
           />
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (it of installments(); track $index) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ label(it) }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)]">
+                  <p class="text-xs text-(--text-muted)">
                     @if (it['dueDate']) {
                       Échéance : {{ asDate(it['dueDate']) | date: 'dd/MM/yyyy' }}
                     }
                   </p>
                 </div>
-                <span class="text-sm font-semibold text-[var(--text)]">{{
-                  money(amount(it), it)
-                }}</span>
+                <span class="text-sm font-semibold text-(--text)">{{ money(amount(it), it) }}</span>
                 <panga-status-badge [label]="statusLabel(it)" [tone]="tone(it)" [dot]="false" />
               </div>
             }
@@ -173,7 +169,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             description="Aucun paiement enregistré."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (p of payments(); track $index) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <div
@@ -183,8 +179,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   <span class="material-symbols-outlined text-[20px]">payments</span>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">{{ label(p) }}</p>
-                  <p class="text-xs text-[var(--text-muted)]">
+                  <p class="text-sm font-medium text-(--text) truncate">{{ label(p) }}</p>
+                  <p class="text-xs text-(--text-muted)">
                     @if (p['paymentDate']) {
                       {{ asDate(p['paymentDate']) | date: 'dd/MM/yyyy' }}
                     }
@@ -193,9 +189,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                     }
                   </p>
                 </div>
-                <span class="text-sm font-semibold text-[var(--text)]">{{
-                  money(amount(p), p)
-                }}</span>
+                <span class="text-sm font-semibold text-(--text)">{{ money(amount(p), p) }}</span>
                 <panga-status-badge [label]="statusLabel(p)" [tone]="tone(p)" [dot]="false" />
                 @if (p['id']) {
                   <button mat-icon-button (click)="receipt(p)" aria-label="Reçu PDF">
@@ -219,15 +213,15 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           <div class="grid gap-3 sm:grid-cols-2">
             @for (f of fees(); track $index) {
               <div
-                class="rounded-2xl border border-[var(--border)] p-4 flex items-center justify-between gap-3"
+                class="rounded-2xl border border-(--border) p-4 flex items-center justify-between gap-3"
               >
                 <div class="min-w-0">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">{{ label(f) }}</p>
+                  <p class="text-sm font-medium text-(--text) truncate">{{ label(f) }}</p>
                   @if (f['feeType']) {
-                    <p class="text-xs text-[var(--text-muted)]">{{ f['feeType'] }}</p>
+                    <p class="text-xs text-(--text-muted)">{{ f['feeType'] }}</p>
                   }
                 </div>
-                <span class="text-sm font-semibold text-[var(--text)] shrink-0">{{
+                <span class="text-sm font-semibold text-(--text) shrink-0">{{
                   money(amount(f), f)
                 }}</span>
               </div>

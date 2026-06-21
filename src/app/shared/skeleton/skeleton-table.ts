@@ -8,13 +8,13 @@ import { Skeleton } from './skeleton';
   imports: [Skeleton],
   template: `
     <div class="panga-card p-4">
-      <div class="flex items-center gap-4 pb-3 border-b border-[var(--border)]">
+      <div class="flex items-center gap-4 pb-3 border-b border-(--border)">
         @for (c of cols(); track $index) {
           <panga-skeleton width="100%" height="0.9rem" />
         }
       </div>
       @for (r of rowsArray(); track $index) {
-        <div class="flex items-center gap-4 py-3 border-b border-[var(--border)]">
+        <div class="flex items-center gap-4 py-3 border-b border-(--border)">
           @for (c of cols(); track $index) {
             <panga-skeleton width="100%" height="0.8rem" />
           }

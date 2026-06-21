@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +28,7 @@ import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { LineChart, type LineSeries } from '../../../shared/ui/charts/line-chart';
 import { auditView, type AuditView } from '../shared/audit-labels';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 const TONE_BG: Record<AuditView['tone'], string> = {
   success: 'color-mix(in srgb, var(--success) 14%, transparent)',
@@ -99,9 +108,7 @@ function fmt(n: number | null | undefined): string {
         @if (trends().length) {
           <panga-line-chart [categories]="trendMonths()" [series]="trendSeries()" [height]="280" />
         } @else {
-          <p class="text-sm text-[var(--text-muted)] py-8 text-center">
-            Aucune donnée de tendance.
-          </p>
+          <p class="text-sm text-(--text-muted) py-8 text-center">Aucune donnée de tendance.</p>
         }
       </section>
 
@@ -120,7 +127,7 @@ function fmt(n: number | null | undefined): string {
         <div class="panga-card p-5 lg:col-span-2">
           <panga-section-header icon="history" title="Activité récente" />
           @if (audit().length) {
-            <ul class="divide-y divide-[var(--border)]">
+            <ul class="divide-y divide-(--border)">
               @for (a of audit(); track a.id || $index) {
                 @let view = auditView(a);
                 <li class="flex items-center gap-3 py-2.5">
@@ -132,13 +139,13 @@ function fmt(n: number | null | undefined): string {
                     <span class="material-symbols-outlined text-[18px]">{{ view.icon }}</span>
                   </span>
                   <div class="min-w-0 flex-1">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">{{ view.title }}</p>
-                    <p class="text-xs text-[var(--text-muted)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">{{ view.title }}</p>
+                    <p class="text-xs text-(--text-muted) truncate">
                       {{ view.subtitle || '—' }}
                     </p>
                   </div>
                   @if (a.createdAt) {
-                    <span class="text-xs text-[var(--text-muted)] shrink-0">
+                    <span class="text-xs text-(--text-muted) shrink-0">
                       {{ a.createdAt | date: 'dd/MM HH:mm' }}
                     </span>
                   }
@@ -146,23 +153,23 @@ function fmt(n: number | null | undefined): string {
               }
             </ul>
           } @else {
-            <p class="text-sm text-[var(--text-muted)] py-8 text-center">Aucun événement récent.</p>
+            <p class="text-sm text-(--text-muted) py-8 text-center">Aucun événement récent.</p>
           }
         </div>
 
         <div class="panga-card p-5">
           <panga-section-header icon="bolt" title="Actions rapides" />
           <div class="flex flex-col gap-2">
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/students">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/students">
               <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon> Ajouter un élève
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/classes">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/classes">
               <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créer une classe
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/teachers">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/teachers">
               <mat-icon fontSet="material-symbols-outlined">badge</mat-icon> Ajouter un enseignant
             </a>
-            <a mat-stroked-button class="!rounded-xl !justify-start" routerLink="/communications">
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/communications">
               <mat-icon fontSet="material-symbols-outlined">campaign</mat-icon> Publier une annonce
             </a>
           </div>
@@ -175,6 +182,7 @@ export class AdminDashboard {
   protected readonly store = inject(AuthStore);
   private readonly platform = inject(PlatformService);
   private readonly auditApi = inject(AuditService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly fmt = fmt;
   protected readonly auditView = auditView;
@@ -213,20 +221,43 @@ export class AdminDashboard {
   });
 
   constructor() {
-    const safe = <T>(o: Observable<T>): Observable<T | null> => o.pipe(catchError(() => of(null)));
+    // Données non annuelles (séries temporelles, finances, audit) : une seule fois.
+    this.loadStatic();
+    // Données scopées à l'année (overview = comptes de classes, academic = notes) :
+    // rechargées dès que l'année sélectionnée change. L'effect s'exécute aussitôt.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => this.loadYearScoped());
+    });
+  }
 
+  private static safe<T>(o: Observable<T>): Observable<T | null> {
+    return o.pipe(catchError(() => of(null)));
+  }
+
+  private loadStatic(): void {
+    const safe = AdminDashboard.safe;
     forkJoin({
-      overview: safe(this.platform.overview()),
       trends: safe(this.platform.trends(12)),
-      academic: safe(this.platform.academicStats()),
       financial: safe(this.platform.financialStats()),
       audit: safe(this.auditApi.list({ page: 1, limit: 8 })),
     }).subscribe((r) => {
-      this.overview.set(normalizeOverview(r.overview));
       this.trends.set(normalizeTrends(r.trends));
-      this.academic.set(r.academic);
       this.financial.set(r.financial);
       this.audit.set(r.audit?.items ?? []);
+    });
+  }
+
+  /** `sy.filter()` : '' quand l'année courante est sélectionnée (→ backend la résout). */
+  private loadYearScoped(): void {
+    const safe = AdminDashboard.safe;
+    const year = this.sy.filter();
+    forkJoin({
+      overview: safe(this.platform.overview(year)),
+      academic: safe(this.platform.academicStats(year)),
+    }).subscribe((r) => {
+      this.overview.set(normalizeOverview(r.overview));
+      this.academic.set(r.academic);
       this.loading.set(false);
     });
   }

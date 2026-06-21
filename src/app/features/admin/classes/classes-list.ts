@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,11 +29,12 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 function statusTone(status?: string): BadgeTone {
   if (status === 'active') return 'success';
@@ -47,16 +56,17 @@ function statusTone(status?: string): BadgeTone {
     EmptyState,
     KpiCard,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
   ],
   template: `
     <panga-page-header icon="meeting_room" title="Classes" [subtitle]="'Année ' + schoolYear">
-      <a mat-stroked-button class="!rounded-xl" [routerLink]="['/', 'class-options']">
+      <a mat-stroked-button class="rounded-xl!" [routerLink]="['/', 'class-options']">
         <mat-icon fontSet="material-symbols-outlined">account_tree</mat-icon> Filières
       </a>
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{ showForm() ? 'close' : 'add' }}</mat-icon>
         {{ showForm() ? 'Annuler' : 'Nouvelle classe' }}
       </button>
@@ -71,7 +81,7 @@ function statusTone(status?: string): BadgeTone {
 
     <!-- Filtres -->
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[180px]">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
         <mat-label>Niveau d'éducation</mat-label>
         <mat-select [formControl]="eduLevelCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -80,7 +90,7 @@ function statusTone(status?: string): BadgeTone {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-[180px]">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
         <mat-label>Horaire</mat-label>
         <mat-select [formControl]="scheduleCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -173,7 +183,7 @@ function statusTone(status?: string): BadgeTone {
           </mat-form-field>
         </div>
         <div class="flex justify-end mt-1">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Créer la classe
           </button>
         </div>
@@ -194,15 +204,15 @@ function statusTone(status?: string): BadgeTone {
       </div>
     } @else {
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        @for (c of classes(); track c.id) {
+        @for (c of visibleClasses(); track c.id) {
           <a
             [routerLink]="['/', 'classes', c.id]"
             class="panga-card panga-card--interactive p-5 block"
           >
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="font-semibold text-[var(--text)] truncate">{{ label(c) }}</p>
-                <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                <p class="font-semibold text-(--text) truncate">{{ label(c) }}</p>
+                <p class="text-xs text-(--text-muted) mt-0.5">
                   {{ c.schoolYear || schoolYear }}
                 </p>
               </div>
@@ -212,22 +222,20 @@ function statusTone(status?: string): BadgeTone {
             </div>
 
             @if (teacherName(c.classTeacher)) {
-              <p class="mt-3 text-sm text-[var(--text-muted)] inline-flex items-center gap-1.5">
+              <p class="mt-3 text-sm text-(--text-muted) inline-flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">badge</span>
                 {{ teacherName(c.classTeacher) }}
               </p>
             }
 
             <div class="mt-3 flex items-center gap-4 text-sm">
-              <span class="inline-flex items-center gap-1.5 text-[var(--text)]">
-                <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
-                  >school</span
-                >
+              <span class="inline-flex items-center gap-1.5 text-(--text)">
+                <span class="material-symbols-outlined text-[18px] text-(--brand-500)">school</span>
                 {{ c.currentEnrollment ?? 0
-                }}<span class="text-[var(--text-muted)]">/{{ capacity(c) }}</span>
+                }}<span class="text-(--text-muted)">/{{ capacity(c) }}</span>
               </span>
               @if (c.template?.level !== undefined && c.template?.level !== null) {
-                <span class="inline-flex items-center gap-1.5 text-[var(--text-muted)]">
+                <span class="inline-flex items-center gap-1.5 text-(--text-muted)">
                   <span class="material-symbols-outlined text-[18px]">stairs</span> Niveau
                   {{ c.template?.level }}
                 </span>
@@ -236,6 +244,9 @@ function statusTone(status?: string): BadgeTone {
           </a>
         }
       </div>
+      <div class="panga-card mt-4">
+        <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
+      </div>
     }
   `,
 })
@@ -243,8 +254,9 @@ export class ClassesList {
   private readonly classesApi = inject(ClassesService);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
-  protected readonly schoolYear = SCHOOL_YEAR;
+  protected readonly schoolYear = this.sy.selected();
   protected readonly eduLevels = CLASS_EDUCATION_LEVEL_OPTIONS;
   protected readonly cycles = SCHOOL_CYCLE_OPTIONS;
   protected readonly schedules = CLASS_SCHEDULE_OPTIONS;
@@ -254,6 +266,10 @@ export class ClassesList {
   protected readonly tone = statusTone;
 
   protected readonly classes = signal<ClassInstance[]>([]);
+  /** Pagination client (l'endpoint classes renvoie tout le lot). */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.classes().length, this.page()));
+  protected readonly visibleClasses = computed(() => pageSlice(this.classes(), this.page()));
   protected readonly teachers = signal<Teacher[]>([]);
   protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly loading = signal(true);
@@ -292,13 +308,17 @@ export class ClassesList {
   });
 
   constructor() {
-    this.load();
     this.teachersApi
       .list({ page: 1, limit: 200 })
       .subscribe({ next: (r) => this.teachers.set(r.items) });
     this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.eduLevelCtrl.valueChanges.subscribe(() => this.load());
     this.scheduleCtrl.valueChanges.subscribe(() => this.load());
+    // Recharge à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => this.load());
+    });
   }
 
   protected teacherName(t: unknown): string {
@@ -315,13 +335,14 @@ export class ClassesList {
   private load(): void {
     this.loading.set(true);
     this.classesApi
-      .list(SCHOOL_YEAR, {
+      .list(this.sy.filter(), {
         educationLevel: this.eduLevelCtrl.value || undefined,
         classSchedule: this.scheduleCtrl.value || undefined,
       })
       .subscribe({
         next: (res) => {
           this.classes.set(res.items);
+          this.page.set(1);
           this.loading.set(false);
         },
         error: () => this.loading.set(false),
@@ -338,7 +359,7 @@ export class ClassesList {
     const payload: Record<string, unknown> = {
       name: v.name,
       level: Number(v.level),
-      schoolYear: SCHOOL_YEAR,
+      schoolYear: this.sy.selected(),
       capacity: Number(v.capacity) || 40,
     };
     for (const [k, val] of Object.entries({

@@ -37,6 +37,7 @@ const IMPLEMENTED = new Set([
   'course-journal',
   'promotions',
   'exams',
+  'settings',
   'ma-scolarite',
   'mes-paiements',
   'mes-notifications',
@@ -156,6 +157,12 @@ const adminRoutes: Routes = [
     path: 'promotions',
     canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/promotions/promotions').then((m) => m.Promotions),
+  },
+  {
+    path: 'settings',
+    canActivate: [roleGuard('admin')],
+    loadComponent: () =>
+      import('./features/admin/settings/school-year-settings').then((m) => m.SchoolYearSettings),
   },
   {
     path: 'ma-scolarite',

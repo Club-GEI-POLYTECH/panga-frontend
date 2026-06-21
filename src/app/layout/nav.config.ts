@@ -192,6 +192,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ALL,
     group: 'communication',
   },
+  {
+    labelKey: 'nav.settings',
+    icon: 'settings',
+    path: 'settings',
+    roles: ['admin'],
+    group: 'gestion',
+  },
 ];
 
 export function navForRole(role: Role | null): NavItem[] {

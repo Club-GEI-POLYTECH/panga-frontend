@@ -1,7 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -21,17 +30,24 @@ import { ClassesService } from '../services/classes.service';
 import { CourseJournalService } from '../services/course-journal.service';
 import { ParentsService } from '../services/parents.service';
 import { SubjectsService } from '../services/subjects.service';
+import type { OpenFromProgramResult } from '../services/subjects.service';
 import { CurriculumService } from '../../super-admin/services/curriculum.service';
 import type { ClassInstance, Period } from '../models/admin.models';
 import type { NationalProgram } from '../../super-admin/models/platform.models';
 import type { ClassSubject, CourseOverviewRow, LessonLogEntry } from '../models/course.models';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface ChildRef {
   studentId: string;
   name: string;
 }
 
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
+/** Ligne cochable de l'ouverture des cours (un slot de programme). */
+interface SlotRow {
+  id: string;
+  code: string;
+  label: string;
+}
 
 /** Journal de cours (cahier de texte) : progression, séances, heures prévues. */
 @Component({
@@ -40,6 +56,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -61,13 +78,13 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
 
     <!-- Filtres -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" (blur)="reload()" />
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
 
       @if (isParent()) {
-        <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+        <mat-form-field appearance="outline" class="flex-1 min-w-55">
           <mat-label>Enfant</mat-label>
           <mat-select [value]="studentId()" (selectionChange)="selectStudent($event.value)">
             @for (c of children(); track c.studentId) {
@@ -76,7 +93,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
           </mat-select>
         </mat-form-field>
       } @else {
-        <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+        <mat-form-field appearance="outline" class="flex-1 min-w-55">
           <mat-label>Classe</mat-label>
           <mat-select [value]="classInstanceId()" (selectionChange)="selectClass($event.value)">
             @for (c of classes(); track c.id) {
@@ -87,7 +104,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
       }
 
       @if (periods().length) {
-        <mat-form-field appearance="outline" class="min-w-[180px]">
+        <mat-form-field appearance="outline" class="min-w-45">
           <mat-label>Période</mat-label>
           <mat-select [value]="periodId()" (selectionChange)="selectPeriod($event.value)">
             <mat-option [value]="''">Toutes les périodes</mat-option>
@@ -113,7 +130,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         <section class="panga-card p-5 mb-6">
           <panga-section-header icon="menu_book" title="Programme national de la classe" />
           <div class="flex flex-wrap items-end gap-3">
-            <mat-form-field appearance="outline" class="flex-1 min-w-[260px]">
+            <mat-form-field appearance="outline" class="flex-1 min-w-65">
               <mat-label>Programme publié</mat-label>
               <mat-select [formControl]="programCtrl">
                 @for (p of programs(); track p.id) {
@@ -128,7 +145,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             </mat-form-field>
             <button
               mat-stroked-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="activateProgram()"
               matTooltip="Activer ce programme pour l'école"
@@ -137,18 +154,112 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             </button>
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="assignProgram()"
               matTooltip="Lier le programme à cette classe (instance)"
             >
               <mat-icon fontSet="material-symbols-outlined">link</mat-icon> Assigner à la classe
             </button>
+            <button
+              mat-stroked-button
+              class="rounded-xl!"
+              [disabled]="!programCtrl.value || busyProgram()"
+              (click)="prepareOpenCourses()"
+              matTooltip="Ouvrir les cours à partir du programme assigné"
+            >
+              <mat-icon fontSet="material-symbols-outlined">playlist_add</mat-icon> Ouvrir les cours
+            </button>
           </div>
-          <p class="text-xs text-[var(--text-muted)] mt-2">
+          <p class="text-xs text-(--text-muted) mt-2">
             Le programme doit être <b>publié</b> puis <b>activé pour l'école</b> avant d'être
             assigné à la classe. L'assignation sur l'instance est prioritaire sur le modèle.
+            <b>Lier ≠ peupler</b> : il reste à ouvrir les cours ci-dessous.
           </p>
+
+          <div class="flex flex-wrap items-center gap-2 mt-3">
+            <button
+              mat-stroked-button
+              class="rounded-xl!"
+              [disabled]="seedingPeriods()"
+              (click)="seedPeriods()"
+              matTooltip="Crée les périodes manquantes pour toutes les classes de l'école"
+            >
+              <mat-icon fontSet="material-symbols-outlined">event_repeat</mat-icon>
+              Générer les périodes
+            </button>
+            <span class="text-xs text-(--text-muted)">
+              Périodes manquantes pour {{ yr() }} — toutes les classes de l'école.
+            </span>
+          </div>
+
+          <!-- Ouverture des cours depuis le programme -->
+          @if (showOpenPanel()) {
+            <div class="mt-4 rounded-2xl border border-(--border) p-4">
+              <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <p class="text-sm font-medium text-(--text)">
+                  Matières du programme — décochez celles non dispensées
+                </p>
+                <span class="text-xs text-(--text-muted)">
+                  {{ includedCount() }}/{{ programSlots().length }} à ouvrir
+                </span>
+              </div>
+
+              @if (programSlots().length) {
+                <div class="grid gap-1.5 sm:grid-cols-2">
+                  @for (s of programSlots(); track s.code) {
+                    <mat-checkbox
+                      [checked]="!excluded().has(s.code)"
+                      (change)="toggleExclude(s.code)"
+                    >
+                      <span class="text-sm text-(--text)">{{ s.label }}</span>
+                    </mat-checkbox>
+                  }
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 mt-4">
+                  <button
+                    mat-flat-button
+                    class="rounded-xl!"
+                    [disabled]="openingCourses() || !includedCount()"
+                    (click)="openCourses()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">playlist_add_check</mat-icon>
+                    Ouvrir {{ includedCount() }} cours
+                  </button>
+                  <button mat-button class="rounded-xl!" (click)="showOpenPanel.set(false)">
+                    Fermer
+                  </button>
+                </div>
+
+                @if (openResult(); as r) {
+                  <div class="flex flex-wrap gap-1.5 mt-3">
+                    <panga-status-badge
+                      [label]="r.opened + ' ouverts'"
+                      tone="success"
+                      [dot]="false"
+                    />
+                    @if (r.skippedExisting) {
+                      <panga-status-badge
+                        [label]="r.skippedExisting + ' déjà ouverts'"
+                        tone="neutral"
+                        [dot]="false"
+                      />
+                    }
+                    @if (r.skippedExcluded) {
+                      <panga-status-badge
+                        [label]="r.skippedExcluded + ' exclus'"
+                        tone="warning"
+                        [dot]="false"
+                      />
+                    }
+                  </div>
+                }
+              } @else {
+                <p class="text-sm text-(--text-muted)">Ce programme n'a aucune matière.</p>
+              }
+            </div>
+          }
         </section>
       }
 
@@ -171,7 +282,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         </panga-section-header>
 
         @if (loadingOverview()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (overview().length === 0) {
           <panga-empty-state
             icon="trending_up"
@@ -180,35 +291,35 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
           />
         } @else {
           <div class="grid gap-4 sm:grid-cols-3 mb-5">
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures prévues</p>
-              <p class="text-2xl font-semibold text-[var(--text)]">{{ totalPlanned() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures prévues</p>
+              <p class="text-2xl font-semibold text-(--text)">{{ totalPlanned() }}</p>
             </div>
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures réalisées</p>
-              <p class="text-2xl font-semibold text-[var(--brand-700)]">{{ totalDelivered() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures réalisées</p>
+              <p class="text-2xl font-semibold text-(--brand-700)">{{ totalDelivered() }}</p>
             </div>
-            <div class="rounded-2xl border border-[var(--border)] p-4">
-              <p class="text-xs text-[var(--text-muted)]">Heures restantes</p>
-              <p class="text-2xl font-semibold text-[var(--text)]">{{ totalRemaining() }}</p>
+            <div class="rounded-2xl border border-(--border) p-4">
+              <p class="text-xs text-(--text-muted)">Heures restantes</p>
+              <p class="text-2xl font-semibold text-(--text)">{{ totalRemaining() }}</p>
             </div>
           </div>
 
           <div class="space-y-4">
             @for (row of overview(); track row.classSubjectId) {
-              <div class="rounded-2xl border border-[var(--border)] p-4">
+              <div class="rounded-2xl border border-(--border) p-4">
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <div class="min-w-0">
-                    <p class="font-medium text-[var(--text)] truncate">{{ row.subjectLabel }}</p>
+                    <p class="font-medium text-(--text) truncate">{{ row.subjectLabel }}</p>
                     @if (row.teacherName) {
-                      <p class="text-xs text-[var(--text-muted)] truncate">{{ row.teacherName }}</p>
+                      <p class="text-xs text-(--text-muted) truncate">{{ row.teacherName }}</p>
                     }
                   </div>
-                  <span class="text-sm font-semibold text-[var(--text)] shrink-0">
+                  <span class="text-sm font-semibold text-(--text) shrink-0">
                     {{ pct(row.completionRatio) }}%
                   </span>
                 </div>
-                <div class="h-2.5 w-full rounded-full bg-[var(--border)] overflow-hidden">
+                <div class="h-2.5 w-full rounded-full bg-(--border) overflow-hidden">
                   <div
                     class="h-full rounded-full transition-all"
                     [style.width.%]="pct(row.completionRatio)"
@@ -221,15 +332,15 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
                     "
                   ></div>
                 </div>
-                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-[var(--text-muted)]">
+                <div class="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-(--text-muted)">
                   <span
-                    >Prévu : <b class="text-[var(--text)]">{{ row.plannedHours }}h</b></span
+                    >Prévu : <b class="text-(--text)">{{ row.plannedHours }}h</b></span
                   >
                   <span
-                    >Réalisé : <b class="text-[var(--text)]">{{ row.deliveredHours }}h</b></span
+                    >Réalisé : <b class="text-(--text)">{{ row.deliveredHours }}h</b></span
                   >
                   <span
-                    >Restant : <b class="text-[var(--text)]">{{ row.remainingHours }}h</b></span
+                    >Restant : <b class="text-(--text)">{{ row.remainingHours }}h</b></span
                   >
                   @if (row.entriesCount !== undefined) {
                     <span>{{ row.entriesCount }} séance(s)</span>
@@ -250,7 +361,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             (ngSubmit)="saveTarget()"
             class="flex flex-wrap items-end gap-3"
           >
-            <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+            <mat-form-field appearance="outline" class="flex-1 min-w-55">
               <mat-label>Cours</mat-label>
               <mat-select formControlName="classSubjectId">
                 @for (cs of subjects(); track cs.id) {
@@ -258,7 +369,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="min-w-[180px]">
+            <mat-form-field appearance="outline" class="min-w-45">
               <mat-label>Période</mat-label>
               <mat-select formControlName="periodId">
                 @for (p of periods(); track p.id) {
@@ -266,13 +377,13 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="w-[140px]">
+            <mat-form-field appearance="outline" class="w-35">
               <mat-label>Heures prévues</mat-label>
               <input matInput type="number" formControlName="plannedHours" min="0" />
             </mat-form-field>
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               type="submit"
               [disabled]="targetForm.invalid || savingTarget()"
             >
@@ -280,7 +391,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             </button>
           </form>
           @if (subjects().length === 0) {
-            <p class="text-sm text-[var(--warning)] mt-3">
+            <p class="text-sm text-(--warning) mt-3">
               Aucun cours ouvert sur cette classe. Assignez un programme puis ouvrez les cours
               (matières).
             </p>
@@ -296,7 +407,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
           [count]="entriesMeta()?.total ?? entries().length"
         >
           @if (canEdit() && classInstanceId()) {
-            <button mat-flat-button class="!rounded-xl" (click)="toggleForm()">
+            <button mat-flat-button class="rounded-xl!" (click)="toggleForm()">
               <mat-icon fontSet="material-symbols-outlined">{{
                 showForm() ? 'close' : 'add'
               }}</mat-icon>
@@ -358,7 +469,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             <div class="flex justify-end gap-2">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="entryForm.invalid || savingEntry()"
               >
@@ -369,7 +480,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         }
 
         @if (loadingEntries()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (entries().length === 0) {
           <panga-empty-state
             icon="event_note"
@@ -377,7 +488,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             description="Aucune séance enregistrée pour ce contexte."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (e of entries(); track e.id) {
               <div class="px-5 py-3 flex items-start gap-3">
                 <div
@@ -388,7 +499,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
                 </div>
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2 flex-wrap">
-                    <p class="text-sm font-medium text-[var(--text)] truncate">
+                    <p class="text-sm font-medium text-(--text) truncate">
                       {{ e.title || '—' }}
                     </p>
                     <panga-status-badge
@@ -397,17 +508,17 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
                       [dot]="false"
                     />
                   </div>
-                  <p class="text-xs text-[var(--text-muted)] mt-0.5">
+                  <p class="text-xs text-(--text-muted) mt-0.5">
                     {{ e.lessonDate || '—' }}
                     @if (e.subjectLabel) {
                       · {{ e.subjectLabel }}
                     }
                   </p>
                   @if (e.summary) {
-                    <p class="text-sm text-[var(--text)] mt-1 line-clamp-2">{{ e.summary }}</p>
+                    <p class="text-sm text-(--text) mt-1 line-clamp-2">{{ e.summary }}</p>
                   }
                   @if (e.homework) {
-                    <p class="text-xs text-[var(--text-muted)] mt-1">
+                    <p class="text-xs text-(--text-muted) mt-1">
                       <b>Devoirs :</b> {{ e.homework }}
                     </p>
                   }
@@ -447,6 +558,7 @@ export class CourseJournal {
   private readonly curriculum = inject(CurriculumService);
   private readonly parents = inject(ParentsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly role = this.store.role;
   protected readonly isAdmin = computed(
@@ -459,7 +571,8 @@ export class CourseJournal {
     () => this.role() === 'teacher' || this.role() === 'super_admin',
   );
 
-  protected readonly schoolYear = new FormControl(DEFAULT_SCHOOL_YEAR, { nonNullable: true });
+  /** Initialisé sur le sélecteur global (vide = année en cours → GET sans année). */
+  protected readonly schoolYear = new FormControl(this.sy.filter(), { nonNullable: true });
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classInstanceId = signal('');
@@ -469,6 +582,18 @@ export class CourseJournal {
   protected readonly periodId = signal('');
   protected readonly subjects = signal<ClassSubject[]>([]);
   protected readonly programs = signal<NationalProgram[]>([]);
+
+  /* --- Ouverture des cours depuis le programme lié --- */
+  protected readonly showOpenPanel = signal(false);
+  protected readonly programSlots = signal<SlotRow[]>([]);
+  /** Codes de matières décochées (= non dispensées → exclues de l'ouverture). */
+  protected readonly excluded = signal<Set<string>>(new Set());
+  protected readonly openingCourses = signal(false);
+  protected readonly openResult = signal<OpenFromProgramResult | null>(null);
+  protected readonly includedCount = computed(
+    () => this.programSlots().length - this.excluded().size,
+  );
+  protected readonly seedingPeriods = signal(false);
 
   protected readonly overview = signal<CourseOverviewRow[]>([]);
   protected readonly entries = signal<LessonLogEntry[]>([]);
@@ -533,10 +658,18 @@ export class CourseJournal {
     if (this.isParent()) {
       this.loadChildren();
     } else {
-      this.classesApi.list(this.schoolYear.value).subscribe({
-        next: (r) => this.classes.set(r.items),
-      });
       this.loadPrograms();
+      // Synchronise le champ année sur le sélecteur global et recharge.
+      effect(() => {
+        this.sy.selected();
+        untracked(() => {
+          this.schoolYear.setValue(this.sy.filter());
+          this.classesApi.list(this.schoolYear.value).subscribe({
+            next: (r) => this.classes.set(r.items),
+          });
+          this.reload();
+        });
+      });
     }
   }
 
@@ -686,9 +819,106 @@ export class CourseJournal {
         this.busyProgram.set(false);
         this.notify.success('Programme assigné à la classe.');
         this.selectClass(instance);
+        // Lier ≠ peupler : on enchaîne sur l'ouverture des cours.
+        this.prepareOpenCourses();
       },
       error: () => this.busyProgram.set(false),
     });
+  }
+
+  /* --------------------- Ouverture des cours du programme ------------------- */
+
+  /** Charge les matières du programme sélectionné dans la liste cochable. */
+  prepareOpenCourses(): void {
+    const id = this.programCtrl.value;
+    if (!id) {
+      return;
+    }
+    const inline = (this.programs().find((p) => p.id === id)?.slots ?? []) as Record<
+      string,
+      unknown
+    >[];
+    if (inline.length) {
+      this.setProgramSlots(inline);
+      this.showOpenPanel.set(true);
+      return;
+    }
+    this.curriculum.programDetail(id).subscribe({
+      next: (full) => {
+        this.setProgramSlots((full.slots ?? []) as Record<string, unknown>[]);
+        this.showOpenPanel.set(true);
+      },
+    });
+  }
+
+  private setProgramSlots(raw: Record<string, unknown>[]): void {
+    this.programSlots.set(
+      raw.map((s) => ({
+        id: String(s['id'] ?? ''),
+        code: String(s['programCode'] ?? ''),
+        label: String(s['labelFr'] ?? s['programCode'] ?? ''),
+      })),
+    );
+    this.excluded.set(new Set());
+    this.openResult.set(null);
+  }
+
+  /** Coche / décoche une matière (décoché = exclu de l'ouverture). */
+  toggleExclude(code: string): void {
+    this.excluded.update((set) => {
+      const next = new Set(set);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  }
+
+  /** Année cible pour les appels de calcul (seed) : champ rempli, sinon année en cours. */
+  protected yr(): string {
+    return this.schoolYear.value || this.sy.current();
+  }
+
+  /** Génère les périodes manquantes de l'année (toutes les classes de l'école). */
+  seedPeriods(): void {
+    if (this.seedingPeriods()) {
+      return;
+    }
+    const year = this.yr();
+    this.seedingPeriods.set(true);
+    this.academics.seedPeriods(year).subscribe({
+      next: () => {
+        this.seedingPeriods.set(false);
+        this.notify.success(`Périodes générées pour ${year}.`);
+        if (this.classInstanceId()) {
+          this.selectClass(this.classInstanceId());
+        }
+      },
+      error: () => this.seedingPeriods.set(false),
+    });
+  }
+
+  /** Ouvre les cours des matières cochées (idempotent côté backend). */
+  openCourses(): void {
+    const classId = this.classInstanceId();
+    if (!classId || this.openingCourses() || !this.includedCount()) {
+      return;
+    }
+    const excludeProgramCodes = [...this.excluded()];
+    this.openingCourses.set(true);
+    this.subjectsApi
+      .openFromProgram(classId, excludeProgramCodes.length ? { excludeProgramCodes } : {})
+      .subscribe({
+        next: (res) => {
+          this.openingCourses.set(false);
+          this.openResult.set(res);
+          this.notify.success(`${res.opened} cours ouvert${res.opened > 1 ? 's' : ''}.`);
+          this.selectClass(classId);
+        },
+        error: () => this.openingCourses.set(false),
+      });
   }
 
   /* ----------------------------- Heures prévues ---------------------------- */

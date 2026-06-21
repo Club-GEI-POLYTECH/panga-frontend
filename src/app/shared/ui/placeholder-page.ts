@@ -14,7 +14,7 @@ import { EmptyState } from './empty-state';
   imports: [EmptyState],
   template: `
     <header class="mb-6">
-      <h1 class="text-2xl font-semibold text-[var(--text)]">{{ title() }}</h1>
+      <h1 class="text-2xl font-semibold text-(--text)">{{ title() }}</h1>
     </header>
     <div class="panga-card">
       <panga-empty-state

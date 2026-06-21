@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { ListResult, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
+import { ListResult, toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
 import type { BulletinProgram, NationalProgram } from '../models/platform.models';
 
 /** Curriculum national & référentiels (dossiers « 5 » et « 6 »). */
@@ -15,6 +15,18 @@ export class CurriculumService {
   publishedPrograms(): Observable<ListResult<NationalProgram>> {
     return this.http
       .get<unknown>(`${this.base}/national-programs/published`)
+      .pipe(map((r) => unwrapList<NationalProgram>(r)));
+  }
+
+  /**
+   * Liste tous les programmes nationaux (brouillons inclus), filtrable par
+   * statut. Réservé super_admin — permet de retrouver un brouillon après refresh.
+   */
+  listPrograms(
+    status?: 'draft' | 'published' | 'archived',
+  ): Observable<ListResult<NationalProgram>> {
+    return this.http
+      .get<unknown>(`${this.base}/national-programs`, { params: toHttpParams({ status }) })
       .pipe(map((r) => unwrapList<NationalProgram>(r)));
   }
 

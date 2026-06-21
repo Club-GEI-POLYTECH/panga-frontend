@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -26,8 +34,7 @@ import {
   decisionTone,
   promotionLabel,
 } from '../../../core/models/promotion.enums';
-
-const DEFAULT_SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 @Component({
   selector: 'panga-promotions',
@@ -56,7 +63,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
 
     <!-- Contexte -->
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+      <mat-form-field appearance="outline" class="flex-1 min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -64,11 +71,11 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" (blur)="reload()" />
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-[150px]">
+      <mat-form-field appearance="outline" class="w-37.5">
         <mat-label>Seuil (%)</mat-label>
         <input
           matInput
@@ -80,12 +87,12 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         />
       </mat-form-field>
       @if (isAdmin() && classId()) {
-        <button mat-stroked-button class="!rounded-xl" (click)="compute()" [disabled]="busy()">
+        <button mat-stroked-button class="rounded-xl!" (click)="compute()" [disabled]="busy()">
           <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
         </button>
         <button
           mat-flat-button
-          class="!rounded-xl"
+          class="rounded-xl!"
           (click)="finalize()"
           [disabled]="busy() || !hasDraft()"
         >
@@ -111,7 +118,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
               <p class="text-2xl font-semibold" [style.color]="countColor(o.value)">
                 {{ countOf(o.value) }}
               </p>
-              <p class="text-xs text-[var(--text-muted)]">{{ o.label }}</p>
+              <p class="text-xs text-(--text-muted)">{{ o.label }}</p>
             </div>
           }
         </section>
@@ -123,11 +130,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
           title="Décisions"
           [count]="meta()?.total ?? decisions().length"
         >
-          <mat-form-field
-            appearance="outline"
-            class="w-[180px] !mb-[-1.25rem]"
-            subscriptSizing="dynamic"
-          >
+          <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
             <mat-label>Filtrer</mat-label>
             <mat-select [formControl]="filterDecision" (selectionChange)="reload()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -139,7 +142,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         </panga-section-header>
 
         @if (loading()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (decisions().length === 0) {
           <panga-empty-state
             icon="how_to_reg"
@@ -147,15 +150,15 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
             description="Cliquez sur « Calculer » pour générer les décisions de la classe."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
+          <div class="divide-y divide-(--border) -mx-5">
             @for (d of decisions(); track d.id || $index) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <panga-avatar [name]="studentName(d)" [size]="38" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ studentName(d) }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)]">
+                  <p class="text-xs text-(--text-muted)">
                     Moyenne :
                     <span class="font-medium" [style.color]="avgColor(d)">{{ avg(d) }}</span>
                     @if (d.passThreshold !== null && d.passThreshold !== undefined) {
@@ -201,7 +204,7 @@ const DEFAULT_SCHOOL_YEAR = '2024-2025';
         }
       </section>
 
-      <p class="text-xs text-[var(--text-muted)] mt-3">
+      <p class="text-xs text-(--text-muted) mt-3">
         La décision (admis / non admis) est calculée ici ; le passage effectif des élèves vers la
         classe de l'année suivante se fait depuis la fiche de la classe (promotion).
       </p>
@@ -214,6 +217,7 @@ export class Promotions {
   private readonly studentsApi = inject(StudentsService);
   private readonly store = inject(AuthStore);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly decisionOptions = PROMOTION_DECISION_OPTIONS;
   protected readonly isAdmin = computed(
@@ -222,7 +226,12 @@ export class Promotions {
 
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
-  protected readonly schoolYear = new FormControl(DEFAULT_SCHOOL_YEAR, { nonNullable: true });
+  /** Initialisé sur le sélecteur global (vide = année en cours → GET sans année). */
+  protected readonly schoolYear = new FormControl(this.sy.filter(), { nonNullable: true });
+  /** Année pour les actions qui exigent une année (calcul, finalisation, transfert). */
+  private yr(): string {
+    return this.schoolYear.value || this.sy.current();
+  }
   protected readonly threshold = new FormControl<number | null>(null);
   protected readonly filterDecision = new FormControl('', { nonNullable: true });
 
@@ -238,7 +247,17 @@ export class Promotions {
   );
 
   constructor() {
-    this.classesApi.list(DEFAULT_SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
+    // Synchronise le champ année sur le sélecteur global et recharge.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.schoolYear.setValue(this.sy.filter());
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+        this.reload();
+      });
+    });
   }
 
   selectClass(id: string): void {
@@ -294,7 +313,7 @@ export class Promotions {
     this.promotionsApi
       .compute({
         classInstanceId: this.classId(),
-        schoolYear: this.schoolYear.value,
+        schoolYear: this.yr(),
         ...(this.threshold.value !== null ? { passThreshold: Number(this.threshold.value) } : {}),
       })
       .subscribe({
@@ -314,7 +333,7 @@ export class Promotions {
     }
     this.busy.set(true);
     this.promotionsApi
-      .finalize({ classInstanceId: this.classId(), schoolYear: this.schoolYear.value })
+      .finalize({ classInstanceId: this.classId(), schoolYear: this.yr() })
       .subscribe({
         next: () => {
           this.busy.set(false);
@@ -342,14 +361,12 @@ export class Promotions {
     if (!d.studentId) {
       return;
     }
-    this.promotionsApi
-      .recordTransfer({ studentId: d.studentId, schoolYear: this.schoolYear.value })
-      .subscribe({
-        next: () => {
-          this.notify.success('Transfert enregistré.');
-          this.updateRow(d.id, { decision: 'transferred' });
-        },
-      });
+    this.promotionsApi.recordTransfer({ studentId: d.studentId, schoolYear: this.yr() }).subscribe({
+      next: () => {
+        this.notify.success('Transfert enregistré.');
+        this.updateRow(d.id, { decision: 'transferred' });
+      },
+    });
   }
 
   private updateRow(id: string, patch: Partial<PromotionDecision>): void {

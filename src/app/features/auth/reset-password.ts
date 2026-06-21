@@ -47,11 +47,21 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           </h1>
         </div>
 
-        <h2 class="text-2xl font-semibold text-[var(--text)]">{{ t('auth.reset.title') }}</h2>
-        <p class="text-sm text-[var(--text-muted)] mt-1 mb-6">{{ t('auth.reset.subtitle') }}</p>
+        <h2 class="text-2xl font-semibold text-(--text)">{{ t('auth.reset.title') }}</h2>
+        <p class="text-sm text-(--text-muted) mt-1 mb-6">{{ t('auth.reset.subtitle') }}</p>
 
         @if (!token()) {
-          <p class="text-sm" style="color: var(--danger)">{{ t('auth.reset.invalidToken') }}</p>
+          <div class="text-center py-4">
+            <div
+              class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl"
+              style="background: color-mix(in srgb, var(--danger) 14%, transparent)"
+            >
+              <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)">
+                link_off
+              </mat-icon>
+            </div>
+            <p class="text-sm text-(--text-muted)">{{ t('auth.reset.invalidToken') }}</p>
+          </div>
         } @else {
           <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
             <mat-form-field appearance="outline" class="w-full">
@@ -90,7 +100,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
             <button
               type="submit"
               mat-flat-button
-              class="panga-btn-primary mt-2"
+              class="panga-auth-submit mt-2"
               [disabled]="submitting()"
             >
               @if (submitting()) {
@@ -101,14 +111,8 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           </form>
         }
 
-        <a
-          routerLink="/auth/login"
-          class="mt-6 flex items-center justify-center gap-1 text-sm"
-          style="color: var(--brand-500)"
-        >
-          <mat-icon fontSet="material-symbols-outlined" class="!text-base !h-4 !w-4"
-            >arrow_back</mat-icon
-          >
+        <a routerLink="/auth/login" class="panga-auth-back">
+          <mat-icon fontSet="material-symbols-outlined">arrow_back</mat-icon>
           {{ t('auth.backToLogin') }}
         </a>
       </ng-container>

@@ -64,7 +64,7 @@ function isPaid(inv: SaasInvoice): boolean {
             <mat-label>School ID</mat-label>
             <input matInput formControlName="schoolId" />
           </mat-form-field>
-          <button mat-flat-button class="!rounded-xl !mt-1" type="submit">Consulter</button>
+          <button mat-flat-button class="rounded-xl! mt-1!" type="submit">Consulter</button>
         </form>
         @if (subscription()) {
           <div class="mt-2"><panga-key-value [data]="subscription()" /></div>
@@ -95,7 +95,7 @@ function isPaid(inv: SaasInvoice): boolean {
             <input matInput formControlName="notes" />
           </mat-form-field>
           <div class="sm:col-span-2 flex justify-end">
-            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
               Créer la facture
             </button>
           </div>
@@ -115,16 +115,16 @@ function isPaid(inv: SaasInvoice): boolean {
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (inv of invoices(); track inv.id) {
           <div class="flex items-center gap-4 px-4 sm:px-5 py-3.5">
             <panga-avatar [name]="inv.schoolId || 'SA'" [size]="40" />
             <div class="min-w-0 flex-1">
-              <p class="font-medium text-[var(--text)]">
+              <p class="font-medium text-(--text)">
                 {{ inv.amount ?? '—' }}
-                <span class="text-sm text-[var(--text-muted)]">{{ inv.currency }}</span>
+                <span class="text-sm text-(--text-muted)">{{ inv.currency }}</span>
               </p>
-              <p class="text-xs text-[var(--text-muted)] truncate">
+              <p class="text-xs text-(--text-muted) truncate">
                 {{ inv.subscriptionPlanOffered || '—' }}
                 @if (inv.schoolId) {
                   · {{ inv.schoolId }}
@@ -136,7 +136,7 @@ function isPaid(inv: SaasInvoice): boolean {
               [tone]="statusTone(inv)"
             />
             @if (!paid(inv)) {
-              <button mat-stroked-button class="!rounded-xl" (click)="markPaid(inv)">
+              <button mat-stroked-button class="rounded-xl!" (click)="markPaid(inv)">
                 Marquer payée
               </button>
             }

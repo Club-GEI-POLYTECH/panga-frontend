@@ -27,6 +27,7 @@ import {
   examLabel,
   examStatusTone,
 } from '../../../core/models/exam.enums';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 @Component({
   selector: 'panga-exam-detail',
@@ -50,9 +51,9 @@ import {
   template: `
     <a
       [routerLink]="['/', 'exams']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Examens
@@ -98,9 +99,7 @@ import {
       </div>
 
       <!-- Onglets -->
-      <div
-        class="flex gap-1 mb-4 p-1 rounded-xl bg-[var(--background)] w-fit border border-[var(--border)]"
-      >
+      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
         @for (t of tabs; track t.key) {
           <button
             class="px-4 py-2 rounded-lg text-sm font-medium"
@@ -119,7 +118,7 @@ import {
             <panga-section-header icon="grading" title="Résultats" [count]="roster().length">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 [disabled]="publishing() || e.isResultsPublished"
                 (click)="publish()"
               >
@@ -135,14 +134,14 @@ import {
                 description="Cette classe n'a pas d'élèves."
               />
             } @else {
-              <p class="text-xs text-[var(--text-muted)] mb-2">
+              <p class="text-xs text-(--text-muted) mb-2">
                 Note sur {{ maxScore() }}. La saisie est enregistrée à la sortie du champ.
               </p>
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (s of roster(); track s.id) {
                   <div class="flex items-center gap-4 px-5 py-2.5">
                     <panga-avatar [name]="studentName(s)" [size]="34" />
-                    <span class="flex-1 min-w-0 text-sm text-[var(--text)] truncate">{{
+                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
                       studentName(s)
                     }}</span>
                     @if (resultFor(s.id); as r) {
@@ -159,7 +158,7 @@ import {
                     />
                     <input
                       type="number"
-                      class="w-24 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-right text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)] disabled:opacity-40"
+                      class="w-24 rounded-lg border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-right text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400) disabled:opacity-40"
                       [value]="scoreOf(s.id)"
                       (change)="saveScore(s.id, $event)"
                       [disabled]="!presentOf(s.id) || e.isResultsPublished"
@@ -186,7 +185,7 @@ import {
               (ngSubmit)="addSupervisor()"
               class="flex flex-wrap items-end gap-3 mb-4"
             >
-              <mat-form-field appearance="outline" class="flex-1 min-w-[220px]">
+              <mat-form-field appearance="outline" class="flex-1 min-w-55">
                 <mat-label>Enseignant</mat-label>
                 <mat-select formControlName="teacherId">
                   @for (t of teachers(); track t.id) {
@@ -194,7 +193,7 @@ import {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="min-w-[160px]">
+              <mat-form-field appearance="outline" class="min-w-40">
                 <mat-label>Rôle</mat-label>
                 <mat-select formControlName="role">
                   @for (o of supervisorRoles; track o.value) {
@@ -203,7 +202,7 @@ import {
                 </mat-select>
               </mat-form-field>
               @if (rooms().length) {
-                <mat-form-field appearance="outline" class="min-w-[160px]">
+                <mat-form-field appearance="outline" class="min-w-40">
                   <mat-label>Salle</mat-label>
                   <mat-select formControlName="roomId">
                     <mat-option [value]="''">—</mat-option>
@@ -215,7 +214,7 @@ import {
               }
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="supForm.invalid || savingSup()"
               >
@@ -224,25 +223,25 @@ import {
             </form>
 
             @if (supervisors().length === 0) {
-              <p class="text-sm text-[var(--text-muted)]">Aucun surveillant assigné.</p>
+              <p class="text-sm text-(--text-muted)">Aucun surveillant assigné.</p>
             } @else {
-              <div class="divide-y divide-[var(--border)] -mx-5">
+              <div class="divide-y divide-(--border) -mx-5">
                 @for (sup of supervisors(); track sup.id) {
                   <div class="flex items-center gap-3 px-5 py-2.5">
                     <panga-avatar [name]="supervisorName(sup)" [size]="32" />
-                    <span class="flex-1 min-w-0 text-sm text-[var(--text)] truncate">{{
+                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
                       supervisorName(sup)
                     }}</span>
                     <panga-status-badge [label]="roleLabel(sup.role)" tone="brand" [dot]="false" />
                     <button
                       mat-icon-button
-                      class="!h-8 !w-8"
+                      class="h-8! w-8!"
                       (click)="removeSupervisor(sup)"
                       aria-label="Retirer"
                     >
                       <mat-icon
                         fontSet="material-symbols-outlined"
-                        class="!text-[18px] text-[var(--danger)]"
+                        class="text-[18px]! text-(--danger)"
                         >close</mat-icon
                       >
                     </button>
@@ -257,42 +256,42 @@ import {
           <section class="panga-card p-5">
             <panga-section-header icon="bar_chart" title="Statistiques" />
             @if (loadingStats()) {
-              <p class="text-sm text-[var(--text-muted)] py-6 text-center">Calcul…</p>
+              <p class="text-sm text-(--text-muted) py-6 text-center">Calcul…</p>
             } @else {
               <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Moyenne</p>
-                  <p class="text-2xl font-semibold text-[var(--text)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Moyenne</p>
+                  <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('averageScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Note max</p>
-                  <p class="text-2xl font-semibold text-[var(--success)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Note max</p>
+                  <p class="text-2xl font-semibold text-(--success)">
                     {{ stat('highestScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Note min</p>
-                  <p class="text-2xl font-semibold text-[var(--danger)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Note min</p>
+                  <p class="text-2xl font-semibold text-(--danger)">
                     {{ stat('lowestScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Taux de réussite</p>
-                  <p class="text-2xl font-semibold text-[var(--brand-700)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Taux de réussite</p>
+                  <p class="text-2xl font-semibold text-(--brand-700)">
                     {{ pctStat('passRate') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Présents</p>
-                  <p class="text-2xl font-semibold text-[var(--text)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Présents</p>
+                  <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('studentsPresent') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-[var(--border)] p-4">
-                  <p class="text-xs text-[var(--text-muted)]">Absents</p>
-                  <p class="text-2xl font-semibold text-[var(--text)]">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Absents</p>
+                  <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('studentsAbsent') }}
                   </p>
                 </div>
@@ -318,6 +317,7 @@ export class ExamDetail {
   private readonly studentsApi = inject(StudentsService);
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
@@ -357,7 +357,7 @@ export class ExamDetail {
   constructor() {
     forkJoin({
       exam: this.examsApi.get(this.id),
-      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: '2024-2025' }),
+      students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: this.sy.filter() }),
       teachers: this.teachersApi.list({ page: 1, limit: 200 }),
       rooms: this.examsApi.rooms(),
     }).subscribe({

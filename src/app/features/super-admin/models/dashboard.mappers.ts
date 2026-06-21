@@ -91,7 +91,9 @@ export function normalizeOverview(raw: unknown): OverviewData {
     monthlyRevenue: kpiVal('revenue_month') ?? num(prop(rawBlock, 'revenue'), 'thisMonth'),
     revenueDelta: num(prop(kpi('revenue_month'), 'trend'), 'value'),
     topSchools: topSchools.slice(0, 5).map((s, i) => ({
-      name: shortSchool(prop(s, 'schoolId'), i),
+      // Le backend fournit désormais le vrai nom ; repli sur un libellé dérivé de l'id.
+      name:
+        str(s, 'name', 'schoolName', 'displayName', 'code') ?? shortSchool(prop(s, 'schoolId'), i),
       value: num(s, 'students', 'value', 'count') ?? 0,
     })),
     primary: byClass('primaire') ?? num(prop(rawBlock, 'classes'), 'primary'),

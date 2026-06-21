@@ -30,6 +30,16 @@
   }
 }
 
+/* Texture pointillée discrète, estompée vers les bords. */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(255 255 255 / 22%) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(120% 90% at 30% 20%, #000 0%, transparent 72%);
+  opacity: 0.5;
+}
+
 .brand-inner {
   position: relative;
   z-index: 1;
@@ -37,7 +47,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 3rem;
+  padding: 3.25rem;
 }
 
 .mark {
@@ -48,33 +58,53 @@
   .badge {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 0.9rem;
+    width: 46px;
+    height: 46px;
+    border-radius: 0.95rem;
+    font-family: Urbanist, sans-serif;
+    font-size: 1.2rem;
     font-weight: 700;
     background: rgb(255 255 255 / 18%);
+    border: 1px solid rgb(255 255 255 / 28%);
+    box-shadow: 0 8px 20px -10px rgb(0 0 0 / 45%);
     backdrop-filter: blur(6px);
   }
   .name {
     font-family: Urbanist, sans-serif;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
   }
 }
 
 .hero {
-  max-width: 30rem;
+  max-width: 31rem;
+
+  .eyebrow {
+    display: inline-block;
+    margin-bottom: 1rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: rgb(255 255 255 / 14%);
+    border: 1px solid rgb(255 255 255 / 22%);
+    backdrop-filter: blur(6px);
+  }
 
   h2 {
     font-family: Urbanist, sans-serif;
-    font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+    font-size: clamp(1.9rem, 2.5vw, 2.7rem);
     font-weight: 600;
-    line-height: 1.15;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
     margin: 0 0 1rem;
   }
   p {
     margin: 0 0 2rem;
-    font-size: 1rem;
+    font-size: 1.02rem;
     line-height: 1.6;
     opacity: 0.92;
   }
@@ -86,74 +116,91 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.7rem;
 
   li {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.85rem;
+    padding: 0.7rem 0.85rem;
     font-size: 0.95rem;
-    opacity: 0.95;
+    font-weight: 500;
+    border-radius: 0.9rem;
+    background: rgb(255 255 255 / 10%);
+    border: 1px solid rgb(255 255 255 / 14%);
+    backdrop-filter: blur(4px);
 
     .material-symbols-outlined {
       display: grid;
       place-items: center;
-      width: 36px;
-      height: 36px;
+      flex: none;
+      width: 38px;
+      height: 38px;
       border-radius: 0.7rem;
       font-size: 20px;
-      background: rgb(255 255 255 / 16%);
+      background: rgb(255 255 255 / 18%);
     }
   }
 }
 
 .foot {
-  margin: 0;
-  font-size: 0.8rem;
-  opacity: 0.8;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+
+  .trust {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    opacity: 0.9;
+
+    .material-symbols-outlined {
+      font-size: 18px;
+    }
+  }
+  .copy {
+    margin: 0;
+    font-size: 0.78rem;
+    opacity: 0.7;
+  }
 }
 
-/* Blobs décoratifs translucides. */
+/* Blobs décoratifs translucides (blanc + accent bleu). */
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
+  filter: blur(75px);
   opacity: 0.4;
   background: #fff;
   animation: float 16s ease-in-out infinite;
 }
 .blob-1 {
-  width: 420px;
-  height: 420px;
-  top: -120px;
-  right: -100px;
+  width: 440px;
+  height: 440px;
+  top: -130px;
+  right: -110px;
 }
 .blob-2 {
-  width: 320px;
-  height: 320px;
-  bottom: -120px;
-  left: -80px;
+  width: 340px;
+  height: 340px;
+  bottom: -130px;
+  left: -90px;
+  background: var(--accent-blue);
+  opacity: 0.32;
   animation-delay: -5s;
 }
-.blob-3 {
-  width: 260px;
-  height: 260px;
-  top: 45%;
-  right: 30%;
-  opacity: 0.25;
-  animation-delay: -9s;
-}
-
 @keyframes float {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
   }
   33% {
-    transform: translate(36px, -28px) scale(1.08);
+    transform: translate(38px, -30px) scale(1.08);
   }
   66% {
-    transform: translate(-28px, 22px) scale(0.94);
+    transform: translate(-30px, 24px) scale(0.94);
   }
 }
 
@@ -165,9 +212,14 @@
   padding: 1.5rem;
   background:
     radial-gradient(
-      900px 400px at 100% -10%,
-      color-mix(in srgb, var(--brand-300) 16%, transparent),
+      900px 420px at 100% -10%,
+      color-mix(in srgb, var(--brand-300) 18%, transparent),
       transparent 70%
+    ),
+    radial-gradient(
+      700px 360px at 0% 110%,
+      color-mix(in srgb, var(--accent-blue) 16%, transparent),
+      transparent 72%
     ),
     var(--background);
 }
@@ -176,9 +228,28 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 420px;
-  padding: 2.25rem;
+  max-width: 430px;
+  padding: 2.5rem;
+  border-radius: 1.4rem;
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 5%),
+    0 24px 60px -28px rgb(15 23 42 / 22%);
   animation: card-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Liseré lumineux en haut de carte. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  border-radius: 1.4rem 1.4rem 0 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--brand-400) 60%, transparent),
+    transparent
+  );
 }
 
 @keyframes card-in {

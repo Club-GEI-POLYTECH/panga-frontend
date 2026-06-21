@@ -201,7 +201,6 @@ const READONLY: Group[] = [
   selector: 'panga-my-school',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -295,7 +294,7 @@ const READONLY: Group[] = [
         <div class="sticky bottom-4 z-10 flex justify-end mb-6">
           <button
             mat-flat-button
-            class="!rounded-xl shadow-lg"
+            class="rounded-xl! shadow-lg"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -312,9 +311,9 @@ const READONLY: Group[] = [
             <panga-section-header [icon]="group.icon" [title]="group.title" />
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
               @for (f of group.fields; track f.key) {
-                <div class="flex justify-between gap-3 py-1.5 border-b border-[var(--border)]">
-                  <dt class="text-sm text-[var(--text-muted)]">{{ f.label }}</dt>
-                  <dd class="text-sm font-medium text-[var(--text)] text-right break-all">
+                <div class="flex justify-between gap-3 py-1.5 border-b border-(--border)">
+                  <dt class="text-sm text-(--text-muted)">{{ f.label }}</dt>
+                  <dd class="text-sm font-medium text-(--text) text-right break-all">
                     {{ displayRo(f.key) }}
                   </dd>
                 </div>
@@ -334,13 +333,13 @@ const READONLY: Group[] = [
         @if (authorities().length) {
           <div class="grid gap-3 sm:grid-cols-2 mb-6">
             @for (a of authorities(); track a.id) {
-              <div class="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-3">
+              <div class="flex items-center gap-3 rounded-2xl border border-(--border) p-3">
                 <panga-avatar [name]="a.displayName || a.roleCode || '?'" [size]="40" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ a.displayName || a.roleCode }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)] truncate">{{ a.email }}</p>
+                  <p class="text-xs text-(--text-muted) truncate">{{ a.email }}</p>
                   <div class="mt-1 flex flex-wrap gap-1.5">
                     @if (a.roleCode) {
                       <panga-status-badge [label]="a.roleCode" tone="brand" [dot]="false" />
@@ -354,11 +353,11 @@ const READONLY: Group[] = [
             }
           </div>
         } @else {
-          <p class="text-sm text-[var(--text-muted)] mb-6">Aucune autorité enregistrée.</p>
+          <p class="text-sm text-(--text-muted) mb-6">Aucune autorité enregistrée.</p>
         }
 
         <div class="rounded-2xl bg-[color-mix(in_srgb,var(--brand-500)_5%,transparent)] p-4">
-          <p class="text-sm font-medium text-[var(--text)] mb-3">Ajouter une autorité</p>
+          <p class="text-sm font-medium text-(--text) mb-3">Ajouter une autorité</p>
           <form
             [formGroup]="authForm"
             (ngSubmit)="addAuthority()"
@@ -391,7 +390,7 @@ const READONLY: Group[] = [
             <div class="sm:col-span-2 flex justify-end">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="addingAuthority()"
               >

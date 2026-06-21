@@ -21,7 +21,7 @@ const IMPORT_TEMPLATE = `{
   "optionLabel": "Agriculture generale",
   "subOptionLabel": "AG",
   "levelYear": 3,
-  "referenceYear": "2024-2025",
+  "referenceYear": "202-2025",
   "isOfficial": true,
   "slots": [
     {
@@ -90,6 +90,40 @@ const BULLETIN_TEMPLATE = `{
         <panga-kpi-card label="Référentiels RDC" [value]="rdc().length" icon="flag" />
       </section>
 
+      <!-- Programmes importés à publier (brouillons) -->
+      @if (drafts().length) {
+        <section class="panga-card p-5 mb-6" style="border: 1px solid var(--warning)">
+          <panga-section-header
+            icon="upload_file"
+            title="Programmes importés (à publier)"
+            [count]="drafts().length"
+          />
+          <div class="grid gap-3 sm:grid-cols-2">
+            @for (p of drafts(); track p.id) {
+              <div class="rounded-2xl border border-(--border) p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="font-medium text-(--text) truncate">{{ p.title || p.code }}</p>
+                    <p class="text-xs text-(--text-muted) mt-0.5">{{ p.code }}</p>
+                  </div>
+                  <panga-status-badge label="Brouillon" tone="warning" [dot]="false" />
+                </div>
+                <div class="mt-3 flex justify-end">
+                  <button
+                    mat-flat-button
+                    class="rounded-xl!"
+                    [disabled]="publishingId() === p.id"
+                    (click)="publishDraft(p)"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">publish</mat-icon> Publier
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <!-- Programmes nationaux publiés -->
       <section class="panga-card p-5 mb-6">
         <panga-section-header
@@ -100,11 +134,11 @@ const BULLETIN_TEMPLATE = `{
         @if (published().length) {
           <div class="grid gap-3 sm:grid-cols-2">
             @for (p of published(); track p.id) {
-              <div class="rounded-2xl border border-[var(--border)] p-4">
+              <div class="rounded-2xl border border-(--border) p-4">
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="font-medium text-[var(--text)] truncate">{{ p.title || p.code }}</p>
-                    <p class="text-xs text-[var(--text-muted)] mt-0.5">{{ p.code }}</p>
+                    <p class="font-medium text-(--text) truncate">{{ p.title || p.code }}</p>
+                    <p class="text-xs text-(--text-muted) mt-0.5">{{ p.code }}</p>
                   </div>
                   <mat-slide-toggle
                     [checked]="p.published ?? true"
@@ -126,7 +160,7 @@ const BULLETIN_TEMPLATE = `{
                   }
                 </div>
                 <div class="mt-3 flex justify-end">
-                  <button mat-stroked-button class="!rounded-xl" (click)="openProgram(p)">
+                  <button mat-stroked-button class="rounded-xl!" (click)="openProgram(p)">
                     <mat-icon fontSet="material-symbols-outlined">visibility</mat-icon> Détail &
                     barème
                   </button>
@@ -134,11 +168,11 @@ const BULLETIN_TEMPLATE = `{
 
                 @if (selectedId() === p.id) {
                   @if (loadingDetail()) {
-                    <p class="text-xs text-[var(--text-muted)] mt-3">Chargement du barème…</p>
+                    <p class="text-xs text-(--text-muted) mt-3">Chargement du barème…</p>
                   } @else if (slots().length) {
                     <div class="mt-3 overflow-x-auto">
                       <table class="w-full text-xs">
-                        <thead class="text-[var(--text-muted)] text-left">
+                        <thead class="text-(--text-muted) text-left">
                           <tr>
                             <th class="py-1 pr-2 font-medium">Cours</th>
                             <th class="py-1 px-2 font-medium">Code</th>
@@ -148,15 +182,15 @@ const BULLETIN_TEMPLATE = `{
                         </thead>
                         <tbody>
                           @for (s of slots(); track $index) {
-                            <tr class="border-t border-[var(--border)]">
-                              <td class="py-1 pr-2 text-[var(--text)]">
+                            <tr class="border-t border-(--border)">
+                              <td class="py-1 pr-2 text-(--text)">
                                 {{ s['labelFr'] || s['programCode'] }}
                               </td>
-                              <td class="py-1 px-2 text-[var(--text-muted)]">
+                              <td class="py-1 px-2 text-(--text-muted)">
                                 {{ s['programCode'] }}
                               </td>
-                              <td class="py-1 px-2 text-[var(--text)]">{{ s['maxPerPeriod'] }}</td>
-                              <td class="py-1 px-2 text-[var(--text-muted)]">
+                              <td class="py-1 px-2 text-(--text)">{{ s['maxPerPeriod'] }}</td>
+                              <td class="py-1 px-2 text-(--text-muted)">
                                 {{ scoringLabel(s['scoringMode']) }}
                               </td>
                             </tr>
@@ -165,16 +199,14 @@ const BULLETIN_TEMPLATE = `{
                       </table>
                     </div>
                   } @else {
-                    <p class="text-xs text-[var(--text-muted)] mt-3">
-                      Aucun cours dans ce programme.
-                    </p>
+                    <p class="text-xs text-(--text-muted) mt-3">Aucun cours dans ce programme.</p>
                   }
                 }
               </div>
             }
           </div>
         } @else {
-          <p class="text-sm text-[var(--text-muted)]">Aucun programme publié.</p>
+          <p class="text-sm text-(--text-muted)">Aucun programme publié.</p>
         }
       </section>
 
@@ -187,22 +219,20 @@ const BULLETIN_TEMPLATE = `{
             [count]="bulletins().length"
           />
           @for (b of bulletins(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
-              <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
+            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
+              <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
                 >description</span
               >
-              <span class="text-sm text-[var(--text)] truncate flex-1">{{
-                b.title || b.code
-              }}</span>
+              <span class="text-sm text-(--text) truncate flex-1">{{ b.title || b.code }}</span>
               @if (isPersisted(b)) {
                 <panga-status-badge label="Base" tone="brand" [dot]="false" />
                 <button
                   mat-icon-button
-                  class="!h-8 !w-8"
+                  class="h-8! w-8!"
                   (click)="deleteBulletin(b)"
                   aria-label="Supprimer"
                 >
-                  <mat-icon fontSet="material-symbols-outlined" class="!text-[18px]"
+                  <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!"
                     >delete</mat-icon
                   >
                 </button>
@@ -211,7 +241,7 @@ const BULLETIN_TEMPLATE = `{
               }
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucun référentiel.</p>
+            <p class="text-sm text-(--text-muted)">Aucun référentiel.</p>
           }
         </section>
 
@@ -222,14 +252,14 @@ const BULLETIN_TEMPLATE = `{
             [count]="rdc().length"
           />
           @for (b of rdc(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
-              <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
+            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
+              <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
                 >description</span
               >
-              <span class="text-sm text-[var(--text)] truncate">{{ b.title || b.code }}</span>
+              <span class="text-sm text-(--text) truncate">{{ b.title || b.code }}</span>
             </div>
           } @empty {
-            <p class="text-sm text-[var(--text-muted)]">Aucun référentiel embarqué.</p>
+            <p class="text-sm text-(--text-muted)">Aucun référentiel embarqué.</p>
           }
         </section>
       </div>
@@ -242,12 +272,12 @@ const BULLETIN_TEMPLATE = `{
             [formControl]="importJson"
             rows="12"
             spellcheck="false"
-            class="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs font-mono text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
+            class="w-full rounded-xl border border-(--border) bg-(--background) p-3 text-xs font-mono text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400)"
           ></textarea>
           <div class="flex justify-end mt-3">
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               (click)="importProgram()"
               [disabled]="importing()"
             >
@@ -262,12 +292,12 @@ const BULLETIN_TEMPLATE = `{
             [formControl]="bulletinJson"
             rows="12"
             spellcheck="false"
-            class="w-full rounded-xl border border-[var(--border)] bg-[var(--background)] p-3 text-xs font-mono text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-400)]"
+            class="w-full rounded-xl border border-(--border) bg-(--background) p-3 text-xs font-mono text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400)"
           ></textarea>
           <div class="flex justify-end mt-3">
             <button
               mat-flat-button
-              class="!rounded-xl"
+              class="rounded-xl!"
               (click)="createBulletin()"
               [disabled]="creatingBulletin()"
             >
@@ -284,10 +314,13 @@ export class Curriculum {
   private readonly notify = inject(NotificationService);
 
   protected readonly published = signal<NationalProgram[]>([]);
+  /** Programmes importés non encore publiés (absents de l'endpoint /published). */
+  protected readonly drafts = signal<NationalProgram[]>([]);
   protected readonly bulletins = signal<BulletinProgram[]>([]);
   protected readonly rdc = signal<BulletinProgram[]>([]);
   protected readonly loading = signal(true);
   protected readonly importing = signal(false);
+  protected readonly publishingId = signal<string | null>(null);
   protected readonly creatingBulletin = signal(false);
 
   protected readonly importJson = new FormControl(IMPORT_TEMPLATE, { nonNullable: true });
@@ -361,10 +394,12 @@ export class Curriculum {
     this.loading.set(true);
     forkJoin({
       published: this.curriculum.publishedPrograms().pipe(catchError(() => of({ items: [] }))),
+      drafts: this.curriculum.listPrograms('draft').pipe(catchError(() => of({ items: [] }))),
       bulletins: this.curriculum.bulletinPrograms().pipe(catchError(() => of({ items: [] }))),
       rdc: this.curriculum.rdcBulletinPrograms().pipe(catchError(() => of({ items: [] }))),
     }).subscribe((r) => {
       this.published.set(r.published.items);
+      this.drafts.set(r.drafts.items);
       this.bulletins.set(r.bulletins.items);
       this.rdc.set(r.rdc.items);
       this.loading.set(false);
@@ -387,12 +422,34 @@ export class Curriculum {
     }
     this.importing.set(true);
     this.curriculum.importProgram(dto).subscribe({
-      next: () => {
+      next: (p) => {
         this.importing.set(false);
-        this.notify.success('Programme importé.');
+        // Un programme importé est en brouillon (persisté). Il apparaît dans la
+        // section « à publier » via le rechargement (GET ?status=draft).
+        this.notify.success(
+          p?.published === true
+            ? 'Programme importé et publié.'
+            : 'Programme importé (brouillon). Cliquez sur « Publier » pour l’activer.',
+        );
         this.load();
       },
       error: () => this.importing.set(false),
+    });
+  }
+
+  /** Publie un programme importé (brouillon) ; il bascule alors dans la liste publiée. */
+  publishDraft(p: NationalProgram): void {
+    if (!p.id || this.publishingId()) {
+      return;
+    }
+    this.publishingId.set(p.id);
+    this.curriculum.publishProgram(p.id, true).subscribe({
+      next: () => {
+        this.publishingId.set(null);
+        this.notify.success('Programme publié.');
+        this.load();
+      },
+      error: () => this.publishingId.set(null),
     });
   }
 

@@ -17,6 +17,8 @@ import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
@@ -124,6 +126,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     EmptyState,
     KpiCard,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -134,20 +137,20 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       title="Parents"
       subtitle="Responsables & contacts des élèves"
     >
-      <button mat-stroked-button class="!rounded-xl" (click)="downloadTemplate()">
+      <button mat-stroked-button class="rounded-xl!" (click)="downloadTemplate()">
         <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
       </button>
       <input #fileInput type="file" class="hidden" accept=".xlsx,.xls" (change)="onFile($event)" />
       <button
         mat-stroked-button
-        class="!rounded-xl"
+        class="rounded-xl!"
         (click)="fileInput.click()"
         [disabled]="importing()"
       >
         <mat-icon fontSet="material-symbols-outlined">upload_file</mat-icon>
         {{ importing() ? 'Import…' : 'Importer (Excel)' }}
       </button>
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
@@ -175,8 +178,8 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
         <panga-section-header icon="person_add" title="Nouveau parent" />
         @for (group of groups; track group.title) {
-          <p class="text-sm font-semibold text-[var(--text)] mt-3 mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">{{
+          <p class="text-sm font-semibold text-(--text) mt-3 mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-(--brand-500)">{{
               group.icon
             }}</span>
             {{ group.title }}
@@ -216,8 +219,8 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </div>
         }
 
-        <p class="text-sm font-semibold text-[var(--text)] mt-3 mb-2 flex items-center gap-2">
-          <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]"
+        <p class="text-sm font-semibold text-(--text) mt-3 mb-2 flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
             >verified_user</span
           >
           Autorisations
@@ -229,7 +232,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </div>
 
         <div class="flex justify-end mt-4">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Ajouter le parent
           </button>
         </div>
@@ -249,8 +252,8 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
-        @for (p of parents(); track p.id) {
+      <div class="panga-card divide-y divide-(--border)">
+        @for (p of visibleParents(); track p.id) {
           <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
           >
@@ -258,7 +261,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
               <panga-avatar [name]="fullName(p)" [size]="44" />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <p class="font-medium text-[var(--text)] truncate">{{ fullName(p) || '—' }}</p>
+                  <p class="font-medium text-(--text) truncate">{{ fullName(p) || '—' }}</p>
                   @if (p.relationship) {
                     <panga-status-badge
                       [label]="relationshipLabel(p.relationship)"
@@ -274,7 +277,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
                   }
                 </div>
                 <div
-                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-(--text-muted)"
                 >
                   @if (p.email) {
                     <span class="inline-flex items-center gap-1 truncate">
@@ -307,12 +310,12 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
               aria-label="Changer le statut"
               class="shrink-0"
             >
-              <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]"
+              <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)"
                 >more_vert</mat-icon
               >
             </button>
             <mat-menu #menu="matMenu" class="panga-menu">
-              <p class="px-4 pt-2 pb-1 text-xs text-[var(--text-muted)]">Changer le statut</p>
+              <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
               @for (st of statusOptions; track st.value) {
                 <button
                   mat-menu-item
@@ -328,6 +331,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             </mat-menu>
           </div>
         }
+        <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
       </div>
     }
   `,
@@ -341,6 +345,10 @@ export class ParentsList {
   protected readonly statusOptions = PARENT_STATUS_OPTIONS;
 
   protected readonly parents = signal<Parent[]>([]);
+  /** Pagination client (l'endpoint /parents renvoie tout le lot). */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.parents().length, this.page()));
+  protected readonly visibleParents = computed(() => pageSlice(this.parents(), this.page()));
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
@@ -402,6 +410,7 @@ export class ParentsList {
     this.parentsApi.list().subscribe({
       next: (res) => {
         this.parents.set(res.items);
+        this.page.set(1);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),

@@ -5,8 +5,12 @@
  */
 export const environment = {
   production: true,
-  /** Base de l'API REST du backend NestJS. */
-  apiBaseUrl: '/v1',
+  /**
+   * Base de l'API REST du backend NestJS — domaine séparé en prod.
+   * Le backend doit autoriser CORS pour l'origine du front + les en-têtes custom
+   * (Authorization, x-school-id, x-tenant-id, x-lang).
+   */
+  apiBaseUrl: 'https://api.panga-rdc.com/v1',
   /** En-têtes multi-tenant propagés par le TenantInterceptor. */
   schoolHeader: 'x-school-id',
   tenantHeader: 'x-tenant-id',

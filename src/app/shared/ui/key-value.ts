@@ -53,16 +53,16 @@ function toEntries(data: unknown, prefix = ''): Entry[] {
     @if (entries().length) {
       <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1">
         @for (e of entries(); track e.key) {
-          <div class="flex justify-between gap-4 py-1.5 border-b border-[var(--border)]">
-            <dt class="text-sm text-[var(--text-muted)] truncate" [title]="e.key">{{ e.key }}</dt>
-            <dd class="text-sm font-medium text-[var(--text)] text-right break-all">
+          <div class="flex justify-between gap-4 py-1.5 border-b border-(--border)">
+            <dt class="text-sm text-(--text-muted) truncate" [title]="e.key">{{ e.key }}</dt>
+            <dd class="text-sm font-medium text-(--text) text-right break-all">
               {{ e.value }}
             </dd>
           </div>
         }
       </dl>
     } @else {
-      <p class="text-sm text-[var(--text-muted)]">Aucune donnée.</p>
+      <p class="text-sm text-(--text-muted)">Aucune donnée.</p>
     }
   `,
 })

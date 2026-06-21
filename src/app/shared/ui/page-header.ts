@@ -20,13 +20,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         }
         <div class="min-w-0">
           <h1
-            class="text-2xl font-semibold text-[var(--text)] truncate"
+            class="text-2xl font-semibold text-(--text) truncate"
             style="font-family: Urbanist, sans-serif"
           >
             {{ title() }}
           </h1>
           @if (subtitle()) {
-            <p class="text-sm text-[var(--text-muted)] truncate">{{ subtitle() }}</p>
+            <p class="text-sm text-(--text-muted) truncate">{{ subtitle() }}</p>
           }
         </div>
       </div>

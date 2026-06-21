@@ -1,6 +1,6 @@
 <ng-container *transloco="let t">
   <header class="mb-6">
-    <h1 class="text-2xl font-semibold text-[var(--text)]">{{ t('profile.title') }}</h1>
+    <h1 class="text-2xl font-semibold text-(--text)">{{ t('profile.title') }}</h1>
   </header>
 
   <div class="grid gap-6 lg:grid-cols-2">
@@ -9,9 +9,9 @@
       <div class="flex items-center gap-4">
         <panga-avatar [name]="store.fullName()" [size]="64" />
         <div class="min-w-0 flex-1">
-          <p class="text-lg font-semibold text-[var(--text)] truncate">{{ store.fullName() }}</p>
+          <p class="text-lg font-semibold text-(--text) truncate">{{ store.fullName() }}</p>
           @if (store.user()?.username) {
-            <p class="text-sm text-[var(--text-muted)] truncate">
+            <p class="text-sm text-(--text-muted) truncate">
               {{ '@' + store.user()?.username }}
             </p>
           }
@@ -37,9 +37,9 @@
 
       <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
         @for (row of infoRows(); track row.label) {
-          <div class="flex justify-between gap-3 py-1.5 border-b border-[var(--border)]">
-            <dt class="text-sm text-[var(--text-muted)]">{{ row.label }}</dt>
-            <dd class="text-sm font-medium text-[var(--text)] text-right break-all">
+          <div class="flex justify-between gap-3 py-1.5 border-b border-(--border)">
+            <dt class="text-sm text-(--text-muted)">{{ row.label }}</dt>
+            <dd class="text-sm font-medium text-(--text) text-right break-all">
               {{ row.value }}
             </dd>
           </div>
@@ -49,7 +49,7 @@
 
     <!-- Changement de mot de passe -->
     <section class="panga-card p-6">
-      <h2 class="text-lg font-semibold text-[var(--text)] mb-4">
+      <h2 class="text-lg font-semibold text-(--text) mb-4">
         {{ t('profile.changePassword') }}
       </h2>
       <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col">
@@ -98,7 +98,7 @@
 
   <!-- Historique de connexion -->
   <section class="mt-6">
-    <h2 class="text-lg font-semibold text-[var(--text)] mb-3">{{ t('profile.loginHistory') }}</h2>
+    <h2 class="text-lg font-semibold text-(--text) mb-3">{{ t('profile.loginHistory') }}</h2>
     @if (loadingHistory()) {
       <panga-skeleton-table [rows]="5" [cols]="[1, 2, 3]" />
     } @else if (history().length === 0) {
@@ -109,7 +109,7 @@
       <div class="panga-card overflow-hidden">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-[var(--text-muted)] border-b border-[var(--border)]">
+            <tr class="text-left text-(--text-muted) border-b border-(--border)">
               <th class="px-4 py-3 font-medium">{{ t('profile.date') }}</th>
               <th class="px-4 py-3 font-medium">{{ t('profile.device') }}</th>
               <th class="px-4 py-3 font-medium">IP</th>
@@ -118,14 +118,14 @@
           </thead>
           <tbody>
             @for (entry of history(); track $index) {
-              <tr class="border-b border-[var(--border)] last:border-0">
-                <td class="px-4 py-3 text-[var(--text)]">
+              <tr class="border-b border-(--border) last:border-0">
+                <td class="px-4 py-3 text-(--text)">
                   {{ entry.createdAt ? (entry.createdAt | date: 'short') : '—' }}
                 </td>
-                <td class="px-4 py-3 text-[var(--text-muted)] max-w-[20rem] truncate">
+                <td class="px-4 py-3 text-(--text-muted) max-w-80 truncate">
                   {{ entry.device || entry.userAgent || '—' }}
                 </td>
-                <td class="px-4 py-3 text-[var(--text-muted)]">{{ entry.ipAddress || '—' }}</td>
+                <td class="px-4 py-3 text-(--text-muted)">{{ entry.ipAddress || '—' }}</td>
                 <td class="px-4 py-3">
                   <span
                     class="px-2 py-0.5 rounded-full text-xs font-medium"

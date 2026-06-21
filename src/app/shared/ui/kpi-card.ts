@@ -17,8 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
         </div>
       }
       <div class="min-w-0">
-        <p class="text-sm text-[var(--text-muted)] truncate">{{ label() }}</p>
-        <p class="text-2xl font-semibold text-[var(--text)]">{{ value() }}</p>
+        <p class="text-sm text-(--text-muted) truncate">{{ label() }}</p>
+        <p class="text-2xl font-semibold text-(--text)">{{ value() }}</p>
         @if (trend() !== null) {
           <p
             class="text-xs mt-1 font-medium"

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,10 +20,11 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { Paginator } from '../../../shared/ui/paginator';
+import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 const TERMS = ['TERM1', 'TERM2', 'TERM3'];
 
 function isPublished(b: Bulletin): boolean {
@@ -34,6 +43,7 @@ function isPublished(b: Bulletin): boolean {
     Avatar,
     EmptyState,
     PageHeader,
+    Paginator,
     SectionHeader,
     StatusBadge,
   ],
@@ -41,7 +51,7 @@ function isPublished(b: Bulletin): boolean {
     <panga-page-header icon="description" title="Bulletins" [subtitle]="'Année ' + schoolYear" />
 
     <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-[200px]">
+      <mat-form-field appearance="outline" class="flex-1 min-w-50">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -49,7 +59,7 @@ function isPublished(b: Bulletin): boolean {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-[140px]">
+      <mat-form-field appearance="outline" class="min-w-35">
         <mat-label>Trimestre</mat-label>
         <mat-select [value]="term()" (selectionChange)="selectTerm($event.value)">
           @for (t of terms; track t) {
@@ -58,7 +68,7 @@ function isPublished(b: Bulletin): boolean {
         </mat-select>
       </mat-form-field>
       @if (classId()) {
-        <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+        <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
           <mat-icon fontSet="material-symbols-outlined">{{
             showForm() ? 'close' : 'note_add'
           }}</mat-icon>
@@ -90,7 +100,7 @@ function isPublished(b: Bulletin): boolean {
             </mat-form-field>
           </div>
           <div class="flex justify-end">
-            <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="generating()">
+            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="generating()">
               Générer pour {{ term() }}
             </button>
           </div>
@@ -100,7 +110,7 @@ function isPublished(b: Bulletin): boolean {
       <section class="panga-card p-5">
         <panga-section-header icon="description" title="Bulletins" [count]="bulletins().length" />
         @if (loading()) {
-          <p class="text-sm text-[var(--text-muted)] py-6 text-center">Chargement…</p>
+          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (bulletins().length === 0) {
           <panga-empty-state
             icon="description"
@@ -108,15 +118,15 @@ function isPublished(b: Bulletin): boolean {
             description="Générez les bulletins de la classe."
           />
         } @else {
-          <div class="divide-y divide-[var(--border)] -mx-5">
-            @for (b of bulletins(); track b.id) {
+          <div class="divide-y divide-(--border) -mx-5">
+            @for (b of visibleBulletins(); track b.id) {
               <div class="flex items-center gap-4 px-5 py-3">
                 <panga-avatar [name]="b.studentName || b.studentId || '?'" [size]="38" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ b.studentName || b.studentId || '—' }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)]">
+                  <p class="text-xs text-(--text-muted)">
                     {{ b.term || term() }}
                     @if (b.average !== undefined && b.average !== null) {
                       · Moyenne {{ b.average }}
@@ -131,13 +141,14 @@ function isPublished(b: Bulletin): boolean {
                   [tone]="statusTone(b)"
                 />
                 @if (!published(b)) {
-                  <button mat-stroked-button class="!rounded-xl" (click)="publish(b)">
+                  <button mat-stroked-button class="rounded-xl!" (click)="publish(b)">
                     Publier
                   </button>
                 }
               </div>
             }
           </div>
+          <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
         }
       </section>
     }
@@ -149,13 +160,18 @@ export class BulletinsList {
   private readonly studentsApi = inject(StudentsService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
-  protected readonly schoolYear = SCHOOL_YEAR;
+  protected readonly schoolYear = this.sy.selected();
   protected readonly terms = TERMS;
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
   protected readonly term = signal('TERM1');
   protected readonly bulletins = signal<Bulletin[]>([]);
+  /** Pagination client de la liste des bulletins de la classe. */
+  protected readonly page = signal(1);
+  protected readonly pageMeta = computed(() => clientMeta(this.bulletins().length, this.page()));
+  protected readonly visibleBulletins = computed(() => pageSlice(this.bulletins(), this.page()));
   private readonly allStudents = signal<Student[]>([]);
   protected readonly loading = signal(false);
   protected readonly generating = signal(false);
@@ -173,10 +189,18 @@ export class BulletinsList {
   });
 
   constructor() {
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
-    this.studentsApi
-      .list({ page: 1, limit: 200, schoolYear: SCHOOL_YEAR })
-      .subscribe({ next: (r) => this.allStudents.set(r.items) });
+    // Recharge classes & élèves à chaque changement d'année (sélecteur global).
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+        this.studentsApi
+          .list({ page: 1, limit: 200, schoolYear: this.sy.filter() })
+          .subscribe({ next: (r) => this.allStudents.set(r.items) });
+      });
+    });
   }
 
   protected studentName(s: Student): string {
@@ -199,9 +223,10 @@ export class BulletinsList {
 
   private load(): void {
     this.loading.set(true);
-    this.academics.classBulletins(this.classId(), SCHOOL_YEAR, this.term()).subscribe({
+    this.academics.classBulletins(this.classId(), this.sy.filter(), this.term()).subscribe({
       next: (r) => {
         this.bulletins.set(r.items);
+        this.page.set(1);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -218,7 +243,7 @@ export class BulletinsList {
       .generateBulletin({
         studentId: this.form.getRawValue().studentId,
         classId: this.classId(),
-        schoolYear: SCHOOL_YEAR,
+        schoolYear: this.sy.selected(),
         term: this.term(),
         generatePdf: false,
         publishImmediately: false,

@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -33,8 +41,7 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
-
-const SCHOOL_YEAR = '2024-2025';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
 interface Field {
@@ -155,20 +162,20 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
   ],
   template: `
     <panga-page-header icon="school" title="Élèves" subtitle="Effectifs de l'établissement">
-      <button mat-stroked-button class="!rounded-xl" (click)="downloadTemplate()">
+      <button mat-stroked-button class="rounded-xl!" (click)="downloadTemplate()">
         <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
       </button>
       <input #fileInput type="file" class="hidden" accept=".xlsx,.xls" (change)="onFile($event)" />
       <button
         mat-stroked-button
-        class="!rounded-xl"
+        class="rounded-xl!"
         (click)="fileInput.click()"
         [disabled]="importing()"
       >
         <mat-icon fontSet="material-symbols-outlined">upload_file</mat-icon>
         {{ importing() ? 'Import…' : 'Importer (Excel)' }}
       </button>
-      <button mat-flat-button class="!rounded-xl" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
@@ -196,8 +203,8 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
         <panga-section-header icon="person_add" title="Nouvel élève" />
         @for (group of groups; track group.title) {
-          <p class="text-sm font-semibold text-[var(--text)] mt-3 mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-[var(--brand-500)]">{{
+          <p class="text-sm font-semibold text-(--text) mt-3 mb-2 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px] text-(--brand-500)">{{
               group.icon
             }}</span>
             {{ group.title }}
@@ -249,7 +256,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
           </div>
         }
         <div class="flex justify-end mt-2">
-          <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="submitting()">
+          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
             Inscrire l'élève
           </button>
         </div>
@@ -269,7 +276,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-[var(--border)]">
+      <div class="panga-card divide-y divide-(--border)">
         @for (s of students(); track s.id) {
           <div
             class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
@@ -280,9 +287,9 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
             >
               <panga-avatar [name]="fullName(s)" [size]="44" />
               <div class="min-w-0 flex-1">
-                <p class="font-medium text-[var(--text)] truncate">{{ fullName(s) || '—' }}</p>
+                <p class="font-medium text-(--text) truncate">{{ fullName(s) || '—' }}</p>
                 <div
-                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[var(--text-muted)]"
+                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-(--text-muted)"
                 >
                   @if (s.matricule || s.studentNumber) {
                     <span class="inline-flex items-center gap-1">
@@ -327,12 +334,12 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
               aria-label="Changer le statut"
               class="shrink-0"
             >
-              <mat-icon fontSet="material-symbols-outlined" class="text-[var(--text-muted)]">
+              <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
                 more_vert
               </mat-icon>
             </button>
             <mat-menu #statusMenu="matMenu" class="panga-menu">
-              <p class="px-4 pt-2 pb-1 text-xs text-[var(--text-muted)]">Changer le statut</p>
+              <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
               @for (st of statusOptions; track st.value) {
                 <button
                   mat-menu-item
@@ -360,6 +367,7 @@ export class StudentsList {
   private readonly classesApi = inject(ClassesService);
   private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
+  private readonly sy = inject(SchoolYearStore);
 
   protected readonly groups = GROUPS;
   protected readonly statusOptions = STUDENT_STATUS_OPTIONS;
@@ -400,9 +408,18 @@ export class StudentsList {
   );
 
   constructor() {
-    this.load();
-    this.classesApi.list(SCHOOL_YEAR).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
+    // Recharge à chaque changement d'année (sélecteur global), sans re-navigation.
+    effect(() => {
+      this.sy.selected();
+      untracked(() => {
+        this.page.set(1);
+        this.load();
+        this.classesApi
+          .list(this.sy.filter())
+          .subscribe({ next: (r) => this.classes.set(r.items) });
+      });
+    });
   }
 
   protected fullName(s: Student): string {
@@ -411,15 +428,17 @@ export class StudentsList {
 
   private load(): void {
     this.loading.set(true);
-    this.studentsApi.list({ page: this.page(), limit: 10, schoolYear: SCHOOL_YEAR }).subscribe({
-      next: (res) => {
-        this.students.set(res.items);
-        this.pagination.set(res.pagination ?? null);
-        this.total.set(res.pagination?.total ?? res.items.length);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    this.studentsApi
+      .list({ page: this.page(), limit: 10, schoolYear: this.sy.filter() })
+      .subscribe({
+        next: (res) => {
+          this.students.set(res.items);
+          this.pagination.set(res.pagination ?? null);
+          this.total.set(res.pagination?.total ?? res.items.length);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   onPage(page: number): void {
@@ -434,7 +453,7 @@ export class StudentsList {
       return;
     }
     this.importing.set(true);
-    this.studentsApi.importExcel(file, SCHOOL_YEAR).subscribe({
+    this.studentsApi.importExcel(file, this.sy.selected()).subscribe({
       next: (res) => {
         this.importing.set(false);
         const count = Number(res?.['imported'] ?? res?.['count'] ?? res?.['created']) || 0;

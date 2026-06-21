@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../core/auth/auth.service';
 import { AuthStore } from '../core/auth/auth.store';
 import { LoadingService } from '../core/http/loading.service';
+import { SchoolYearStore } from '../core/school-year/school-year.store';
 import { ThemeService } from '../core/theme.service';
 import { Avatar } from '../shared/ui/avatar';
 import { NotificationService, type Tone } from '../shared/ui/notification.service';
@@ -54,9 +55,13 @@ export class MainShell {
   protected readonly loading = inject(LoadingService);
   protected readonly theme = inject(ThemeService);
   protected readonly notify = inject(NotificationService);
+  protected readonly sy = inject(SchoolYearStore);
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
+
+  /** Super_admin = contexte cross-tenant : pas d'année scolaire forcée. */
+  protected readonly isSuperAdmin = computed(() => this.store.role() === 'super_admin');
 
   /** Sidebar réduite en rail (icônes seules) plutôt que masquée. */
   protected readonly collapsed = signal(false);
@@ -73,6 +78,10 @@ export class MainShell {
   constructor() {
     // Profil complet (auth/profile) pour enrichir l'en-tête / la barre latérale.
     this.auth.loadMe().subscribe({ error: () => undefined });
+    // Année scolaire courante de l'école (hors super_admin cross-tenant).
+    if (this.store.role() !== 'super_admin') {
+      this.sy.load();
+    }
   }
 
   protected toneColor(tone: Tone): string {
@@ -86,6 +95,16 @@ export class MainShell {
   setLang(lang: string): void {
     this.transloco.setActiveLang(lang);
     this.lang.set(lang);
+  }
+
+  /**
+   * Change l'année scolaire active. Les écrans réagissent via un `effect` sur
+   * `SchoolYearStore.selected` et rejouent leurs appels (sans rechargement de
+   * route). Les GET de liste n'envoient l'année que si elle diffère de l'année
+   * courante de l'école.
+   */
+  setYear(year: string): void {
+    this.sy.setSelected(year);
   }
 
   /** Année courante pour le pied de page (évalué une fois). */

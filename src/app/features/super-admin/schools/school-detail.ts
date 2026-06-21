@@ -40,9 +40,9 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
   template: `
     <a
       [routerLink]="['/', 'platform', 'schools']"
-      class="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--brand-700)] mb-4"
+      class="inline-flex items-center gap-1 text-sm text-(--text-muted) hover:text-(--brand-700) mb-4"
     >
-      <mat-icon fontSet="material-symbols-outlined" class="!text-base !w-4 !h-4"
+      <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
         >arrow_back</mat-icon
       >
       Écoles
@@ -73,7 +73,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
               }
             </p>
           </div>
-          <button mat-flat-button class="!rounded-xl !bg-white/15 !text-white" (click)="remove()">
+          <button mat-flat-button class="rounded-xl! bg-white/15! text-white!" (click)="remove()">
             <mat-icon fontSet="material-symbols-outlined">delete</mat-icon> Supprimer
           </button>
         </div>
@@ -97,7 +97,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
               <input matInput formControlName="phone" />
             </mat-form-field>
             <div class="flex justify-end">
-              <button mat-flat-button class="!rounded-xl" type="submit" [disabled]="saving()">
+              <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
                 Enregistrer
               </button>
             </div>
@@ -115,13 +115,13 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
         @if (authorities().length) {
           <div class="grid gap-3 sm:grid-cols-2 mb-6">
             @for (a of authorities(); track a.id) {
-              <div class="flex items-center gap-3 rounded-2xl border border-[var(--border)] p-3">
+              <div class="flex items-center gap-3 rounded-2xl border border-(--border) p-3">
                 <panga-avatar [name]="a.displayName || a.roleCode || '?'" [size]="40" />
                 <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-[var(--text)] truncate">
+                  <p class="text-sm font-medium text-(--text) truncate">
                     {{ a.displayName || a.roleCode }}
                   </p>
-                  <p class="text-xs text-[var(--text-muted)] truncate">{{ a.email }}</p>
+                  <p class="text-xs text-(--text-muted) truncate">{{ a.email }}</p>
                   <div class="mt-1 flex flex-wrap gap-1.5">
                     @if (a.roleCode) {
                       <panga-status-badge [label]="a.roleCode" tone="brand" [dot]="false" />
@@ -132,7 +132,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
                   </div>
                 </div>
                 <button mat-icon-button (click)="removeAuthority(a.id)" aria-label="Supprimer">
-                  <mat-icon fontSet="material-symbols-outlined" class="text-[var(--danger)]">
+                  <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)">
                     delete
                   </mat-icon>
                 </button>
@@ -140,11 +140,11 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
             }
           </div>
         } @else {
-          <p class="text-sm text-[var(--text-muted)] mb-6">Aucune autorité enregistrée.</p>
+          <p class="text-sm text-(--text-muted) mb-6">Aucune autorité enregistrée.</p>
         }
 
         <div class="rounded-2xl bg-[color-mix(in_srgb,var(--brand-500)_5%,transparent)] p-4">
-          <p class="text-sm font-medium text-[var(--text)] mb-3">Ajouter une autorité</p>
+          <p class="text-sm font-medium text-(--text) mb-3">Ajouter une autorité</p>
           <form
             [formGroup]="authForm"
             (ngSubmit)="addAuthority()"
@@ -177,7 +177,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
             <div class="sm:col-span-2 flex justify-end">
               <button
                 mat-flat-button
-                class="!rounded-xl"
+                class="rounded-xl!"
                 type="submit"
                 [disabled]="addingAuthority()"
               >

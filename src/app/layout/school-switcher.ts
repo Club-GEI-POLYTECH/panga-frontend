@@ -13,9 +13,9 @@ import type { School } from '../core/models/auth.models';
   imports: [MatButtonModule, MatIconModule, MatMenuModule],
   template: `
     @if (store.schools().length > 1) {
-      <button mat-stroked-button [matMenuTriggerFor]="menu" class="!rounded-xl">
+      <button mat-stroked-button [matMenuTriggerFor]="menu" class="rounded-xl!">
         <mat-icon fontSet="material-symbols-outlined">apartment</mat-icon>
-        <span class="max-w-[12rem] truncate">
+        <span class="max-w-48 truncate">
           {{ store.activeSchool()?.name ?? 'Choisir une école' }}
         </span>
         <mat-icon fontSet="material-symbols-outlined">expand_more</mat-icon>
