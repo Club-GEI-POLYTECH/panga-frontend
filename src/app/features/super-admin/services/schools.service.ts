@@ -37,13 +37,13 @@ export class SchoolsService {
       .pipe(map((r) => unwrapEnvelope<PlatformSchool>(r)));
   }
 
-  create(dto: CreateSchoolDto): Observable<PlatformSchool> {
+  create(dto: CreateSchoolDto | Record<string, unknown>): Observable<PlatformSchool> {
     return this.http
       .post<unknown>(this.base, dto)
       .pipe(map((r) => unwrapEnvelope<PlatformSchool>(r)));
   }
 
-  update(id: string, dto: UpdateSchoolDto): Observable<PlatformSchool> {
+  update(id: string, dto: UpdateSchoolDto | Record<string, unknown>): Observable<PlatformSchool> {
     return this.http
       .put<unknown>(`${this.base}/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<PlatformSchool>(r)));

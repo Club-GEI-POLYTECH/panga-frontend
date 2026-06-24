@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -13,13 +14,19 @@ import {
   AUTHORITY_EDU_LEVEL_OPTIONS,
   AUTHORITY_ROLE_OPTIONS,
 } from '../../../core/models/school.enums';
+import {
+  SCHOOL_READONLY_GROUPS,
+  buildSchoolFormGroup,
+  patchSchoolForm,
+  schoolUpdatePayload,
+} from '../../../core/models/school-fields';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
-import { KeyValue } from '../../../shared/ui/key-value';
+import { SchoolFieldsForm } from '../../../shared/ui/school-fields-form';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
-/** Détail d'une école : infos, mise à jour, autorités (super_admin). */
+/** Détail d'une école : sections complètes, update direct, autorités (super_admin). */
 @Component({
   selector: 'panga-school-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,10 +40,11 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
     MatProgressSpinnerModule,
     MatSelectModule,
     Avatar,
-    KeyValue,
+    SchoolFieldsForm,
     SectionHeader,
     StatusBadge,
   ],
+  providers: [DatePipe],
   template: `
     <a
       [routerLink]="['/', 'platform', 'schools']"
@@ -79,33 +87,42 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
         </div>
       </div>
 
-      <section class="grid gap-4 lg:grid-cols-2">
-        <div class="panga-card p-5">
-          <panga-section-header icon="info" title="Informations" />
-          <panga-key-value [data]="school()" />
-        </div>
+      <!-- Formulaire éditable (sections partagées) -->
+      <panga-school-fields [form]="form" />
 
-        <div class="panga-card p-5">
-          <panga-section-header icon="edit" title="Mettre à jour" />
-          <form [formGroup]="editForm" (ngSubmit)="update()" class="grid gap-3">
-            <mat-form-field appearance="outline">
-              <mat-label>Nom affiché</mat-label>
-              <input matInput formControlName="displayName" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Téléphone</mat-label>
-              <input matInput formControlName="phone" />
-            </mat-form-field>
-            <div class="flex justify-end">
-              <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
-                Enregistrer
-              </button>
-            </div>
-          </form>
-        </div>
+      <div class="sticky bottom-4 z-10 flex justify-end mb-6">
+        <button
+          mat-flat-button
+          class="rounded-xl! shadow-lg"
+          (click)="update()"
+          [disabled]="saving() || form.pristine"
+        >
+          <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}
+        </button>
+      </div>
+
+      <!-- Lecture seule -->
+      <section class="grid gap-4 lg:grid-cols-2 mb-4">
+        @for (group of readonly; track group.title) {
+          <div class="panga-card p-5">
+            <panga-section-header [icon]="group.icon" [title]="group.title" />
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+              @for (f of group.fields; track f.key) {
+                <div class="flex justify-between gap-3 py-1.5 border-b border-(--border)">
+                  <dt class="text-sm text-(--text-muted)">{{ f.label }}</dt>
+                  <dd class="text-sm font-medium text-(--text) text-right break-all">
+                    {{ displayRo(f.key) }}
+                  </dd>
+                </div>
+              }
+            </dl>
+          </div>
+        }
       </section>
 
-      <section class="panga-card p-5 mt-4">
+      <!-- Autorités -->
+      <section class="panga-card p-5">
         <panga-section-header
           icon="shield_person"
           title="Autorités"
@@ -196,9 +213,11 @@ export class SchoolDetail {
   private readonly schoolsApi = inject(SchoolsService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+  private readonly datePipe = inject(DatePipe);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
+  protected readonly readonly = SCHOOL_READONLY_GROUPS;
   protected readonly authorityRoles = AUTHORITY_ROLE_OPTIONS;
   protected readonly authorityLevels = AUTHORITY_EDU_LEVEL_OPTIONS;
 
@@ -208,10 +227,7 @@ export class SchoolDetail {
   protected readonly saving = signal(false);
   protected readonly addingAuthority = signal(false);
 
-  protected readonly editForm = this.fb.nonNullable.group({
-    displayName: [''],
-    phone: [''],
-  });
+  protected readonly form = buildSchoolFormGroup();
 
   protected readonly authForm = this.fb.nonNullable.group({
     displayName: ['', Validators.required],
@@ -229,10 +245,7 @@ export class SchoolDetail {
     this.schoolsApi.get(this.id).subscribe({
       next: (s) => {
         this.school.set(s);
-        this.editForm.patchValue({
-          displayName: (s.displayName as string) || s.name || '',
-          phone: s.phone || '',
-        });
+        patchSchoolForm(this.form, s as Record<string, unknown>);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -245,16 +258,34 @@ export class SchoolDetail {
     });
   }
 
+  protected roVal(key: string): unknown {
+    return (this.school() as Record<string, unknown> | null)?.[key];
+  }
+  protected displayRo(key: string): string {
+    const v = this.roVal(key);
+    if (v === null || v === undefined || v === '') {
+      return '—';
+    }
+    if (key === 'createdAt' || key === 'updatedAt') {
+      return this.datePipe.transform(v as string, 'dd/MM/yyyy HH:mm') ?? String(v);
+    }
+    if (typeof v === 'number') {
+      return v.toLocaleString('fr-FR');
+    }
+    return String(v);
+  }
+
   update(): void {
     if (this.saving()) {
       return;
     }
     this.saving.set(true);
-    this.schoolsApi.update(this.id, this.editForm.getRawValue()).subscribe({
-      next: () => {
+    this.schoolsApi.update(this.id, schoolUpdatePayload(this.form)).subscribe({
+      next: (s) => {
         this.saving.set(false);
+        this.school.set(s);
+        patchSchoolForm(this.form, s as Record<string, unknown>);
         this.notify.success('École mise à jour.');
-        this.load();
       },
       error: () => this.saving.set(false),
     });

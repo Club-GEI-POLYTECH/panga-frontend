@@ -1,22 +1,31 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { SchoolsService } from '../services/schools.service';
 import type { PlatformSchool } from '../models/platform.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
+import {
+  SCHOOL_EDITABLE_GROUPS,
+  buildSchoolFormGroup,
+  schoolCreatePayload,
+  type SchoolFieldGroup,
+} from '../../../core/models/school-fields';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
-import { SectionHeader } from '../../../shared/ui/section-header';
+import { SchoolFieldsForm } from '../../../shared/ui/school-fields-form';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
+
+/** Création : champ « code » (accès) en tête, puis toutes les sections éditables. */
+const CREATE_GROUPS: SchoolFieldGroup[] = [
+  { title: 'Accès', icon: 'key', fields: [{ key: 'code', label: 'Code établissement' }] },
+  ...SCHOOL_EDITABLE_GROUPS,
+];
 
 function isActive(s: PlatformSchool): boolean {
   return s.isActive !== false && s.status !== 'inactive' && s.status !== 'disabled';
@@ -28,17 +37,14 @@ function isActive(s: PlatformSchool): boolean {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
-    ReactiveFormsModule,
     MatButtonModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     Avatar,
     EmptyState,
     KpiCard,
     PageHeader,
     Paginator,
-    SectionHeader,
+    SchoolFieldsForm,
     StatusBadge,
     SkeletonTable,
   ],
@@ -61,44 +67,20 @@ function isActive(s: PlatformSchool): boolean {
     </section>
 
     @if (showForm()) {
-      <form
-        [formGroup]="form"
-        (ngSubmit)="create()"
-        class="panga-card p-6 mb-6 animate-[fadeIn_0.2s_ease]"
-      >
-        <panga-section-header icon="add_business" title="Nouvel établissement" />
-        <div class="grid gap-4 sm:grid-cols-2">
-          <mat-form-field appearance="outline">
-            <mat-label>Nom</mat-label>
-            <input matInput formControlName="name" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Code</mat-label>
-            <input matInput formControlName="code" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>E-mail</mat-label>
-            <input matInput type="email" formControlName="email" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Téléphone</mat-label>
-            <input matInput formControlName="phone" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Ville</mat-label>
-            <input matInput formControlName="city" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Pays</mat-label>
-            <input matInput formControlName="country" />
-          </mat-form-field>
-        </div>
-        <div class="flex justify-end">
-          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
-            Créer l'école
+      <div class="mb-6 animate-[fadeIn_0.2s_ease]">
+        <panga-school-fields [form]="form" [groups]="createGroups" />
+        <div class="sticky bottom-4 z-10 flex justify-end">
+          <button
+            mat-flat-button
+            class="rounded-xl! shadow-lg"
+            (click)="create()"
+            [disabled]="submitting()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">add_business</mat-icon>
+            {{ submitting() ? 'Création…' : "Créer l'école" }}
           </button>
         </div>
-      </form>
+      </div>
     }
 
     @if (loading()) {
@@ -156,8 +138,9 @@ function isActive(s: PlatformSchool): boolean {
 })
 export class SchoolsList {
   private readonly schoolsApi = inject(SchoolsService);
-  private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+
+  protected readonly createGroups = CREATE_GROUPS;
 
   protected readonly schools = signal<PlatformSchool[]>([]);
   protected readonly total = signal(0);
@@ -179,16 +162,11 @@ export class SchoolsList {
 
   protected readonly active = isActive;
 
-  protected readonly form = this.fb.nonNullable.group({
-    name: ['', Validators.required],
-    code: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
-    phone: [''],
-    city: [''],
-    country: ['CD'],
-  });
+  /** Toutes les sections + code obligatoire (création). */
+  protected readonly form = buildSchoolFormGroup(true);
 
   constructor() {
+    this.form.patchValue({ country: 'CD' });
     this.load();
   }
 
@@ -216,11 +194,12 @@ export class SchoolsList {
       return;
     }
     this.submitting.set(true);
-    this.schoolsApi.create(this.form.getRawValue()).subscribe({
+    this.schoolsApi.create(schoolCreatePayload(this.form)).subscribe({
       next: () => {
         this.submitting.set(false);
         this.notify.success('École créée.');
-        this.form.reset({ country: 'CD' });
+        this.form.reset();
+        this.form.patchValue({ country: 'CD' });
         this.showForm.set(false);
         this.load();
       },

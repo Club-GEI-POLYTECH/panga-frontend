@@ -10,192 +10,20 @@ import { MatSelectModule } from '@angular/material/select';
 import { SchoolService } from '../services/school.service';
 import type { PlatformSchool, SchoolAuthority } from '../../super-admin/models/platform.models';
 import {
-  ACCREDITATION_STATUS_OPTIONS,
   AUTHORITY_EDU_LEVEL_OPTIONS,
   AUTHORITY_ROLE_OPTIONS,
-  EDUCATION_LEVEL_OPTIONS,
-  SCHOOL_TYPE_OPTIONS,
 } from '../../../core/models/school.enums';
+import {
+  SCHOOL_READONLY_GROUPS,
+  buildSchoolFormGroup,
+  patchSchoolForm,
+  schoolUpdatePayload,
+} from '../../../core/models/school-fields';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { SchoolFieldsForm } from '../../../shared/ui/school-fields-form';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
-
-type FieldType = 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'multiselect';
-interface Field {
-  key: string;
-  label: string;
-  type?: FieldType;
-  options?: { value: string; label: string }[];
-  wide?: boolean;
-}
-interface Group {
-  title: string;
-  icon: string;
-  fields: Field[];
-}
-
-const EDITABLE: Group[] = [
-  {
-    title: 'Identité',
-    icon: 'badge',
-    fields: [
-      { key: 'displayName', label: 'Nom affiché' },
-      { key: 'name', label: 'Nom complet' },
-      { key: 'legalName', label: 'Raison sociale' },
-      { key: 'schoolType', label: 'Type', type: 'select', options: SCHOOL_TYPE_OPTIONS },
-      {
-        key: 'educationLevels',
-        label: "Niveaux d'enseignement",
-        type: 'multiselect',
-        options: EDUCATION_LEVEL_OPTIONS,
-        wide: true,
-      },
-      { key: 'motto', label: 'Devise' },
-      { key: 'vision', label: 'Vision', type: 'textarea', wide: true },
-      { key: 'mission', label: 'Mission', type: 'textarea', wide: true },
-      { key: 'coreValues', label: 'Valeurs', type: 'textarea', wide: true },
-    ],
-  },
-  {
-    title: 'Coordonnées & localisation',
-    icon: 'location_on',
-    fields: [
-      { key: 'address', label: 'Adresse', wide: true },
-      { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
-      { key: 'postalCode', label: 'Code postal' },
-      { key: 'country', label: 'Pays' },
-      { key: 'gpsCoordinates', label: 'Coordonnées GPS' },
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
-      { key: 'fax', label: 'Fax', type: 'tel' },
-      { key: 'email', label: 'E-mail', type: 'email' },
-      { key: 'secondaryEmail', label: 'E-mail secondaire', type: 'email' },
-      { key: 'website', label: 'Site web' },
-    ],
-  },
-  {
-    title: 'Direction & contacts',
-    icon: 'groups',
-    fields: [
-      { key: 'principalName', label: 'Directeur — nom' },
-      { key: 'principalEmail', label: 'Directeur — e-mail', type: 'email' },
-      { key: 'principalPhone', label: 'Directeur — téléphone', type: 'tel' },
-      { key: 'vicePrincipalName', label: 'Adjoint — nom' },
-      { key: 'vicePrincipalEmail', label: 'Adjoint — e-mail', type: 'email' },
-      { key: 'primaryDirectorName', label: 'Directeur primaire — nom' },
-      { key: 'primaryDirectorEmail', label: 'Directeur primaire — e-mail', type: 'email' },
-      { key: 'primaryDirectorPhone', label: 'Directeur primaire — téléphone', type: 'tel' },
-      { key: 'secondaryPrefectName', label: 'Préfet secondaire — nom' },
-      { key: 'secondaryPrefectEmail', label: 'Préfet secondaire — e-mail', type: 'email' },
-      { key: 'secondaryPrefectPhone', label: 'Préfet secondaire — téléphone', type: 'tel' },
-      { key: 'adminContactName', label: 'Contact admin — nom' },
-      { key: 'adminContactEmail', label: 'Contact admin — e-mail', type: 'email' },
-      { key: 'adminContactPhone', label: 'Contact admin — téléphone', type: 'tel' },
-      { key: 'financeContactName', label: 'Contact finances — nom' },
-      { key: 'financeContactEmail', label: 'Contact finances — e-mail', type: 'email' },
-      { key: 'financeContactPhone', label: 'Contact finances — téléphone', type: 'tel' },
-    ],
-  },
-  {
-    title: 'Académique',
-    icon: 'menu_book',
-    fields: [
-      { key: 'curriculum', label: 'Curriculum' },
-      { key: 'curriculumVersion', label: 'Version curriculum' },
-      { key: 'languageOfInstruction', label: "Langue d'enseignement" },
-    ],
-  },
-  {
-    title: 'Accréditation & licence',
-    icon: 'verified',
-    fields: [
-      {
-        key: 'accreditationStatus',
-        label: 'Statut accréditation',
-        type: 'select',
-        options: ACCREDITATION_STATUS_OPTIONS,
-      },
-      { key: 'accreditationBody', label: "Organe d'accréditation" },
-      { key: 'accreditationNumber', label: "N° d'accréditation" },
-      { key: 'licenseNumber', label: 'N° de licence' },
-      { key: 'registrationNumber', label: "N° d'enregistrement" },
-      { key: 'taxId', label: 'Identifiant fiscal' },
-    ],
-  },
-  {
-    title: 'Formats & localisation',
-    icon: 'schedule',
-    fields: [
-      { key: 'timezone', label: 'Fuseau horaire' },
-      {
-        key: 'dateFormat',
-        label: 'Format de date',
-        type: 'select',
-        options: [
-          { value: 'DD/MM/YYYY', label: 'JJ/MM/AAAA' },
-          { value: 'MM/DD/YYYY', label: 'MM/JJ/AAAA' },
-          { value: 'YYYY-MM-DD', label: 'AAAA-MM-JJ' },
-        ],
-      },
-      {
-        key: 'timeFormat',
-        label: 'Format heure',
-        type: 'select',
-        options: [
-          { value: '24h', label: '24h' },
-          { value: '12h', label: '12h' },
-        ],
-      },
-      { key: 'currency', label: 'Devise' },
-      { key: 'currencySymbol', label: 'Symbole devise' },
-    ],
-  },
-  {
-    title: 'Coordonnées bancaires',
-    icon: 'account_balance',
-    fields: [
-      { key: 'bankName', label: 'Banque' },
-      { key: 'bankAccountName', label: 'Titulaire du compte' },
-      { key: 'bankAccountNumber', label: 'N° de compte' },
-      { key: 'iban', label: 'IBAN' },
-      { key: 'swiftCode', label: 'Code SWIFT' },
-    ],
-  },
-];
-
-const ALL_KEYS = EDITABLE.flatMap((g) => g.fields.map((f) => f.key));
-
-const READONLY: Group[] = [
-  {
-    title: 'Abonnement & limites',
-    icon: 'workspace_premium',
-    fields: [
-      { key: 'subscriptionPlan', label: 'Plan' },
-      { key: 'saasBillingStatus', label: 'Facturation' },
-      { key: 'status', label: 'Statut' },
-      { key: 'maxStudents', label: 'Élèves max' },
-      { key: 'currentStudents', label: 'Élèves actuels' },
-      { key: 'maxTeachers', label: 'Enseignants max' },
-      { key: 'currentTeachers', label: 'Enseignants actuels' },
-      { key: 'maxClasses', label: 'Classes max' },
-      { key: 'currentClasses', label: 'Classes actuelles' },
-      { key: 'storageUsedGb', label: 'Stockage (Go)' },
-    ],
-  },
-  {
-    title: 'Identifiants système',
-    icon: 'dns',
-    fields: [
-      { key: 'code', label: 'Code' },
-      { key: 'subdomain', label: 'Sous-domaine' },
-      { key: 'id', label: 'Identifiant' },
-      { key: 'createdAt', label: 'Créé le' },
-      { key: 'updatedAt', label: 'Modifié le' },
-    ],
-  },
-];
 
 @Component({
   selector: 'panga-my-school',
@@ -209,6 +37,7 @@ const READONLY: Group[] = [
     MatProgressSpinnerModule,
     MatSelectModule,
     Avatar,
+    SchoolFieldsForm,
     SectionHeader,
     StatusBadge,
   ],
@@ -247,62 +76,20 @@ const READONLY: Group[] = [
         </div>
       </div>
 
-      <!-- Formulaire éditable -->
-      <form [formGroup]="form" (ngSubmit)="save()">
-        @for (group of editable; track group.title) {
-          <div class="panga-card p-5 mb-4">
-            <panga-section-header [icon]="group.icon" [title]="group.title" />
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              @for (f of group.fields; track f.key) {
-                <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('textarea') {
-                        <textarea matInput rows="2" [formControlName]="f.key"></textarea>
-                      }
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          <mat-option [value]="''">—</mat-option>
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        </mat-select>
-                      }
-                      @case ('multiselect') {
-                        <mat-select [formControlName]="f.key" multiple>
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        </mat-select>
-                      }
-                      @default {
-                        <input
-                          matInput
-                          [type]="f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'"
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
-                </div>
-              }
-            </div>
-          </div>
-        }
+      <!-- Formulaire éditable (sections partagées) -->
+      <panga-school-fields [form]="form" />
 
-        <div class="sticky bottom-4 z-10 flex justify-end mb-6">
-          <button
-            mat-flat-button
-            class="rounded-xl! shadow-lg"
-            type="submit"
-            [disabled]="saving() || form.pristine"
-          >
-            <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
-            {{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}
-          </button>
-        </div>
-      </form>
+      <div class="sticky bottom-4 z-10 flex justify-end mb-6">
+        <button
+          mat-flat-button
+          class="rounded-xl! shadow-lg"
+          (click)="save()"
+          [disabled]="saving() || form.pristine"
+        >
+          <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}
+        </button>
+      </div>
 
       <!-- Lecture seule -->
       <section class="grid gap-4 lg:grid-cols-2 mb-4">
@@ -408,8 +195,7 @@ export class MySchool {
   private readonly notify = inject(NotificationService);
   private readonly datePipe = inject(DatePipe);
 
-  protected readonly editable = EDITABLE;
-  protected readonly readonly = READONLY;
+  protected readonly readonly = SCHOOL_READONLY_GROUPS;
   protected readonly authorityRoles = AUTHORITY_ROLE_OPTIONS;
   protected readonly authorityLevels = AUTHORITY_EDU_LEVEL_OPTIONS;
 
@@ -419,16 +205,7 @@ export class MySchool {
   protected readonly saving = signal(false);
   protected readonly addingAuthority = signal(false);
 
-  protected readonly form = new FormGroup(
-    Object.fromEntries(
-      ALL_KEYS.map((k) => [
-        k,
-        new FormControl<string | string[]>(k === 'educationLevels' ? [] : '', {
-          nonNullable: true,
-        }),
-      ]),
-    ),
-  );
+  protected readonly form = buildSchoolFormGroup();
 
   protected readonly authForm = new FormGroup({
     displayName: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -450,26 +227,12 @@ export class MySchool {
     this.schoolApi.mySchool().subscribe({
       next: (s) => {
         this.school.set(s);
-        this.patch(s);
+        patchSchoolForm(this.form, s as Record<string, unknown>);
         this.loading.set(false);
         this.loadAuthorities();
       },
       error: () => this.loading.set(false),
     });
-  }
-
-  private patch(s: PlatformSchool): void {
-    const value: Record<string, string | string[]> = {};
-    for (const key of ALL_KEYS) {
-      const raw = (s as Record<string, unknown>)[key];
-      if (key === 'educationLevels') {
-        value[key] = Array.isArray(raw) ? (raw as string[]) : [];
-      } else {
-        value[key] = raw === null || raw === undefined ? '' : String(raw);
-      }
-    }
-    this.form.patchValue(value);
-    this.form.markAsPristine();
   }
 
   private schoolId(): string {
@@ -505,20 +268,11 @@ export class MySchool {
       return;
     }
     this.saving.set(true);
-    const raw = this.form.getRawValue();
-    const payload: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(raw)) {
-      if (k === 'educationLevels') {
-        payload[k] = v;
-      } else {
-        payload[k] = v === '' ? null : v;
-      }
-    }
-    this.schoolApi.update(this.schoolId(), payload).subscribe({
+    this.schoolApi.update(this.schoolId(), schoolUpdatePayload(this.form)).subscribe({
       next: (s) => {
         this.saving.set(false);
         this.school.set(s);
-        this.patch(s);
+        patchSchoolForm(this.form, s as Record<string, unknown>);
         this.notify.success('Établissement mis à jour.');
       },
       error: () => this.saving.set(false),
