@@ -128,8 +128,8 @@ function isActive(u: PlatformUser): boolean {
           <mat-form-field appearance="outline">
             <mat-label>Rôle</mat-label>
             <mat-select formControlName="role">
-              @for (r of roles; track r) {
-                <mat-option [value]="r">{{ r }}</mat-option>
+              @for (r of creatableRoles; track r) {
+                <mat-option [value]="r">{{ roleLabel(r) }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
@@ -274,6 +274,8 @@ export class UsersList {
   private readonly notify = inject(NotificationService);
 
   protected readonly roles = ROLES;
+  /** Un super_admin ne peut créer que des comptes d'administration (cf. matrice backend). */
+  protected readonly creatableRoles = ['super_admin', 'admin'];
   protected readonly pageSizes = [20, 50, 100];
   protected readonly users = signal<PlatformUser[]>([]);
   protected readonly stats = signal<StatBlock | null>(null);
