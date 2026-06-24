@@ -6,7 +6,33 @@
   <!-- En-tête de profil -->
   <section class="panga-card p-6 mb-4">
     <div class="flex items-center gap-4">
-      <panga-avatar [name]="store.fullName()" [size]="64" />
+      <div class="relative shrink-0">
+        <panga-avatar [name]="store.fullName()" [imageUrl]="avatarUrl()" [size]="72" />
+        <button
+          type="button"
+          (click)="avatarInput.click()"
+          [disabled]="uploadingAvatar()"
+          class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105"
+          style="background: var(--brand-gradient)"
+          [matTooltip]="avatarUrl() ? 'Changer la photo' : 'Ajouter une photo'"
+          aria-label="Changer la photo de profil"
+        >
+          @if (uploadingAvatar()) {
+            <mat-spinner diameter="16"></mat-spinner>
+          } @else {
+            <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
+              >photo_camera</mat-icon
+            >
+          }
+        </button>
+        <input
+          #avatarInput
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          class="hidden"
+          (change)="onAvatarSelected($event)"
+        />
+      </div>
       <div class="min-w-0 flex-1">
         <p class="text-lg font-semibold text-(--text) truncate">{{ store.fullName() }}</p>
         @if (store.user()?.username) {
@@ -31,6 +57,19 @@
             />
           }
         </div>
+        @if (avatarUrl()) {
+          <button
+            type="button"
+            (click)="removeAvatar()"
+            [disabled]="uploadingAvatar()"
+            class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-(--danger) hover:underline"
+          >
+            <mat-icon fontSet="material-symbols-outlined" class="text-base! w-4! h-4!"
+              >delete</mat-icon
+            >
+            Supprimer la photo
+          </button>
+        }
       </div>
     </div>
   </section>

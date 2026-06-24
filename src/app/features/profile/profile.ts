@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthStore } from '../../core/auth/auth.store';
 import type { LoginHistoryEntry } from '../../core/models/auth.models';
@@ -111,6 +112,7 @@ const PROFILE_KEYS = PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatInputModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     Avatar,
     EmptyState,
     SchoolFieldsForm,
@@ -131,6 +133,11 @@ export class Profile {
   protected readonly savingInfo = signal(false);
   protected readonly history = signal<LoginHistoryEntry[]>([]);
   protected readonly loadingHistory = signal(true);
+
+  /** objectURL de la photo de profil (vide = initiales). */
+  protected readonly avatarUrl = signal<string | null>(null);
+  protected readonly uploadingAvatar = signal(false);
+  private avatarObjectUrl: string | null = null;
 
   /** Formulaire d'infos perso (PUT /users/me). */
   protected readonly infoForm = new FormGroup(
@@ -164,6 +171,72 @@ export class Profile {
         this.loadingHistory.set(false);
       },
       error: () => this.loadingHistory.set(false),
+    });
+    this.loadAvatar();
+    inject(DestroyRef).onDestroy(() => this.setAvatarUrl(null));
+  }
+
+  /* ---------------------------- Photo de profil ---------------------------- */
+
+  private setAvatarUrl(url: string | null): void {
+    if (this.avatarObjectUrl) {
+      URL.revokeObjectURL(this.avatarObjectUrl);
+    }
+    this.avatarObjectUrl = url;
+    this.avatarUrl.set(url);
+  }
+
+  private loadAvatar(): void {
+    const id = this.store.user()?.id;
+    if (!id) {
+      return;
+    }
+    this.auth.avatarBlob(id).subscribe({
+      next: (blob) => this.setAvatarUrl(blob && blob.size > 0 ? URL.createObjectURL(blob) : null),
+      error: () => this.setAvatarUrl(null),
+    });
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = ''; // autorise la re-sélection du même fichier
+    if (!file || this.uploadingAvatar()) {
+      return;
+    }
+    if (!/^image\/(jpe?g|png|webp|gif)$/.test(file.type)) {
+      this.notify.error('Format non supporté (jpg, png, webp, gif).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.notify.error('Image trop lourde (max 5 Mo).');
+      return;
+    }
+    this.uploadingAvatar.set(true);
+    this.auth.uploadAvatar(file).subscribe({
+      next: () => {
+        this.uploadingAvatar.set(false);
+        this.notify.success('Photo de profil mise à jour.');
+        this.auth.loadMe().subscribe({ error: () => undefined });
+        this.loadAvatar();
+      },
+      error: () => this.uploadingAvatar.set(false),
+    });
+  }
+
+  removeAvatar(): void {
+    if (this.uploadingAvatar()) {
+      return;
+    }
+    this.uploadingAvatar.set(true);
+    this.auth.deleteAvatar().subscribe({
+      next: () => {
+        this.uploadingAvatar.set(false);
+        this.setAvatarUrl(null);
+        this.notify.success('Photo supprimée.');
+        this.auth.loadMe().subscribe({ error: () => undefined });
+      },
+      error: () => this.uploadingAvatar.set(false),
     });
   }
 
