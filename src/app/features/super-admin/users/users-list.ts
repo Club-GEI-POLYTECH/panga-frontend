@@ -88,12 +88,13 @@ function isActive(u: PlatformUser): boolean {
       </button>
     </panga-page-header>
 
-    <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
-      <panga-kpi-card label="Comptes" [value]="total()" icon="group" />
-      <panga-kpi-card label="Affichés" [value]="users().length" icon="visibility" />
-      <panga-kpi-card label="Administrateurs" [value]="adminCount()" icon="admin_panel_settings" />
-      <panga-kpi-card label="Rôles" [value]="rolesShown()" icon="badge" />
-    </section>
+    @if (statTiles().length) {
+      <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+        @for (tile of statTiles(); track tile.label) {
+          <panga-kpi-card [label]="tile.label" [value]="tile.value" [icon]="statIcon(tile.label)" />
+        }
+      </section>
+    }
 
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="register()" class="panga-card p-6 mb-6">
@@ -134,22 +135,6 @@ function isActive(u: PlatformUser): boolean {
           </button>
         </div>
       </form>
-    }
-
-    @if (statTiles().length) {
-      <div class="panga-card p-5 mb-6">
-        <panga-section-header icon="bar_chart" title="Statistiques" />
-        <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
-          @for (tile of statTiles(); track tile.label) {
-            <div class="rounded-2xl border border-(--border) p-3.5">
-              <p class="text-xs text-(--text-muted) truncate" [title]="tile.label">
-                {{ tile.label }}
-              </p>
-              <p class="text-xl font-semibold text-(--text) mt-0.5">{{ tile.value }}</p>
-            </div>
-          }
-        </div>
-      </div>
     }
 
     <div class="mb-4 flex flex-wrap items-center gap-2">
@@ -236,7 +221,6 @@ export class UsersList {
   protected readonly roles = ROLES;
   protected readonly users = signal<PlatformUser[]>([]);
   protected readonly stats = signal<StatBlock | null>(null);
-  protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
@@ -295,16 +279,16 @@ export class UsersList {
     return ROLE_TONE[role] ?? 'neutral';
   }
 
-  protected adminCount(): number {
-    return this.users().filter((u) => u.role === 'admin' || u.role === 'super_admin').length;
-  }
-
-  protected rolesShown(): number {
-    return new Set(
-      this.users()
-        .map((u) => u.role)
-        .filter(Boolean),
-    ).size;
+  /** Icône d'une tuile de stat selon son libellé (humanisé). */
+  protected statIcon(label: string): string {
+    const l = label.toLowerCase();
+    if (l.includes('email') && l.includes('not')) return 'mark_email_unread';
+    if (l.includes('email')) return 'mark_email_read';
+    if (l.includes('inactiv')) return 'block';
+    if (l.includes('activ')) return 'check_circle';
+    if (l.includes('total')) return 'group';
+    if (l.includes('admin')) return 'admin_panel_settings';
+    return 'insights';
   }
 
   private load(): void {
@@ -316,7 +300,6 @@ export class UsersList {
       next: (res) => {
         this.users.set(res.items);
         this.pagination.set(res.pagination ?? null);
-        this.total.set(res.pagination?.total ?? res.items.length);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
