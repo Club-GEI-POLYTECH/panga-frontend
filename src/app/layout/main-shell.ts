@@ -1,5 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -59,12 +61,24 @@ export class MainShell {
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
   private readonly router = inject(Router);
+  private readonly breakpoints = inject(BreakpointObserver);
 
   /** Super_admin = contexte cross-tenant : pas d'année scolaire forcée. */
   protected readonly isSuperAdmin = computed(() => this.store.role() === 'super_admin');
 
-  /** Sidebar réduite en rail (icônes seules) plutôt que masquée. */
+  /** Sidebar réduite en rail (icônes seules). */
   protected readonly collapsed = signal(false);
+  /** < 768px : la barre devient un tiroir en superposition. */
+  protected readonly isMobile = signal(false);
+  /** État d'ouverture du tiroir mobile (overlay). */
+  protected readonly mobileOpen = signal(false);
+
+  /** Rail (icônes seules) : uniquement hors mobile (le tiroir mobile est complet). */
+  protected readonly rail = computed(() => this.collapsed() && !this.isMobile());
+  protected readonly sidenavMode = computed<'over' | 'side'>(() =>
+    this.isMobile() ? 'over' : 'side',
+  );
+  protected readonly sidenavOpened = computed(() => (this.isMobile() ? this.mobileOpen() : true));
   protected readonly lang = signal(this.transloco.getActiveLang());
   protected readonly navSections = computed(() => navSectionsForRole(this.store.role()));
   protected readonly roleKey = computed(() => `roles.${this.store.role()}`);
@@ -82,6 +96,21 @@ export class MainShell {
     if (this.store.role() !== 'super_admin') {
       this.sy.load();
     }
+
+    // Responsive : mobile = tiroir overlay ; tablette = rail ; desktop = étendu.
+    this.breakpoints
+      .observe('(max-width: 767.98px)')
+      .pipe(takeUntilDestroyed())
+      .subscribe((r) => {
+        this.isMobile.set(r.matches);
+        if (r.matches) {
+          this.mobileOpen.set(false);
+        }
+      });
+    this.breakpoints
+      .observe('(max-width: 1023.98px)')
+      .pipe(takeUntilDestroyed())
+      .subscribe((r) => this.collapsed.set(r.matches));
   }
 
   protected toneColor(tone: Tone): string {
@@ -89,7 +118,18 @@ export class MainShell {
   }
 
   toggleSidenav(): void {
-    this.collapsed.update((v) => !v);
+    if (this.isMobile()) {
+      this.mobileOpen.update((v) => !v);
+    } else {
+      this.collapsed.update((v) => !v);
+    }
+  }
+
+  /** Ferme le tiroir après navigation sur mobile. */
+  closeOnMobile(): void {
+    if (this.isMobile()) {
+      this.mobileOpen.set(false);
+    }
   }
 
   setLang(lang: string): void {
