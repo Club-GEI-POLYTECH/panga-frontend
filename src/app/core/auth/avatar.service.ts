@@ -16,7 +16,19 @@ export class AvatarService {
   /** Incrémenté après un changement de photo pour casser le cache navigateur. */
   private readonly version = signal(0);
 
-  readonly myUrl = computed(() => this.urlFor(this.store.user()?.avatarUrl, this.version()));
+  /**
+   * URL de MA photo, construite depuis l'id (l'URL est déterministe et la route
+   * publique). Si aucune photo n'existe, le 404 retombe sur les initiales
+   * (l'endpoint /auth/profile ne renvoie pas toujours le champ `avatar`).
+   */
+  readonly myUrl = computed(() => {
+    const id = this.store.user()?.id;
+    if (!id) {
+      return null;
+    }
+    const v = this.version();
+    return `${environment.apiBaseUrl}/users/${id}/avatar${v ? `?v=${v}` : ''}`;
+  });
 
   /** Construit l'URL publique d'un avatar (`avatar` = « /v1/users/:id/avatar »). */
   urlFor(avatar: string | null | undefined, v = 0): string | null {
