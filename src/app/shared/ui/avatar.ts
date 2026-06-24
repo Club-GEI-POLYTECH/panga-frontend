@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
 
 /** Palettes dérivées d'un nom pour varier les avatars sans image. */
 const GRADIENTS = [
@@ -23,10 +23,11 @@ function hash(text: string): number {
   selector: 'panga-avatar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (imageUrl()) {
+    @if (imageUrl() && !failed()) {
       <img
         [src]="imageUrl()"
         [alt]="name()"
+        (error)="failed.set(true)"
         class="rounded-xl object-cover shrink-0 shadow-sm"
         [style.width.px]="size()"
         [style.height.px]="size()"
@@ -47,8 +48,19 @@ function hash(text: string): number {
 export class Avatar {
   readonly name = input<string>('');
   readonly size = input(40);
-  /** URL/objectURL d'une photo ; si absente, on affiche les initiales. */
+  /** URL d'une photo ; si absente ou en erreur, on affiche les initiales. */
   readonly imageUrl = input<string | null>(null);
+
+  /** Repli sur les initiales si l'image ne charge pas (404, réseau…). */
+  protected readonly failed = signal(false);
+
+  constructor() {
+    // Réinitialise l'état d'erreur quand l'URL change.
+    effect(() => {
+      this.imageUrl();
+      this.failed.set(false);
+    });
+  }
 
   protected readonly initials = computed(() => {
     const parts = this.name().trim().split(/\s+/).filter(Boolean);

@@ -1,12 +1,5 @@
 import { DatePipe } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
@@ -18,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PlatformUsersService } from '../services/platform-users.service';
+import { AvatarService } from '../../../core/auth/avatar.service';
 import type { PlatformUser, StatBlock } from '../models/platform.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { ROLES } from '../../../core/models/auth.models';
@@ -198,31 +192,24 @@ function isActive(u: PlatformUser): boolean {
       <div class="panga-card divide-y divide-(--border)">
         @for (u of users(); track u.id) {
           <div class="flex items-center gap-4 px-4 sm:px-5 py-3.5">
-            <panga-avatar [name]="fullName(u)" [size]="46" />
+            <panga-avatar [name]="fullName(u)" [imageUrl]="photoUrl(u)" [size]="46" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <span
-                  class="relative group"
-                  (mouseenter)="loadAvatar(u.id)"
-                  (focusin)="loadAvatar(u.id)"
-                  tabindex="0"
-                >
+                <span class="relative group" tabindex="0">
                   <span class="font-medium text-(--text) truncate cursor-default">
                     {{ fullName(u) || '—' }}
                   </span>
-                  <span
-                    class="pointer-events-none absolute left-0 bottom-full z-20 mb-2 hidden group-hover:block group-focus-within:block"
-                  >
+                  @if (photoUrl(u)) {
                     <span
-                      class="block rounded-2xl border border-(--border) bg-(--surface) p-2 shadow-xl"
+                      class="pointer-events-none absolute left-0 bottom-full z-20 mb-2 hidden group-hover:block group-focus-within:block"
                     >
-                      <panga-avatar
-                        [imageUrl]="avatarUrl(u.id)"
-                        [name]="fullName(u)"
-                        [size]="160"
-                      />
+                      <span
+                        class="block rounded-2xl border border-(--border) bg-(--surface) p-2 shadow-xl"
+                      >
+                        <panga-avatar [imageUrl]="photoUrl(u)" [name]="fullName(u)" [size]="160" />
+                      </span>
                     </span>
-                  </span>
+                  }
                 </span>
                 @if (u.username) {
                   <span class="text-xs text-(--text-muted) truncate">{{ '@' + u.username }}</span>
@@ -270,6 +257,7 @@ function isActive(u: PlatformUser): boolean {
 })
 export class UsersList {
   private readonly usersApi = inject(PlatformUsersService);
+  private readonly avatars = inject(AvatarService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
 
@@ -289,13 +277,9 @@ export class UsersList {
   protected readonly activeStatus = signal('');
   protected readonly search = signal('');
 
-  /** objectURL des photos chargées à la volée (par id). */
-  protected readonly avatarUrls = signal<Record<string, string>>({});
-  private readonly avatarTried = new Set<string>();
-  private readonly objectUrls: string[] = [];
-
-  protected avatarUrl(id: string): string | null {
-    return this.avatarUrls()[id] ?? null;
+  /** URL publique de la photo d'un utilisateur (`avatar` = /v1/users/:id/avatar). */
+  protected photoUrl(u: PlatformUser): string | null {
+    return this.avatars.urlFor(u['avatar'] as string | null | undefined);
   }
 
   protected readonly searchCtrl = new FormControl('', { nonNullable: true });
@@ -317,29 +301,9 @@ export class UsersList {
       this.page.set(1);
       this.load();
     });
-    inject(DestroyRef).onDestroy(() => this.objectUrls.forEach((u) => URL.revokeObjectURL(u)));
   }
 
   protected readonly active = isActive;
-
-  /** Charge la photo de profil (blob → objectURL) au survol, une seule fois. */
-  loadAvatar(id: string): void {
-    if (!id || this.avatarTried.has(id)) {
-      return;
-    }
-    this.avatarTried.add(id);
-    this.usersApi.avatar(id).subscribe({
-      next: (blob) => {
-        if (!blob || blob.size === 0) {
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        this.objectUrls.push(url);
-        this.avatarUrls.update((m) => ({ ...m, [id]: url }));
-      },
-      error: () => undefined, // pas de photo → on garde les initiales
-    });
-  }
 
   changeLimit(limit: number): void {
     this.limit.set(limit);

@@ -171,7 +171,6 @@ export class Profile {
       },
       error: () => this.loadingHistory.set(false),
     });
-    this.avatars.refreshMine();
   }
 
   /* ---------------------------- Photo de profil ---------------------------- */
@@ -196,10 +195,8 @@ export class Profile {
       next: () => {
         this.uploadingAvatar.set(false);
         this.notify.success('Photo de profil mise à jour.');
-        // Rafraîchit le profil (user.avatarUrl) puis recharge la photo partagée.
-        this.auth
-          .loadMe()
-          .subscribe({ next: () => this.avatars.refreshMine(), error: () => undefined });
+        // Rafraîchit le profil (user.avatarUrl) puis casse le cache de l'image.
+        this.auth.loadMe().subscribe({ next: () => this.avatars.bump(), error: () => undefined });
       },
       error: () => this.uploadingAvatar.set(false),
     });
@@ -213,8 +210,8 @@ export class Profile {
     this.auth.deleteAvatar().subscribe({
       next: () => {
         this.uploadingAvatar.set(false);
-        this.avatars.clearMine();
         this.notify.success('Photo supprimée.');
+        // loadMe met user.avatarUrl à null → l'avatar repasse aux initiales.
         this.auth.loadMe().subscribe({ error: () => undefined });
       },
       error: () => this.uploadingAvatar.set(false),

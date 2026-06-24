@@ -93,10 +93,8 @@ export class MainShell {
 
   constructor() {
     // Profil complet (auth/profile) pour enrichir l'en-tête / la barre latérale.
-    this.auth.loadMe().subscribe({
-      next: () => this.avatars.refreshMine(),
-      error: () => undefined,
-    });
+    // (avatars.myUrl est calculé depuis le store → pas d'action explicite.)
+    this.auth.loadMe().subscribe({ error: () => undefined });
     // Année scolaire courante de l'école (hors super_admin cross-tenant).
     if (this.store.role() !== 'super_admin') {
       this.sy.load();
