@@ -115,13 +115,6 @@ export class AuthService {
     return this.http.delete<unknown>(`${environment.apiBaseUrl}/users/me/avatar`);
   }
 
-  /** Flux image d'un avatar (JWT ajouté par l'authInterceptor). */
-  avatarBlob(userId: string): Observable<Blob> {
-    return this.http.get(`${environment.apiBaseUrl}/users/${userId}/avatar`, {
-      responseType: 'blob',
-    });
-  }
-
   selectSchool(school: School): void {
     this.store.setActiveSchool(school);
   }

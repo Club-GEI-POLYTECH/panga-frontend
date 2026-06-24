@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { ApiError, ApiErrorBody, ErrorCode } from '../models/api.models';
 import { NotificationService } from '../../shared/ui/notification.service';
+import { SKIP_ERROR_TOAST } from './http-context';
 
 /** Codes dont l'UX est gérée localement (pas de toast global). */
 const SILENT_CODES = new Set<string>([ErrorCode.VALIDATION_ERROR]);
@@ -22,8 +23,15 @@ function extractError(err: HttpErrorResponse): ApiError | null {
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const notify = inject(NotificationService);
 
+  const silent = req.context.get(SKIP_ERROR_TOAST);
+
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
+      // Requête silencieuse (ex. avatar absent) : on propage sans toast.
+      if (silent) {
+        return throwError(() => err);
+      }
+
       const apiError = extractError(err);
       const code = apiError?.code;
 

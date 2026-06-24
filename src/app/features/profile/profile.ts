@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -18,6 +18,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthStore } from '../../core/auth/auth.store';
+import { AvatarService } from '../../core/auth/avatar.service';
 import type { LoginHistoryEntry } from '../../core/models/auth.models';
 import type { SchoolFieldGroup } from '../../core/models/school-fields';
 import { NotificationService } from '../../shared/ui/notification.service';
@@ -127,6 +128,7 @@ export class Profile {
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
   protected readonly store = inject(AuthStore);
+  protected readonly avatars = inject(AvatarService);
 
   protected readonly groups = PROFILE_GROUPS;
   protected readonly submitting = signal(false);
@@ -134,10 +136,7 @@ export class Profile {
   protected readonly history = signal<LoginHistoryEntry[]>([]);
   protected readonly loadingHistory = signal(true);
 
-  /** objectURL de la photo de profil (vide = initiales). */
-  protected readonly avatarUrl = signal<string | null>(null);
   protected readonly uploadingAvatar = signal(false);
-  private avatarObjectUrl: string | null = null;
 
   /** Formulaire d'infos perso (PUT /users/me). */
   protected readonly infoForm = new FormGroup(
@@ -172,30 +171,10 @@ export class Profile {
       },
       error: () => this.loadingHistory.set(false),
     });
-    this.loadAvatar();
-    inject(DestroyRef).onDestroy(() => this.setAvatarUrl(null));
+    this.avatars.refreshMine();
   }
 
   /* ---------------------------- Photo de profil ---------------------------- */
-
-  private setAvatarUrl(url: string | null): void {
-    if (this.avatarObjectUrl) {
-      URL.revokeObjectURL(this.avatarObjectUrl);
-    }
-    this.avatarObjectUrl = url;
-    this.avatarUrl.set(url);
-  }
-
-  private loadAvatar(): void {
-    const id = this.store.user()?.id;
-    if (!id) {
-      return;
-    }
-    this.auth.avatarBlob(id).subscribe({
-      next: (blob) => this.setAvatarUrl(blob && blob.size > 0 ? URL.createObjectURL(blob) : null),
-      error: () => this.setAvatarUrl(null),
-    });
-  }
 
   onAvatarSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -217,8 +196,10 @@ export class Profile {
       next: () => {
         this.uploadingAvatar.set(false);
         this.notify.success('Photo de profil mise à jour.');
-        this.auth.loadMe().subscribe({ error: () => undefined });
-        this.loadAvatar();
+        // Rafraîchit le profil (user.avatarUrl) puis recharge la photo partagée.
+        this.auth
+          .loadMe()
+          .subscribe({ next: () => this.avatars.refreshMine(), error: () => undefined });
       },
       error: () => this.uploadingAvatar.set(false),
     });
@@ -232,7 +213,7 @@ export class Profile {
     this.auth.deleteAvatar().subscribe({
       next: () => {
         this.uploadingAvatar.set(false);
-        this.setAvatarUrl(null);
+        this.avatars.clearMine();
         this.notify.success('Photo supprimée.');
         this.auth.loadMe().subscribe({ error: () => undefined });
       },

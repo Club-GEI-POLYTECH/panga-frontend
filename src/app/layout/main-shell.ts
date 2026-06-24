@@ -14,6 +14,7 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../core/auth/auth.service';
 import { AuthStore } from '../core/auth/auth.store';
+import { AvatarService } from '../core/auth/avatar.service';
 import { LoadingService } from '../core/http/loading.service';
 import { SchoolYearStore } from '../core/school-year/school-year.store';
 import { ThemeService } from '../core/theme.service';
@@ -54,6 +55,7 @@ const TONE_COLOR: Record<Tone, string> = {
 })
 export class MainShell {
   protected readonly store = inject(AuthStore);
+  protected readonly avatars = inject(AvatarService);
   protected readonly loading = inject(LoadingService);
   protected readonly theme = inject(ThemeService);
   protected readonly notify = inject(NotificationService);
@@ -91,7 +93,10 @@ export class MainShell {
 
   constructor() {
     // Profil complet (auth/profile) pour enrichir l'en-tête / la barre latérale.
-    this.auth.loadMe().subscribe({ error: () => undefined });
+    this.auth.loadMe().subscribe({
+      next: () => this.avatars.refreshMine(),
+      error: () => undefined,
+    });
     // Année scolaire courante de l'école (hors super_admin cross-tenant).
     if (this.store.role() !== 'super_admin') {
       this.sy.load();

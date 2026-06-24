@@ -105,7 +105,7 @@
           @if (rail()) {
             <div class="flex flex-col items-center gap-1">
               <div class="relative shrink-0">
-                <panga-avatar [name]="store.fullName()" [size]="40" />
+                <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="40" />
                 @if (isActive()) {
                   <span
                     class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"
@@ -131,7 +131,7 @@
               style="background: color-mix(in srgb, var(--brand-500) 7%, transparent)"
             >
               <div class="relative shrink-0">
-                <panga-avatar [name]="store.fullName()" [size]="40" />
+                <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="40" />
                 @if (isActive()) {
                   <span
                     class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"
@@ -345,7 +345,7 @@
         <!-- Profil -->
         <button mat-button [matMenuTriggerFor]="userMenu" class="rounded-xl! min-w-0! px-1.5!">
           <span class="flex items-center gap-2">
-            <panga-avatar [name]="store.fullName()" [size]="32" />
+            <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="32" />
             <span class="hidden sm:flex flex-col items-start leading-tight">
               <span class="text-sm font-medium text-(--text)">{{ store.fullName() }}</span>
               <span class="text-[11px] text-(--text-muted)">{{ roleKey() | transloco }}</span>
@@ -367,7 +367,7 @@
                 style="background: #fff"
               ></div>
               <div class="relative flex items-center gap-3">
-                <panga-avatar [name]="store.fullName()" [size]="48" />
+                <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="48" />
                 <div class="min-w-0">
                   <p class="text-sm font-semibold truncate">{{ store.fullName() }}</p>
                   <p class="text-xs opacity-90 truncate">{{ email() }}</p>

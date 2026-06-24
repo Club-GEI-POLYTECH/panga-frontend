@@ -7,14 +7,14 @@
   <section class="panga-card p-6 mb-4">
     <div class="flex items-center gap-4">
       <div class="relative shrink-0">
-        <panga-avatar [name]="store.fullName()" [imageUrl]="avatarUrl()" [size]="72" />
+        <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="72" />
         <button
           type="button"
           (click)="avatarInput.click()"
           [disabled]="uploadingAvatar()"
           class="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full text-white shadow-md transition-transform hover:scale-105"
           style="background: var(--brand-gradient)"
-          [matTooltip]="avatarUrl() ? 'Changer la photo' : 'Ajouter une photo'"
+          [matTooltip]="avatars.myUrl() ? 'Changer la photo' : 'Ajouter une photo'"
           aria-label="Changer la photo de profil"
         >
           @if (uploadingAvatar()) {
@@ -57,7 +57,7 @@
             />
           }
         </div>
-        @if (avatarUrl()) {
+        @if (avatars.myUrl()) {
           <button
             type="button"
             (click)="removeAvatar()"

@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { PageQuery } from '../../../core/models/api.models';
 import { ListResult, toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
+import { SKIP_ERROR_TOAST } from '../../../core/http/http-context';
 import type { PlatformUser, RegisterUserDto, StatBlock } from '../models/platform.models';
 
 /** Comptes utilisateurs plateforme (dossier « 3 — Comptes utilisateurs »). */
@@ -46,8 +47,11 @@ export class PlatformUsersService {
       .pipe(map((r) => unwrapEnvelope<PlatformUser>(r)));
   }
 
-  /** Photo de profil (flux image). Le token est ajouté par l'authInterceptor. */
+  /** Photo de profil (flux image). Silencieux : une absence de photo (404) ne toaste pas. */
   avatar(userId: string): Observable<Blob> {
-    return this.http.get(`${this.base}/users/${userId}/avatar`, { responseType: 'blob' });
+    return this.http.get(`${this.base}/users/${userId}/avatar`, {
+      responseType: 'blob',
+      context: new HttpContext().set(SKIP_ERROR_TOAST, true),
+    });
   }
 }
