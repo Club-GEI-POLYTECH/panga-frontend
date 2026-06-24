@@ -17,14 +17,30 @@ export interface ListResult<T> {
   pagination?: PaginationMeta;
 }
 
+/** Cherche un bloc de pagination (`pagination` ou `meta`) dans plusieurs objets. */
+function findPagination(...objs: unknown[]): PaginationMeta | undefined {
+  for (const o of objs) {
+    if (o && typeof o === 'object') {
+      const p =
+        (o as Record<string, unknown>)['pagination'] ?? (o as Record<string, unknown>)['meta'];
+      if (p && typeof p === 'object') {
+        return p as PaginationMeta;
+      }
+    }
+  }
+  return undefined;
+}
+
 /**
  * Normalise une réponse de liste, qu'elle soit brute (`[]`), paginée
  * (`{ data, pagination }`) ou enveloppée (`{ success, data: { data, ... } }`).
+ * La pagination est lue qu'elle soit imbriquée dans `data` ou frère de `data`
+ * au niveau de l'enveloppe.
  */
 export function unwrapList<T = unknown>(res: unknown): ListResult<T> {
   const data = unwrapEnvelope(res);
   if (Array.isArray(data)) {
-    return { items: data as T[] };
+    return { items: data as T[], pagination: findPagination(res) };
   }
   if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>;
@@ -32,7 +48,7 @@ export function unwrapList<T = unknown>(res: unknown): ListResult<T> {
       | T[]
       | undefined;
     if (Array.isArray(items)) {
-      return { items, pagination: obj['pagination'] as PaginationMeta | undefined };
+      return { items, pagination: findPagination(obj, res) };
     }
   }
   return { items: [] };
