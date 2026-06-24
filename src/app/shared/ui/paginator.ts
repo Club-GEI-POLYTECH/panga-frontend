@@ -10,30 +10,38 @@ import type { PaginationMeta } from '../../core/models/api.models';
   imports: [MatButtonModule, MatIconModule],
   template: `
     @if (meta(); as m) {
-      <div class="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-        <span class="text-(--text-muted)">
-          {{ from() }}–{{ to() }} <span class="opacity-70">sur</span> {{ m.total }}
+      <div
+        class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-(--border)"
+      >
+        <span class="text-sm text-(--text-muted)">
+          <span class="font-semibold text-(--text) tabular-nums">{{ from() }}–{{ to() }}</span>
+          sur <span class="font-semibold text-(--text) tabular-nums">{{ m.total }}</span>
         </span>
-        <div class="flex items-center gap-1">
+        <div class="flex items-center gap-2">
           <button
-            mat-icon-button
-            class="h-9! w-9!"
+            mat-stroked-button
+            class="rounded-xl!"
             [disabled]="m.page <= 1"
             (click)="go(m.page - 1)"
             aria-label="Page précédente"
           >
             <mat-icon fontSet="material-symbols-outlined">chevron_left</mat-icon>
+            <span class="hidden sm:inline">Précédent</span>
           </button>
-          <span class="px-2 text-(--text-muted) tabular-nums">
-            {{ m.page }} / {{ m.totalPages || 1 }}
+          <span
+            class="px-3 py-1.5 rounded-lg text-sm font-semibold text-(--brand-700) tabular-nums whitespace-nowrap"
+            style="background: color-mix(in srgb, var(--brand-500) 12%, transparent)"
+          >
+            Page {{ m.page }} / {{ m.totalPages || 1 }}
           </span>
           <button
-            mat-icon-button
-            class="h-9! w-9!"
+            mat-stroked-button
+            class="rounded-xl!"
             [disabled]="m.page >= (m.totalPages || 1)"
             (click)="go(m.page + 1)"
             aria-label="Page suivante"
           >
+            <span class="hidden sm:inline">Suivant</span>
             <mat-icon fontSet="material-symbols-outlined">chevron_right</mat-icon>
           </button>
         </div>
