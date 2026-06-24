@@ -3,50 +3,56 @@
     <h1 class="text-2xl font-semibold text-(--text)">{{ t('profile.title') }}</h1>
   </header>
 
-  <div class="grid gap-6 lg:grid-cols-2">
-    <!-- Informations -->
-    <section class="panga-card p-6">
-      <div class="flex items-center gap-4">
-        <panga-avatar [name]="store.fullName()" [size]="64" />
-        <div class="min-w-0 flex-1">
-          <p class="text-lg font-semibold text-(--text) truncate">{{ store.fullName() }}</p>
-          @if (store.user()?.username) {
-            <p class="text-sm text-(--text-muted) truncate">
-              {{ '@' + store.user()?.username }}
-            </p>
+  <!-- En-tête de profil -->
+  <section class="panga-card p-6 mb-4">
+    <div class="flex items-center gap-4">
+      <panga-avatar [name]="store.fullName()" [size]="64" />
+      <div class="min-w-0 flex-1">
+        <p class="text-lg font-semibold text-(--text) truncate">{{ store.fullName() }}</p>
+        @if (store.user()?.username) {
+          <p class="text-sm text-(--text-muted) truncate">
+            {{ '@' + store.user()?.username }}
+          </p>
+        }
+        <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <span
+            class="px-2 py-0.5 rounded-full text-xs font-medium"
+            style="
+              background: color-mix(in srgb, var(--brand-500) 14%, transparent);
+              color: var(--brand-700);
+            "
+          >
+            {{ t('roles.' + (store.role() ?? 'student')) }}
+          </span>
+          @if (store.user()?.status) {
+            <panga-status-badge
+              [label]="store.user()?.status ?? ''"
+              [tone]="store.user()?.status === 'active' ? 'success' : 'neutral'"
+            />
           }
-          <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span
-              class="px-2 py-0.5 rounded-full text-xs font-medium"
-              style="
-                background: color-mix(in srgb, var(--brand-500) 14%, transparent);
-                color: var(--brand-700);
-              "
-            >
-              {{ t('roles.' + (store.role() ?? 'student')) }}
-            </span>
-            @if (store.user()?.status) {
-              <panga-status-badge
-                [label]="store.user()?.status ?? ''"
-                [tone]="store.user()?.status === 'active' ? 'success' : 'neutral'"
-              />
-            }
-          </div>
         </div>
       </div>
+    </div>
+  </section>
 
-      <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
-        @for (row of infoRows(); track row.label) {
-          <div class="flex justify-between gap-3 py-1.5 border-b border-(--border)">
-            <dt class="text-sm text-(--text-muted)">{{ row.label }}</dt>
-            <dd class="text-sm font-medium text-(--text) text-right break-all">
-              {{ row.value }}
-            </dd>
-          </div>
-        }
-      </dl>
-    </section>
+  <!-- Informations personnelles (éditables) -->
+  <panga-school-fields [form]="infoForm" [groups]="groups" />
+  <div class="sticky bottom-4 z-10 flex justify-end mb-6">
+    <button
+      mat-flat-button
+      class="rounded-xl! shadow-lg"
+      (click)="saveInfo()"
+      [disabled]="savingInfo() || infoForm.pristine"
+    >
+      @if (savingInfo()) {
+        <mat-spinner diameter="20" class="inline-block align-middle mr-2"></mat-spinner>
+      }
+      <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+      {{ t('common.save') }}
+    </button>
+  </div>
 
+  <div class="grid gap-6 lg:grid-cols-2">
     <!-- Changement de mot de passe -->
     <section class="panga-card p-6">
       <h2 class="text-lg font-semibold text-(--text) mb-4">

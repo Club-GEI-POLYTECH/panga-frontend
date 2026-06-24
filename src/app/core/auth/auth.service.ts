@@ -95,6 +95,14 @@ export class AuthService {
     );
   }
 
+  /** Met à jour le profil de l'utilisateur connecté (PUT /users/me). */
+  updateProfile(dto: Record<string, unknown>): Observable<User> {
+    return this.http.put<unknown>(`${environment.apiBaseUrl}/users/me`, dto).pipe(
+      map((res) => mapUser(unwrap(res))),
+      tap((user) => this.store.setUser(user)),
+    );
+  }
+
   selectSchool(school: School): void {
     this.store.setActiveSchool(school);
   }
@@ -260,7 +268,11 @@ function pickRefresh(d: unknown): string | undefined {
 }
 
 function mapUser(u: unknown): User {
+  // On conserve d'abord tous les champs bruts (postnom, gender, dateOfBirth…)
+  // pour l'édition de profil, puis on normalise les champs connus par-dessus.
+  const raw = u && typeof u === 'object' ? (u as Record<string, unknown>) : {};
   return {
+    ...raw,
     id: str(u, 'id', 'userId', 'uuid') ?? '',
     email: str(u, 'email') ?? '',
     username: str(u, 'username'),

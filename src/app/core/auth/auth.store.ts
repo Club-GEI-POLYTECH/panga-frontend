@@ -40,6 +40,10 @@ export const AuthStore = signalStore(
     setSession(user: User, activeSchool: School | null): void {
       patchState(store, { user, activeSchool, status: 'authenticated' });
     },
+    /** Met à jour l'utilisateur sans toucher à l'école active (ex. édition profil). */
+    setUser(user: User): void {
+      patchState(store, { user });
+    },
     setActiveSchool(school: School | null): void {
       patchState(store, { activeSchool: school });
     },
