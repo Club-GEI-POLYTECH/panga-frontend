@@ -18,25 +18,37 @@ function hash(text: string): number {
   return h;
 }
 
-/** Avatar à initiales, dégradé déterministe basé sur le nom. */
+/** Avatar : photo si `imageUrl`, sinon initiales sur dégradé déterministe. */
 @Component({
   selector: 'panga-avatar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="flex items-center justify-center rounded-xl font-semibold text-white shrink-0 shadow-sm"
-      [style.width.px]="size()"
-      [style.height.px]="size()"
-      [style.fontSize.px]="size() * 0.38"
-      [style.background]="gradient()"
-    >
-      {{ initials() }}
-    </div>
+    @if (imageUrl()) {
+      <img
+        [src]="imageUrl()"
+        [alt]="name()"
+        class="rounded-xl object-cover shrink-0 shadow-sm"
+        [style.width.px]="size()"
+        [style.height.px]="size()"
+      />
+    } @else {
+      <div
+        class="flex items-center justify-center rounded-xl font-semibold text-white shrink-0 shadow-sm"
+        [style.width.px]="size()"
+        [style.height.px]="size()"
+        [style.fontSize.px]="size() * 0.38"
+        [style.background]="gradient()"
+      >
+        {{ initials() }}
+      </div>
+    }
   `,
 })
 export class Avatar {
   readonly name = input<string>('');
   readonly size = input(40);
+  /** URL/objectURL d'une photo ; si absente, on affiche les initiales. */
+  readonly imageUrl = input<string | null>(null);
 
   protected readonly initials = computed(() => {
     const parts = this.name().trim().split(/\s+/).filter(Boolean);

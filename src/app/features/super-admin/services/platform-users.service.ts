@@ -45,4 +45,9 @@ export class PlatformUsersService {
       .post<unknown>(`${this.base}/auth/register`, dto)
       .pipe(map((r) => unwrapEnvelope<PlatformUser>(r)));
   }
+
+  /** Photo de profil (flux image). Le token est ajouté par l'authInterceptor. */
+  avatar(userId: string): Observable<Blob> {
+    return this.http.get(`${this.base}/users/${userId}/avatar`, { responseType: 'blob' });
+  }
 }

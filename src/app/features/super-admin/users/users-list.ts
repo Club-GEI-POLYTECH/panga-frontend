@@ -1,6 +1,15 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -137,6 +146,30 @@ function isActive(u: PlatformUser): boolean {
       </form>
     }
 
+    <div class="panga-card p-4 mb-4 flex flex-wrap items-center gap-3">
+      <mat-form-field appearance="outline" class="flex-1 min-w-50" subscriptSizing="dynamic">
+        <mat-label>Rechercher</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+        <input matInput [formControl]="searchCtrl" placeholder="Nom, e-mail, identifiant…" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-40" subscriptSizing="dynamic">
+        <mat-label>Statut</mat-label>
+        <mat-select [value]="activeStatus()" (selectionChange)="filterByStatus($event.value)">
+          <mat-option value="">Tous</mat-option>
+          <mat-option value="active">Actif</mat-option>
+          <mat-option value="inactive">Inactif</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-32" subscriptSizing="dynamic">
+        <mat-label>Par page</mat-label>
+        <mat-select [value]="limit()" (selectionChange)="changeLimit($event.value)">
+          @for (n of pageSizes; track n) {
+            <mat-option [value]="n">{{ n }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <span class="text-sm text-(--text-muted)">Filtrer par rôle :</span>
       <mat-button-toggle-group
@@ -168,7 +201,29 @@ function isActive(u: PlatformUser): boolean {
             <panga-avatar [name]="fullName(u)" [size]="46" />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2">
-                <p class="font-medium text-(--text) truncate">{{ fullName(u) || '—' }}</p>
+                <span
+                  class="relative group"
+                  (mouseenter)="loadAvatar(u.id)"
+                  (focusin)="loadAvatar(u.id)"
+                  tabindex="0"
+                >
+                  <span class="font-medium text-(--text) truncate cursor-default">
+                    {{ fullName(u) || '—' }}
+                  </span>
+                  <span
+                    class="pointer-events-none absolute left-0 bottom-full z-20 mb-2 hidden group-hover:block group-focus-within:block"
+                  >
+                    <span
+                      class="block rounded-2xl border border-(--border) bg-(--surface) p-2 shadow-xl"
+                    >
+                      <panga-avatar
+                        [imageUrl]="avatarUrl(u.id)"
+                        [name]="fullName(u)"
+                        [size]="160"
+                      />
+                    </span>
+                  </span>
+                </span>
                 @if (u.username) {
                   <span class="text-xs text-(--text-muted) truncate">{{ '@' + u.username }}</span>
                 }
@@ -219,14 +274,29 @@ export class UsersList {
   private readonly notify = inject(NotificationService);
 
   protected readonly roles = ROLES;
+  protected readonly pageSizes = [20, 50, 100];
   protected readonly users = signal<PlatformUser[]>([]);
   protected readonly stats = signal<StatBlock | null>(null);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
+  protected readonly limit = signal(20);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
   protected readonly activeRole = signal('');
+  protected readonly activeStatus = signal('');
+  protected readonly search = signal('');
+
+  /** objectURL des photos chargées à la volée (par id). */
+  protected readonly avatarUrls = signal<Record<string, string>>({});
+  private readonly avatarTried = new Set<string>();
+  private readonly objectUrls: string[] = [];
+
+  protected avatarUrl(id: string): string | null {
+    return this.avatarUrls()[id] ?? null;
+  }
+
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
 
   protected readonly form = this.fb.nonNullable.group({
     firstName: ['', Validators.required],
@@ -240,9 +310,46 @@ export class UsersList {
   constructor() {
     this.load();
     this.usersApi.stats().subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
+    this.searchCtrl.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+      this.load();
+    });
+    inject(DestroyRef).onDestroy(() => this.objectUrls.forEach((u) => URL.revokeObjectURL(u)));
   }
 
   protected readonly active = isActive;
+
+  /** Charge la photo de profil (blob → objectURL) au survol, une seule fois. */
+  loadAvatar(id: string): void {
+    if (!id || this.avatarTried.has(id)) {
+      return;
+    }
+    this.avatarTried.add(id);
+    this.usersApi.avatar(id).subscribe({
+      next: (blob) => {
+        if (!blob || blob.size === 0) {
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        this.objectUrls.push(url);
+        this.avatarUrls.update((m) => ({ ...m, [id]: url }));
+      },
+      error: () => undefined, // pas de photo → on garde les initiales
+    });
+  }
+
+  changeLimit(limit: number): void {
+    this.limit.set(limit);
+    this.page.set(1);
+    this.load();
+  }
+
+  filterByStatus(status: string): void {
+    this.activeStatus.set(status);
+    this.page.set(1);
+    this.load();
+  }
 
   /** Stats backend → tuiles lisibles (libellés humanisés, valeurs primitives). */
   protected readonly statTiles = computed<StatTile[]>(() => {
@@ -293,17 +400,23 @@ export class UsersList {
 
   private load(): void {
     this.loading.set(true);
-    const role = this.activeRole();
-    const query = { page: this.page(), limit: 10 };
-    const req$ = role ? this.usersApi.byRole(role, query) : this.usersApi.list(query);
-    req$.subscribe({
-      next: (res) => {
-        this.users.set(res.items);
-        this.pagination.set(res.pagination ?? null);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    // GET /users : filtres role/status/search + pagination (toHttpParams omet les vides).
+    this.usersApi
+      .list({
+        page: this.page(),
+        limit: this.limit(),
+        role: this.activeRole() || undefined,
+        status: this.activeStatus() || undefined,
+        search: this.search() || undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.users.set(res.items);
+          this.pagination.set(res.pagination ?? null);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false),
+      });
   }
 
   filterByRole(role: string): void {
