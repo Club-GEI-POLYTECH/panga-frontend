@@ -4,8 +4,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { BillingService } from '../services/billing.service';
-import type { SaasInvoice, StatBlock } from '../models/platform.models';
+import { SchoolsService } from '../services/schools.service';
+import type { PlatformSchool, SaasInvoice, StatBlock } from '../models/platform.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
@@ -32,6 +34,7 @@ function isPaid(inv: SaasInvoice): boolean {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
     Avatar,
     EmptyState,
     KeyValue,
@@ -61,8 +64,12 @@ function isPaid(inv: SaasInvoice): boolean {
         <panga-section-header icon="workspace_premium" title="Abonnement d'une école" />
         <form [formGroup]="subForm" (ngSubmit)="loadSubscription()" class="flex items-start gap-3">
           <mat-form-field appearance="outline" class="flex-1">
-            <mat-label>School ID</mat-label>
-            <input matInput formControlName="schoolId" />
+            <mat-label>École</mat-label>
+            <mat-select formControlName="schoolId">
+              @for (s of schools(); track s.id) {
+                <mat-option [value]="s.id">{{ schoolLabel(s) }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <button mat-flat-button class="rounded-xl! mt-1!" type="submit">Consulter</button>
         </form>
@@ -74,9 +81,13 @@ function isPaid(inv: SaasInvoice): boolean {
       <section class="panga-card p-5">
         <panga-section-header icon="add_card" title="Nouvelle facture" />
         <form [formGroup]="form" (ngSubmit)="create()" class="grid gap-3 sm:grid-cols-2">
-          <mat-form-field appearance="outline">
-            <mat-label>School ID</mat-label>
-            <input matInput formControlName="schoolId" />
+          <mat-form-field appearance="outline" class="sm:col-span-2">
+            <mat-label>École</mat-label>
+            <mat-select formControlName="schoolId">
+              @for (s of schools(); track s.id) {
+                <mat-option [value]="s.id">{{ schoolLabel(s) }}</mat-option>
+              }
+            </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Montant</mat-label>
@@ -118,7 +129,7 @@ function isPaid(inv: SaasInvoice): boolean {
       <div class="panga-card divide-y divide-(--border)">
         @for (inv of invoices(); track inv.id) {
           <div class="flex items-center gap-4 px-4 sm:px-5 py-3.5">
-            <panga-avatar [name]="inv.schoolId || 'SA'" [size]="40" />
+            <panga-avatar [name]="schoolName(inv.schoolId) || 'SA'" [size]="40" />
             <div class="min-w-0 flex-1">
               <p class="font-medium text-(--text)">
                 {{ inv.amount ?? '—' }}
@@ -127,7 +138,7 @@ function isPaid(inv: SaasInvoice): boolean {
               <p class="text-xs text-(--text-muted) truncate">
                 {{ inv.subscriptionPlanOffered || '—' }}
                 @if (inv.schoolId) {
-                  · {{ inv.schoolId }}
+                  · {{ schoolName(inv.schoolId) }}
                 }
               </p>
             </div>
@@ -151,10 +162,12 @@ function isPaid(inv: SaasInvoice): boolean {
 })
 export class Billing {
   private readonly billing = inject(BillingService);
+  private readonly schoolsApi = inject(SchoolsService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
 
   protected readonly invoices = signal<SaasInvoice[]>([]);
+  protected readonly schools = signal<PlatformSchool[]>([]);
   protected readonly subscription = signal<StatBlock | null>(null);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
@@ -185,10 +198,28 @@ export class Billing {
 
   constructor() {
     this.load();
+    this.schoolsApi.list({ page: 1, limit: 200 }).subscribe({
+      next: (res) => this.schools.set(res.items),
+    });
   }
 
   protected statusTone(inv: SaasInvoice): BadgeTone {
     return isPaid(inv) ? 'success' : 'warning';
+  }
+
+  /** Libellé d'une école pour le sélecteur. */
+  protected schoolLabel(s: PlatformSchool): string {
+    const name = s.displayName || s.name || s.code || s.id;
+    return s.code && s.code !== name ? `${name} (${s.code})` : name;
+  }
+
+  /** Nom d'une école à partir de son id (repli sur l'id court). */
+  protected schoolName(id: string | undefined): string {
+    if (!id) {
+      return '';
+    }
+    const s = this.schools().find((x) => x.id === id);
+    return s ? s.displayName || s.name || s.code || id : `École ${id.slice(0, 6)}`;
   }
 
   private load(): void {
