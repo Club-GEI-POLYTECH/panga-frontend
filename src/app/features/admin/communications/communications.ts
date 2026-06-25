@@ -8,6 +8,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { CommunicationsService } from '../services/communications.service';
+import { SchoolsService } from '../../super-admin/services/schools.service';
+import type { PlatformSchool } from '../../super-admin/models/platform.models';
 import type { Announcement, UserNotification } from '../models/admin.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
@@ -43,7 +45,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
   ],
   template: `
     <panga-page-header icon="forum" title="Communications" subtitle="Annonces et notifications">
-      @if (isAdmin()) {
+      @if (isAdmin() || (isSuperAdmin() && schoolId())) {
         <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
           <mat-icon fontSet="material-symbols-outlined">{{
             showForm() ? 'close' : 'campaign'
@@ -52,6 +54,22 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
         </button>
       }
     </panga-page-header>
+
+    @if (isSuperAdmin()) {
+      <div class="panga-card p-4 mb-6 flex flex-wrap items-center gap-3">
+        <mat-form-field appearance="outline" class="flex-1 min-w-60" subscriptSizing="dynamic">
+          <mat-label>École (agir au nom de)</mat-label>
+          <mat-select [value]="schoolId()" (selectionChange)="onSchoolChange($event.value)">
+            @for (s of schools(); track s.id) {
+              <mat-option [value]="s.id">{{ schoolLabel(s) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <p class="text-xs text-(--text-muted)">
+          Le super_admin publie/lit les annonces au nom de l'école choisie.
+        </p>
+      </div>
+    }
 
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="publish()" class="panga-card p-6 mb-6">
@@ -137,6 +155,14 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
           <div class="panga-card mt-3">
             <panga-paginator [meta]="pageMeta()" (pageChange)="page.set($event)" />
           </div>
+        } @else if (isSuperAdmin() && !schoolId()) {
+          <div class="panga-card">
+            <panga-empty-state
+              icon="apartment"
+              title="Choisissez une école"
+              description="Sélectionnez une école ci-dessus pour voir et publier ses annonces."
+            />
+          </div>
         } @else {
           <div class="panga-card">
             <panga-empty-state
@@ -185,9 +211,15 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
 })
 export class Communications {
   private readonly comms = inject(CommunicationsService);
+  private readonly schoolsApi = inject(SchoolsService);
   private readonly store = inject(AuthStore);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
+
+  /** Super_admin : agit « au nom » d'une école → sélecteur + ?schoolId=. */
+  protected readonly isSuperAdmin = computed(() => this.store.role() === 'super_admin');
+  protected readonly schools = signal<PlatformSchool[]>([]);
+  protected readonly schoolId = signal('');
 
   protected readonly announcements = signal<Announcement[]>([]);
   /** Pagination client de la liste des annonces. */
@@ -211,16 +243,44 @@ export class Communications {
   });
 
   constructor() {
-    this.loadAnnouncements();
     this.comms.myNotifications().subscribe({ next: (r) => this.notifications.set(r.items) });
+    if (this.isSuperAdmin()) {
+      // Charge les écoles ; les annonces attendent qu'une école soit choisie.
+      this.schoolsApi
+        .list({ page: 1, limit: 200 })
+        .subscribe({ next: (r) => this.schools.set(r.items) });
+    } else {
+      this.loadAnnouncements();
+    }
   }
 
   protected priorityTone(p: string): BadgeTone {
     return PRIORITY_TONE[p] ?? 'neutral';
   }
 
+  /** École cible passée aux endpoints (super_admin uniquement). */
+  private targetSchoolId(): string | undefined {
+    return this.isSuperAdmin() ? this.schoolId() || undefined : undefined;
+  }
+
+  protected schoolLabel(s: PlatformSchool): string {
+    const name = s.displayName || s.name || s.code || s.id;
+    return s.code && s.code !== name ? `${name} (${s.code})` : name;
+  }
+
+  onSchoolChange(id: string): void {
+    this.schoolId.set(id);
+    this.showForm.set(false);
+    this.loadAnnouncements();
+  }
+
   private loadAnnouncements(): void {
-    this.comms.announcements().subscribe({
+    // Super_admin sans école sélectionnée : ne pas appeler (400 garanti).
+    if (this.isSuperAdmin() && !this.schoolId()) {
+      this.announcements.set([]);
+      return;
+    }
+    this.comms.announcements(this.targetSchoolId()).subscribe({
       next: (r) => {
         this.announcements.set(r.items);
         this.page.set(1);
@@ -234,7 +294,7 @@ export class Communications {
       return;
     }
     this.submitting.set(true);
-    this.comms.createAnnouncement(this.form.getRawValue()).subscribe({
+    this.comms.createAnnouncement(this.form.getRawValue(), this.targetSchoolId()).subscribe({
       next: () => {
         this.submitting.set(false);
         this.notify.success('Annonce publiée.');
