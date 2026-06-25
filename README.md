@@ -1,5 +1,6 @@
 # Panga — Frontend (Angular PWA)
 
+
 Frontend de **Panga**, application de gestion scolaire multi-tenant (SaaS, 5 rôles).
 PWA consommant l'API REST `/v1` du backend NestJS. UI turquoise épurée, mode clair/sombre,
 i18n FR/EN, signals partout.
