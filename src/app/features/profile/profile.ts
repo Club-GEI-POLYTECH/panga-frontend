@@ -173,6 +173,11 @@ export class Profile {
     });
   }
 
+  /** Une tentative de connexion a-t-elle échoué ? (champ backend `isSuccessful`). */
+  protected failed(entry: LoginHistoryEntry): boolean {
+    return (entry.isSuccessful ?? entry.success) === false;
+  }
+
   /* ---------------------------- Photo de profil ---------------------------- */
 
   onAvatarSelected(event: Event): void {

@@ -159,6 +159,7 @@
               <th class="px-4 py-3 font-medium">{{ t('profile.device') }}</th>
               <th class="px-4 py-3 font-medium">IP</th>
               <th class="px-4 py-3 font-medium">{{ t('profile.status') }}</th>
+              <th class="px-4 py-3 font-medium">Motif</th>
             </tr>
           </thead>
           <tbody>
@@ -175,14 +176,17 @@
                   <span
                     class="px-2 py-0.5 rounded-full text-xs font-medium"
                     [style.background]="
-                      entry.success === false
+                      failed(entry)
                         ? 'color-mix(in srgb, var(--danger) 14%, transparent)'
                         : 'color-mix(in srgb, var(--success) 14%, transparent)'
                     "
-                    [style.color]="entry.success === false ? 'var(--danger)' : 'var(--success)'"
+                    [style.color]="failed(entry) ? 'var(--danger)' : 'var(--success)'"
                   >
-                    {{ entry.success === false ? t('profile.failed') : t('profile.success') }}
+                    {{ failed(entry) ? t('profile.failed') : t('profile.success') }}
                   </span>
+                </td>
+                <td class="px-4 py-3 text-(--text-muted)">
+                  {{ failed(entry) ? entry.reason || '—' : '—' }}
                 </td>
               </tr>
             }

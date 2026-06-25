@@ -60,11 +60,15 @@ export interface ChangePasswordRequest {
 /** Entrée du journal de connexions (GET /auth/login-history). */
 export interface LoginHistoryEntry {
   id?: string;
+  email?: string;
   ipAddress?: string;
   userAgent?: string;
   device?: string;
   location?: string;
+  /** Champ backend réel ; `success` conservé en repli pour anciennes formes. */
+  isSuccessful?: boolean;
   success?: boolean;
+  reason?: string | null;
   createdAt?: string;
 }
 
