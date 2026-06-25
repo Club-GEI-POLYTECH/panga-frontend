@@ -19,16 +19,14 @@ import { LoadingService } from '../core/http/loading.service';
 import { SchoolYearStore } from '../core/school-year/school-year.store';
 import { ThemeService } from '../core/theme.service';
 import { Avatar } from '../shared/ui/avatar';
-import { NotificationService, type Tone } from '../shared/ui/notification.service';
+import {
+  NotificationsStore,
+  isNotifRead,
+  isSecurityNotif,
+  type AppNotification,
+} from '../core/notifications/notifications.store';
 import { navSectionsForRole } from './nav.config';
 import { SchoolSwitcher } from './school-switcher';
-
-const TONE_COLOR: Record<Tone, string> = {
-  success: 'var(--success)',
-  error: 'var(--danger)',
-  warning: 'var(--warning)',
-  info: 'var(--brand-500)',
-};
 
 /** Shell applicatif commun à tous les rôles (la nav est filtrée par rôle). */
 @Component({
@@ -58,7 +56,7 @@ export class MainShell {
   protected readonly avatars = inject(AvatarService);
   protected readonly loading = inject(LoadingService);
   protected readonly theme = inject(ThemeService);
-  protected readonly notify = inject(NotificationService);
+  protected readonly notifs = inject(NotificationsStore);
   protected readonly sy = inject(SchoolYearStore);
   private readonly auth = inject(AuthService);
   private readonly transloco = inject(TranslocoService);
@@ -95,6 +93,8 @@ export class MainShell {
     // Profil complet (auth/profile) pour enrichir l'en-tête / la barre latérale.
     // (avatars.myUrl est calculé depuis le store → pas d'action explicite.)
     this.auth.loadMe().subscribe({ error: () => undefined });
+    // Notifications in-app (cloche) : alertes sécurité, etc.
+    this.notifs.load();
     // Année scolaire courante de l'école (hors super_admin cross-tenant).
     if (this.store.role() !== 'super_admin') {
       this.sy.load();
@@ -116,8 +116,17 @@ export class MainShell {
       .subscribe((r) => this.collapsed.set(r.matches));
   }
 
-  protected toneColor(tone: Tone): string {
-    return TONE_COLOR[tone];
+  protected isUnread(n: AppNotification): boolean {
+    return !isNotifRead(n);
+  }
+  protected notifIcon(n: AppNotification): string {
+    return isSecurityNotif(n) ? 'gpp_maybe' : 'notifications';
+  }
+  protected notifColor(n: AppNotification): string {
+    return isSecurityNotif(n) ? 'var(--danger)' : 'var(--brand-500)';
+  }
+  protected onNotif(n: AppNotification): void {
+    this.notifs.markRead(n.id);
   }
 
   toggleSidenav(): void {

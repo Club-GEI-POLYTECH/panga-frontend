@@ -263,14 +263,13 @@
           <button
             mat-icon-button
             [matMenuTriggerFor]="notifMenu"
-            (menuOpened)="notify.markAllRead()"
             matTooltip="Notifications"
             aria-label="Notifications"
           >
             <mat-icon
               fontSet="material-symbols-outlined"
-              [matBadge]="notify.unread()"
-              [matBadgeHidden]="notify.unread() === 0"
+              [matBadge]="notifs.unread()"
+              [matBadgeHidden]="notifs.unread() === 0"
               matBadgeColor="warn"
               matBadgeSize="small"
             >
@@ -298,37 +297,55 @@
         <mat-menu #notifMenu="matMenu" class="panga-menu" xPosition="before">
           <div class="w-80 max-w-[92vw]">
             <div class="flex items-center justify-between px-4 py-3 border-b border-(--border)">
-              <span class="font-semibold text-(--text)">{{
-                'notifications.title' | transloco
-              }}</span>
-              @if (notify.history().length) {
+              <span class="font-semibold text-(--text)">
+                {{ 'notifications.title' | transloco }}
+                @if (notifs.unread()) {
+                  <span class="text-(--text-muted)">({{ notifs.unread() }})</span>
+                }
+              </span>
+              @if (notifs.unread()) {
                 <button
                   class="text-xs font-medium text-(--brand-600) hover:text-(--brand-800) transition-colors"
-                  (click)="notify.clear()"
+                  (click)="notifs.markAllRead(); $event.stopPropagation()"
                 >
-                  {{ 'notifications.clear' | transloco }}
+                  Tout marquer lu
                 </button>
               }
             </div>
-            @if (notify.history().length) {
-              <div class="max-h-80 overflow-y-auto">
-                @for (n of notify.history(); track n.id) {
-                  <div
-                    class="flex items-start gap-3 px-4 py-2.5 border-b border-(--border) last:border-0"
+            @if (notifs.items().length) {
+              <div class="max-h-96 overflow-y-auto">
+                @for (n of notifs.items(); track n.id) {
+                  <button
+                    type="button"
+                    class="flex w-full items-start gap-3 px-4 py-2.5 text-left border-b border-(--border) last:border-0 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
+                    (click)="onNotif(n); $event.stopPropagation()"
                   >
                     <span
                       class="material-symbols-outlined text-[20px] mt-0.5 shrink-0"
-                      [style.color]="toneColor(n.tone)"
+                      [style.color]="notifColor(n)"
                     >
-                      {{ notify.iconFor(n.tone) }}
+                      {{ notifIcon(n) }}
                     </span>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm text-(--text)">{{ n.message }}</p>
-                      <p class="text-xs text-(--text-muted) mt-0.5">
+                      <p
+                        class="text-sm font-medium text-(--text)"
+                        [class.opacity-60]="!isUnread(n)"
+                      >
+                        {{ n.title || 'Notification' }}
+                      </p>
+                      @if (n.message) {
+                        <p class="text-xs text-(--text-muted) mt-0.5 line-clamp-2">
+                          {{ n.message }}
+                        </p>
+                      }
+                      <p class="text-[11px] text-(--text-muted) mt-0.5">
                         {{ n.createdAt | date: 'dd/MM HH:mm' }}
                       </p>
                     </div>
-                  </div>
+                    @if (isUnread(n)) {
+                      <span class="h-2 w-2 rounded-full shrink-0 mt-1.5 bg-(--brand-500)"></span>
+                    }
+                  </button>
                 }
               </div>
             } @else {
