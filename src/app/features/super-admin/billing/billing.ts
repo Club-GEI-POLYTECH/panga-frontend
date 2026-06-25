@@ -1,4 +1,6 @@
+import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,7 +9,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { BillingService } from '../services/billing.service';
 import { SchoolsService } from '../services/schools.service';
-import type { PlatformSchool, SaasInvoice, StatBlock } from '../models/platform.models';
+import type {
+  PlanPricing,
+  PlatformSchool,
+  SaasInvoice,
+  StatBlock,
+} from '../models/platform.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
@@ -29,6 +36,7 @@ function isPaid(inv: SaasInvoice): boolean {
   selector: 'panga-billing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DecimalPipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -83,30 +91,55 @@ function isPaid(inv: SaasInvoice): boolean {
         <form [formGroup]="form" (ngSubmit)="create()" class="grid gap-3 sm:grid-cols-2">
           <mat-form-field appearance="outline" class="sm:col-span-2">
             <mat-label>École</mat-label>
-            <mat-select formControlName="schoolId">
+            <mat-select formControlName="schoolId" (selectionChange)="onSchoolChange($event.value)">
               @for (s of schools(); track s.id) {
                 <mat-option [value]="s.id">{{ schoolLabel(s) }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
           <mat-form-field appearance="outline">
-            <mat-label>Montant</mat-label>
-            <input matInput type="number" formControlName="amount" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Devise</mat-label>
-            <input matInput formControlName="currency" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
             <mat-label>Plan</mat-label>
-            <input matInput formControlName="subscriptionPlanOffered" placeholder="premium" />
+            <mat-select formControlName="subscriptionPlanOffered">
+              @for (p of pricingRows(); track p.plan) {
+                <mat-option [value]="p.plan"
+                  ><span class="capitalize">{{ p.plan }}</span></mat-option
+                >
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Nombre d'élèves</mat-label>
+            <input matInput type="number" min="0" formControlName="students" />
           </mat-form-field>
           <mat-form-field appearance="outline" class="sm:col-span-2">
             <mat-label>Notes</mat-label>
             <input matInput formControlName="notes" />
           </mat-form-field>
-          <div class="sm:col-span-2 flex justify-end">
-            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
+
+          <!-- Montant calculé (base + part/élève) -->
+          <div
+            class="sm:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
+            style="background: color-mix(in srgb, var(--brand-500) 8%, transparent)"
+          >
+            <div>
+              <p class="text-xs text-(--text-muted)">Montant calculé</p>
+              <p class="text-2xl font-bold text-(--text) tabular-nums">
+                {{ computedAmount() | number: '1.0-2' }} {{ currency()
+                }}<span class="text-sm font-normal text-(--text-muted)">/mois</span>
+              </p>
+              @if (planRow(); as p) {
+                <p class="text-[11px] text-(--text-muted) mt-0.5">
+                  base {{ p.basePriceUsd }} + {{ p.pricePerStudentUsd }}/élève au-delà de
+                  {{ p.includedStudents }}
+                </p>
+              }
+            </div>
+            <button
+              mat-flat-button
+              class="rounded-xl!"
+              type="submit"
+              [disabled]="submitting() || form.invalid"
+            >
               Créer la facture
             </button>
           </div>
@@ -168,11 +201,32 @@ export class Billing {
 
   protected readonly invoices = signal<SaasInvoice[]>([]);
   protected readonly schools = signal<PlatformSchool[]>([]);
+  protected readonly pricingRows = signal<PlanPricing[]>([]);
   protected readonly subscription = signal<StatBlock | null>(null);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
+
+  /* --- Calcul du montant : plan + nombre d'élèves --- */
+  private readonly planSig = signal('');
+  private readonly studentsSig = signal(0);
+  protected readonly currency = computed(() => String(this.pricingRows()[0]?.currency ?? 'USD'));
+  protected readonly planRow = computed(() =>
+    this.pricingRows().find((r) => r.plan === this.planSig()),
+  );
+  /** Montant = base + prix/élève × max(0, élèves − inclus). */
+  protected readonly computedAmount = computed(() => {
+    const p = this.planRow();
+    if (!p) {
+      return 0;
+    }
+    const base = Number(p.basePriceUsd) || 0;
+    const per = Number(p.pricePerStudentUsd) || 0;
+    const incl = Number(p.includedStudents) || 0;
+    const billable = Math.max(0, this.studentsSig() - incl);
+    return Math.round((base + per * billable) * 100) / 100;
+  });
 
   protected readonly paid = isPaid;
   protected readonly paidCount = computed(() => this.invoices().filter(isPaid).length);
@@ -190,9 +244,8 @@ export class Billing {
 
   protected readonly form = this.fb.nonNullable.group({
     schoolId: ['', Validators.required],
-    amount: [0, [Validators.required, Validators.min(0)]],
-    currency: ['USD', Validators.required],
-    subscriptionPlanOffered: ['premium', Validators.required],
+    subscriptionPlanOffered: ['', Validators.required],
+    students: [0, [Validators.required, Validators.min(0)]],
     notes: [''],
   });
 
@@ -201,6 +254,29 @@ export class Billing {
     this.schoolsApi.list({ page: 1, limit: 200 }).subscribe({
       next: (res) => this.schools.set(res.items),
     });
+    this.billing.pricing().subscribe({
+      next: (rows) => {
+        this.pricingRows.set(rows);
+        const plan = rows.some((r) => r.plan === 'premium') ? 'premium' : (rows[0]?.plan ?? '');
+        this.form.controls.subscriptionPlanOffered.setValue(plan);
+        this.planSig.set(plan);
+      },
+      error: () => undefined,
+    });
+    // Recalcule le montant quand le plan ou l'effectif change.
+    this.form.controls.subscriptionPlanOffered.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((v) => this.planSig.set(v));
+    this.form.controls.students.valueChanges
+      .pipe(takeUntilDestroyed())
+      .subscribe((v) => this.studentsSig.set(Number(v) || 0));
+  }
+
+  /** À la sélection d'une école : préremplir l'effectif depuis ses données. */
+  onSchoolChange(id: string): void {
+    const s = this.schools().find((x) => x.id === id);
+    const count = Number(s?.['studentsCount'] ?? s?.['currentStudents'] ?? 0) || 0;
+    this.form.controls.students.setValue(count);
   }
 
   protected statusTone(inv: SaasInvoice): BadgeTone {
@@ -255,15 +331,25 @@ export class Billing {
       return;
     }
     this.submitting.set(true);
-    this.billing.createInvoice(this.form.getRawValue()).subscribe({
-      next: () => {
-        this.submitting.set(false);
-        this.notify.success('Facture créée.');
-        this.form.reset({ currency: 'USD', subscriptionPlanOffered: 'premium', amount: 0 });
-        this.load();
-      },
-      error: () => this.submitting.set(false),
-    });
+    const v = this.form.getRawValue();
+    this.billing
+      .createInvoice({
+        schoolId: v.schoolId,
+        amount: this.computedAmount(),
+        currency: this.currency(),
+        subscriptionPlanOffered: v.subscriptionPlanOffered,
+        ...(v.notes ? { notes: v.notes } : {}),
+      })
+      .subscribe({
+        next: () => {
+          this.submitting.set(false);
+          this.notify.success('Facture créée.');
+          this.form.reset({ subscriptionPlanOffered: this.planSig(), students: 0 });
+          this.studentsSig.set(0);
+          this.load();
+        },
+        error: () => this.submitting.set(false),
+      });
   }
 
   markPaid(invoice: SaasInvoice): void {
