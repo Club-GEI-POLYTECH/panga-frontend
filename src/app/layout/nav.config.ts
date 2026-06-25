@@ -66,6 +66,13 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'gestion',
   },
   {
+    labelKey: 'nav.pricing',
+    icon: 'sell',
+    path: 'platform/pricing',
+    roles: ['super_admin'],
+    group: 'gestion',
+  },
+  {
     labelKey: 'nav.curriculum',
     icon: 'menu_book',
     path: 'platform/curriculum',

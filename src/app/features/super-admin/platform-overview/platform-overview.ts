@@ -5,6 +5,8 @@ import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { NotificationService } from '../../../shared/ui/notification.service';
 import { PlatformService } from '../services/platform.service';
 import { BillingService } from '../services/billing.service';
 import { AuditService } from '../services/audit.service';
@@ -47,6 +49,7 @@ function fmt(n: number | null | undefined): string {
     MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     KpiCard,
     KeyValue,
     SectionHeader,
@@ -86,7 +89,7 @@ function fmt(n: number | null | undefined): string {
           icon="apartment"
         />
         <panga-kpi-card label="Élèves" [value]="fmt(overview()?.totalStudents)" icon="school" />
-        <panga-kpi-card label="MRR" [value]="fmt(billing()?.mrr)" icon="trending_up" />
+        <panga-kpi-card label="MRR réalisé" [value]="fmt(billing()?.mrr)" icon="trending_up" />
         <panga-kpi-card
           label="Revenus du mois"
           [value]="fmt(overview()?.monthlyRevenue)"
@@ -94,6 +97,39 @@ function fmt(n: number | null | undefined): string {
           [trend]="overview()?.revenueDelta ?? null"
           [trendLabel]="deltaLabel()"
         />
+      </section>
+
+      <!-- MRR réalisé vs théorique + relance impayés -->
+      <section class="panga-card p-5 mb-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex flex-wrap items-stretch gap-3">
+            <div class="rounded-2xl border border-(--border) p-4 min-w-44">
+              <p class="text-xs text-(--text-muted)">MRR réalisé</p>
+              <p class="text-2xl font-semibold text-(--text) tabular-nums">
+                {{ fmt(billing()?.mrr) }}
+              </p>
+              <p class="text-[11px] text-(--text-muted) mt-0.5">factures payées</p>
+            </div>
+            <div
+              class="rounded-2xl p-4 min-w-44 text-white"
+              style="background: var(--brand-gradient)"
+            >
+              <p class="text-xs opacity-90">MRR théorique</p>
+              <p class="text-2xl font-semibold tabular-nums">{{ fmt(billing()?.mrrStandard) }}</p>
+              <p class="text-[11px] opacity-80 mt-0.5">catalogue · abonnements actifs</p>
+            </div>
+          </div>
+          <button
+            mat-stroked-button
+            class="rounded-xl!"
+            [disabled]="dunningRunning()"
+            (click)="runDunning()"
+            matTooltip="Relancer les abonnements impayés"
+          >
+            <mat-icon fontSet="material-symbols-outlined">forward_to_inbox</mat-icon>
+            {{ dunningRunning() ? 'Relance en cours…' : 'Lancer la relance des impayés' }}
+          </button>
+        </div>
       </section>
 
       <!-- Croissance -->
@@ -299,6 +335,24 @@ export class PlatformOverview {
   private readonly auditApi = inject(AuditService);
   private readonly system = inject(SystemService);
   private readonly tenant = inject(TenantService);
+  private readonly notify = inject(NotificationService);
+
+  protected readonly dunningRunning = signal(false);
+
+  /** Relance les abonnements impayés (dunning). */
+  runDunning(): void {
+    if (this.dunningRunning()) {
+      return;
+    }
+    this.dunningRunning.set(true);
+    this.billingApi.runDunning().subscribe({
+      next: () => {
+        this.dunningRunning.set(false);
+        this.notify.success('Relance des impayés lancée.');
+      },
+      error: () => this.dunningRunning.set(false),
+    });
+  }
 
   /** Le journal d'audit est cloisonné par école : indisponible sans contexte. */
   protected readonly auditNeedsSchool = !this.tenant.activeSchoolId();

@@ -25,6 +25,10 @@ export const SUPER_ADMIN_ROUTES: Routes = [
     loadComponent: () => import('./billing/billing').then((m) => m.Billing),
   },
   {
+    path: 'pricing',
+    loadComponent: () => import('./pricing/pricing').then((m) => m.Pricing),
+  },
+  {
     path: 'curriculum',
     loadComponent: () => import('./curriculum/curriculum').then((m) => m.Curriculum),
   },

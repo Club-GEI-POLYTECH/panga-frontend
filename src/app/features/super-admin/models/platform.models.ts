@@ -114,13 +114,57 @@ export interface TrendPoint {
 export interface BillingMetrics {
   mrr: number | null;
   arr: number | null;
+  /** MRR/ARR « standard » : revenu théorique du catalogue (abonnements actifs). */
+  mrrStandard: number | null;
+  arrStandard: number | null;
   activeSubscriptions: number | null;
   pastDue: number | null;
   trial: number | null;
   mrrByPlan: NamedValue[];
+  mrrStandardByPlan: NamedValue[];
   schoolsByPlan: NamedValue[];
   outstanding: number | null;
   invoicesByStatus: NamedValue[];
+}
+
+/* ------------------------------ Plans & tarifs ---------------------------- */
+
+/** Une entrée du catalogue (GET /billing/plans). */
+export interface PlanCatalogEntry {
+  plan: string;
+  basePriceUsd: number;
+  features: string[];
+  example?: { students: number; monthlyPriceUsd: number };
+}
+
+export interface PlanCatalog {
+  currency: string;
+  pricePerStudentUsd: number;
+  includedStudents: number;
+  plans: PlanCatalogEntry[];
+}
+
+/** Estimation tarifaire (GET /billing/estimate). */
+export interface BillingEstimate {
+  currency: string;
+  plan: string;
+  studentCount: number;
+  basePriceUsd: number;
+  includedStudents: number;
+  pricePerStudentUsd: number;
+  billableStudents: number;
+  monthlyPriceUsd: number;
+}
+
+/** Ligne de tarification éditable (GET/PUT /billing/pricing). */
+export interface PlanPricing {
+  plan: string;
+  basePriceUsd: string | number;
+  pricePerStudentUsd: string | number;
+  includedStudents: number;
+  currency?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
 }
 
 /** Entrée du journal d'audit (GET /audit-logs). */

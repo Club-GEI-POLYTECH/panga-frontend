@@ -123,6 +123,11 @@ export function normalizeBillingMetrics(raw: unknown): BillingMetrics {
   return {
     mrr: num(raw, 'mrr', 'MRR', 'monthlyRecurringRevenue'),
     arr: num(raw, 'arr', 'ARR', 'annualRecurringRevenue'),
+    mrrStandard: num(raw, 'mrrStandard', 'mrr_standard'),
+    arrStandard: num(raw, 'arrStandard', 'arr_standard'),
+    mrrStandardByPlan: toNamedValues(
+      prop(raw, 'mrrStandardByPlan') ?? prop(raw, 'mrr_standard_by_plan'),
+    ),
     activeSubscriptions: num(raw, 'activeSubscriptions', 'active', 'subscriptionsActive'),
     pastDue: num(raw, 'pastDue', 'past_due', 'overdue'),
     trial: num(raw, 'trial', 'trials', 'trialing'),
