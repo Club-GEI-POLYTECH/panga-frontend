@@ -18,13 +18,54 @@ export interface ListResult<T> {
 }
 
 /**
- * Normalise une réponse de liste, qu'elle soit brute (`[]`), paginée
- * (`{ data, pagination }`) ou enveloppée (`{ success, data: { data, ... } }`).
+ * Lit la pagination d'un objet : bloc imbriqué (`pagination` / `meta`) ou
+ * champs à plat (`page` / `limit` / `total` / `totalPages`).
+ */
+function readPagination(o: unknown): PaginationMeta | undefined {
+  if (!o || typeof o !== 'object') {
+    return undefined;
+  }
+  const obj = o as Record<string, unknown>;
+  const nested = obj['pagination'] ?? obj['meta'];
+  if (nested && typeof nested === 'object') {
+    return nested as PaginationMeta;
+  }
+  if (
+    typeof obj['total'] === 'number' &&
+    (typeof obj['page'] === 'number' || typeof obj['totalPages'] === 'number')
+  ) {
+    const total = Number(obj['total']);
+    const limit = Number(obj['limit']) || 0;
+    return {
+      page: Number(obj['page']) || 1,
+      limit: limit || total,
+      total,
+      totalPages: Number(obj['totalPages']) || (limit ? Math.ceil(total / limit) : 1),
+    };
+  }
+  return undefined;
+}
+
+/** Cherche la pagination dans plusieurs objets (data interne puis enveloppe). */
+function findPagination(...objs: unknown[]): PaginationMeta | undefined {
+  for (const o of objs) {
+    const p = readPagination(o);
+    if (p) {
+      return p;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Normalise une réponse de liste. La pagination est lue où qu'elle soit :
+ * - imbriquée : `{ success, data: { data:[…], pagination | page/total… } }`
+ * - frère de data : `{ success, data:[…], pagination | page/total… }`
  */
 export function unwrapList<T = unknown>(res: unknown): ListResult<T> {
   const data = unwrapEnvelope(res);
   if (Array.isArray(data)) {
-    return { items: data as T[] };
+    return { items: data as T[], pagination: findPagination(res) };
   }
   if (data && typeof data === 'object') {
     const obj = data as Record<string, unknown>;
@@ -32,7 +73,7 @@ export function unwrapList<T = unknown>(res: unknown): ListResult<T> {
       | T[]
       | undefined;
     if (Array.isArray(items)) {
-      return { items, pagination: obj['pagination'] as PaginationMeta | undefined };
+      return { items, pagination: findPagination(obj, res) };
     }
   }
   return { items: [] };
