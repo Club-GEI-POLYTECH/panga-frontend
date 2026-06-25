@@ -79,6 +79,8 @@ export interface BulletinProgram {
   title?: string;
   educationLevel?: string;
   schoolId?: string | null;
+  /** Origine : `database` (créé/éditable) ou `bundled` (embarqué RDC, lecture seule). */
+  source?: string;
   slots?: unknown[];
   [key: string]: unknown;
 }

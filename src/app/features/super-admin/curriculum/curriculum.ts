@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -62,6 +63,7 @@ const BULLETIN_TEMPLATE = `{
   imports: [
     ReactiveFormsModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
@@ -87,7 +89,7 @@ const BULLETIN_TEMPLATE = `{
           [value]="bulletins().length"
           icon="grid_view"
         />
-        <panga-kpi-card label="Référentiels RDC" [value]="rdc().length" icon="flag" />
+        <panga-kpi-card label="dont embarqués (RDC)" [value]="bundledCount()" icon="flag" />
       </section>
 
       <!-- Programmes importés à publier (brouillons) -->
@@ -210,22 +212,37 @@ const BULLETIN_TEMPLATE = `{
         }
       </section>
 
-      <!-- Référentiels -->
-      <div class="grid gap-6 lg:grid-cols-2 mb-6">
-        <section class="panga-card p-5">
-          <panga-section-header
-            icon="grid_view"
-            title="Référentiels bulletin"
-            [count]="bulletins().length"
-          />
-          @for (b of bulletins(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
+      <!-- Référentiels de bulletin (liste unique : database + bundled) -->
+      <section class="panga-card p-5 mb-6">
+        <panga-section-header
+          icon="grid_view"
+          title="Référentiels de bulletin"
+          [count]="bulletins().length"
+        />
+        <div class="mb-3 flex flex-wrap items-center gap-2">
+          <mat-button-toggle-group
+            [value]="bulletinFilter()"
+            (change)="bulletinFilter.set($event.value)"
+            class="rounded-xl!"
+          >
+            <mat-button-toggle value="all">Tous ({{ bulletins().length }})</mat-button-toggle>
+            <mat-button-toggle value="database"
+              >Personnalisés ({{ databaseCount() }})</mat-button-toggle
+            >
+            <mat-button-toggle value="bundled"
+              >Embarqués RDC ({{ bundledCount() }})</mat-button-toggle
+            >
+          </mat-button-toggle-group>
+        </div>
+        <div class="divide-y divide-(--border)">
+          @for (b of visibleBulletins(); track b.id || b.code) {
+            <div class="flex items-center gap-2 py-2">
               <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
                 >description</span
               >
               <span class="text-sm text-(--text) truncate flex-1">{{ b.title || b.code }}</span>
-              @if (isPersisted(b)) {
-                <panga-status-badge label="Base" tone="brand" [dot]="false" />
+              @if (isDatabase(b)) {
+                <panga-status-badge label="Personnalisé" tone="brand" [dot]="false" />
                 <button
                   mat-icon-button
                   class="h-8! w-8!"
@@ -237,32 +254,14 @@ const BULLETIN_TEMPLATE = `{
                   >
                 </button>
               } @else {
-                <panga-status-badge label="Embarqué" tone="neutral" [dot]="false" />
+                <panga-status-badge label="Embarqué (RDC)" tone="neutral" [dot]="false" />
               }
             </div>
           } @empty {
-            <p class="text-sm text-(--text-muted)">Aucun référentiel.</p>
+            <p class="text-sm text-(--text-muted) py-2">Aucun référentiel.</p>
           }
-        </section>
-
-        <section class="panga-card p-5">
-          <panga-section-header
-            icon="flag"
-            title="Référentiels RDC embarqués"
-            [count]="rdc().length"
-          />
-          @for (b of rdc(); track b.code) {
-            <div class="flex items-center gap-2 py-2 border-b border-(--border) last:border-0">
-              <span class="material-symbols-outlined text-[18px] text-(--brand-500)"
-                >description</span
-              >
-              <span class="text-sm text-(--text) truncate">{{ b.title || b.code }}</span>
-            </div>
-          } @empty {
-            <p class="text-sm text-(--text-muted)">Aucun référentiel embarqué.</p>
-          }
-        </section>
-      </div>
+        </div>
+      </section>
 
       <!-- Imports (JSON) -->
       <div class="grid gap-6 lg:grid-cols-2">
@@ -316,8 +315,23 @@ export class Curriculum {
   protected readonly published = signal<NationalProgram[]>([]);
   /** Programmes importés non encore publiés (absents de l'endpoint /published). */
   protected readonly drafts = signal<NationalProgram[]>([]);
+  /** Liste fusionnée des référentiels de bulletin (database + bundled). */
   protected readonly bulletins = signal<BulletinProgram[]>([]);
-  protected readonly rdc = signal<BulletinProgram[]>([]);
+  /** Filtre par origine : tous / personnalisés (database) / embarqués (bundled). */
+  protected readonly bulletinFilter = signal<'all' | 'database' | 'bundled'>('all');
+  protected readonly databaseCount = computed(
+    () => this.bulletins().filter((b) => this.isDatabase(b)).length,
+  );
+  protected readonly bundledCount = computed(
+    () => this.bulletins().filter((b) => !this.isDatabase(b)).length,
+  );
+  protected readonly visibleBulletins = computed(() => {
+    const f = this.bulletinFilter();
+    if (f === 'all') {
+      return this.bulletins();
+    }
+    return this.bulletins().filter((b) => (f === 'database') === this.isDatabase(b));
+  });
   protected readonly loading = signal(true);
   protected readonly importing = signal(false);
   protected readonly publishingId = signal<string | null>(null);
@@ -378,6 +392,21 @@ export class Curriculum {
     );
   }
 
+  /**
+   * Référentiel modifiable (créé en base) vs embarqué (lecture seule). On lit
+   * `source` (database/bundled) ; repli sur l'heuristique UUID si absent.
+   */
+  protected isDatabase(b: BulletinProgram): boolean {
+    const src = b['source'];
+    if (src === 'database') {
+      return true;
+    }
+    if (src === 'bundled') {
+      return false;
+    }
+    return this.isPersisted(b);
+  }
+
   deleteBulletin(b: BulletinProgram): void {
     if (!b.id) {
       return;
@@ -392,16 +421,16 @@ export class Curriculum {
 
   private load(): void {
     this.loading.set(true);
+    // Une seule source pour les référentiels : /bulletin-programs (database +
+    // bundled fusionnés). Plus d'appel séparé à /rdc (mêmes items en double).
     forkJoin({
       published: this.curriculum.publishedPrograms().pipe(catchError(() => of({ items: [] }))),
       drafts: this.curriculum.listPrograms('draft').pipe(catchError(() => of({ items: [] }))),
       bulletins: this.curriculum.bulletinPrograms().pipe(catchError(() => of({ items: [] }))),
-      rdc: this.curriculum.rdcBulletinPrograms().pipe(catchError(() => of({ items: [] }))),
     }).subscribe((r) => {
       this.published.set(r.published.items);
       this.drafts.set(r.drafts.items);
       this.bulletins.set(r.bulletins.items);
-      this.rdc.set(r.rdc.items);
       this.loading.set(false);
     });
   }
