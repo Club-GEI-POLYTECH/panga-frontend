@@ -1,8 +1,9 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { Observable, of, shareReplay, tap, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
+import { SKIP_ERROR_TOAST } from '../http/http-context';
 import type { LoginHistoryEntry, LoginRequest, Role, School, User } from '../models/auth.models';
 import { AuthStore } from './auth.store';
 import { TokenService } from './token.service';
@@ -23,13 +24,19 @@ export class AuthService {
 
   login(req: LoginRequest): Observable<User> {
     this.store.setStatus('authenticating');
-    return this.http.post<unknown>(`${this.base}/login`, req, { withCredentials: true }).pipe(
-      map((res) => this.applyLogin(unwrap(res))),
-      catchError((err) => {
-        this.store.setStatus('error');
-        return throwError(() => err);
-      }),
-    );
+    // Silencieux : la page login gère les erreurs (401/403 verrouillage) en FR inline.
+    return this.http
+      .post<unknown>(`${this.base}/login`, req, {
+        withCredentials: true,
+        context: new HttpContext().set(SKIP_ERROR_TOAST, true),
+      })
+      .pipe(
+        map((res) => this.applyLogin(unwrap(res))),
+        catchError((err) => {
+          this.store.setStatus('error');
+          return throwError(() => err);
+        }),
+      );
   }
 
   /** Refresh de l'access token. Le backend attend `{ refresh_token }`. */

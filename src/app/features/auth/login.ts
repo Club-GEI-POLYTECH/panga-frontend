@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -43,6 +44,13 @@ export class Login {
 
   protected readonly submitting = signal(false);
   protected readonly hidePassword = signal(true);
+  /** Message d'erreur inline (FR) selon le code HTTP. */
+  protected readonly errorMessage = signal('');
+  /** Compte verrouillé (403) → on met en avant « mot de passe oublié ». */
+  protected readonly locked = signal(false);
+  private readonly failedAttempts = signal(0);
+  /** Après 2 échecs, on suggère la réinitialisation. */
+  protected readonly suggestReset = computed(() => this.locked() || this.failedAttempts() >= 2);
 
   protected readonly form = this.fb.nonNullable.group({
     identifier: ['', [Validators.required]],
@@ -81,6 +89,7 @@ export class Login {
       return;
     }
     this.submitting.set(true);
+    this.errorMessage.set('');
     const { identifier, password } = this.form.getRawValue();
     const selected = this.schoolCtrl.value;
     const schoolId = selected && typeof selected === 'object' ? selected.id : null;
@@ -88,10 +97,33 @@ export class Login {
     this.auth.login({ identifier, password, schoolId }).subscribe({
       next: () => {
         this.submitting.set(false);
+        this.failedAttempts.set(0);
+        this.locked.set(false);
         this.redirectAfterLogin();
       },
-      error: () => this.submitting.set(false),
+      error: (err: HttpErrorResponse) => {
+        this.submitting.set(false);
+        this.failedAttempts.update((n) => n + 1);
+        this.locked.set(err.status === 403);
+        this.errorMessage.set(this.messageFor(err));
+      },
     });
+  }
+
+  /** Message FR clair selon le code (cf. note sécurité des connexions). */
+  private messageFor(err: HttpErrorResponse): string {
+    switch (err.status) {
+      case 401:
+        return 'Identifiant ou mot de passe incorrect.';
+      case 403:
+        return 'Compte verrouillé après plusieurs tentatives. Patientez quelques minutes ou réinitialisez votre mot de passe.';
+      case 429:
+        return 'Trop de tentatives. Réessayez dans un instant.';
+      case 0:
+        return 'Connexion au serveur impossible. Vérifiez votre réseau.';
+      default:
+        return 'Connexion impossible. Réessayez plus tard.';
+    }
   }
 
   private redirectAfterLogin(): void {
