@@ -45,7 +45,8 @@
     "admin": "Administrator",
     "teacher": "Teacher",
     "parent": "Parent",
-    "student": "Student"
+    "student": "Student",
+    "unknown": ""
   },
   "profile": {
     "title": "My profile",

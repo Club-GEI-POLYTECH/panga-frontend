@@ -81,7 +81,7 @@ export class MainShell {
   protected readonly sidenavOpened = computed(() => (this.isMobile() ? this.mobileOpen() : true));
   protected readonly lang = signal(this.transloco.getActiveLang());
   protected readonly navSections = computed(() => navSectionsForRole(this.store.role()));
-  protected readonly roleKey = computed(() => `roles.${this.store.role()}`);
+  protected readonly roleKey = computed(() => `roles.${this.store.role() ?? 'unknown'}`);
   protected readonly email = computed(() => this.store.user()?.email ?? '');
   protected readonly location = computed(() => {
     const u = this.store.user();
