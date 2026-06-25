@@ -11,8 +11,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { PlatformUsersService } from '../services/platform-users.service';
+import { SchoolsService } from '../services/schools.service';
 import { AvatarService } from '../../../core/auth/avatar.service';
-import type { PlatformUser, StatBlock } from '../models/platform.models';
+import type { PlatformSchool, PlatformUser, StatBlock } from '../models/platform.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { ROLES } from '../../../core/models/auth.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
@@ -121,16 +122,22 @@ function isActive(u: PlatformUser): boolean {
           </mat-form-field>
           <mat-form-field appearance="outline">
             <mat-label>Rôle</mat-label>
-            <mat-select formControlName="role">
+            <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
               @for (r of creatableRoles; track r) {
                 <mat-option [value]="r">{{ roleLabel(r) }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>School ID (si admin école)</mat-label>
-            <input matInput formControlName="schoolId" />
-          </mat-form-field>
+          @if (selectedRole() === 'admin') {
+            <mat-form-field appearance="outline">
+              <mat-label>École (obligatoire)</mat-label>
+              <mat-select formControlName="schoolId">
+                @for (s of schools(); track s.id) {
+                  <mat-option [value]="s.id">{{ schoolLabel(s) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
         </div>
         <div class="flex justify-end">
           <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
@@ -257,6 +264,7 @@ function isActive(u: PlatformUser): boolean {
 })
 export class UsersList {
   private readonly usersApi = inject(PlatformUsersService);
+  private readonly schoolsApi = inject(SchoolsService);
   private readonly avatars = inject(AvatarService);
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
@@ -264,6 +272,9 @@ export class UsersList {
   protected readonly roles = ROLES;
   /** Un super_admin ne peut créer que des comptes d'administration (cf. matrice backend). */
   protected readonly creatableRoles = ['super_admin', 'admin'];
+  /** Rôle sélectionné dans le formulaire (pilote l'affichage du champ école). */
+  protected readonly selectedRole = signal('admin');
+  protected readonly schools = signal<PlatformSchool[]>([]);
   protected readonly pageSizes = [20, 50, 100];
   protected readonly users = signal<PlatformUser[]>([]);
   protected readonly stats = signal<StatBlock | null>(null);
@@ -290,11 +301,15 @@ export class UsersList {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(8)]],
     role: ['admin', Validators.required],
-    schoolId: [''],
+    // Par défaut le rôle est « admin » → école requise (cf. RegisterDto).
+    schoolId: ['', Validators.required],
   });
 
   constructor() {
     this.load();
+    this.schoolsApi
+      .list({ page: 1, limit: 200 })
+      .subscribe({ next: (r) => this.schools.set(r.items), error: () => undefined });
     this.usersApi.stats().subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
     this.searchCtrl.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => {
       this.search.set(v.trim());
@@ -396,6 +411,25 @@ export class UsersList {
     this.load();
   }
 
+  /** Libellé d'une école pour le sélecteur. */
+  protected schoolLabel(s: PlatformSchool): string {
+    const name = s.displayName || s.name || s.code || s.id;
+    return s.code && s.code !== name ? `${name} (${s.code})` : name;
+  }
+
+  /** Le champ école n'est requis que pour un admin (cf. RegisterDto). */
+  onRoleChange(role: string): void {
+    this.selectedRole.set(role);
+    const schoolId = this.form.controls.schoolId;
+    if (role === 'admin') {
+      schoolId.setValidators([Validators.required]);
+    } else {
+      schoolId.clearValidators();
+      schoolId.setValue('');
+    }
+    schoolId.updateValueAndValidity();
+  }
+
   register(): void {
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
@@ -403,11 +437,22 @@ export class UsersList {
     }
     this.submitting.set(true);
     const value = this.form.getRawValue();
-    this.usersApi.register({ ...value, schoolId: value.schoolId || null }).subscribe({
+    // schoolId requis pour admin, omis pour super_admin (cf. RegisterDto).
+    const dto = {
+      firstName: value.firstName,
+      lastName: value.lastName,
+      email: value.email,
+      password: value.password,
+      role: value.role,
+      ...(value.role === 'admin' && value.schoolId ? { schoolId: value.schoolId } : {}),
+    };
+    this.usersApi.register(dto).subscribe({
       next: () => {
         this.submitting.set(false);
         this.notify.success('Compte créé.');
         this.form.reset({ role: 'admin' });
+        this.selectedRole.set('admin');
+        this.onRoleChange('admin');
         this.showForm.set(false);
         this.load();
       },
