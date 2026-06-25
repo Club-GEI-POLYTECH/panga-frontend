@@ -107,10 +107,12 @@ function isPaid(inv: SaasInvoice): boolean {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Nombre d'élèves</mat-label>
-            <input matInput type="number" min="0" formControlName="students" />
-          </mat-form-field>
+          <div class="flex flex-col justify-center rounded-xl border border-(--border) px-3">
+            <span class="text-xs text-(--text-muted)">Effectif (élèves)</span>
+            <span class="text-lg font-semibold text-(--text) tabular-nums">
+              {{ form.controls.schoolId.value ? studentsSig() : '—' }}
+            </span>
+          </div>
           <mat-form-field appearance="outline" class="sm:col-span-2">
             <mat-label>Notes</mat-label>
             <input matInput formControlName="notes" />
@@ -122,7 +124,9 @@ function isPaid(inv: SaasInvoice): boolean {
             style="background: color-mix(in srgb, var(--brand-500) 8%, transparent)"
           >
             <div>
-              <p class="text-xs text-(--text-muted)">Montant calculé</p>
+              <p class="text-xs text-(--text-muted)">
+                Montant calculé pour {{ studentsSig() }} élèves
+              </p>
               <p class="text-2xl font-bold text-(--text) tabular-nums">
                 {{ computedAmount() | number: '1.0-2' }} {{ currency()
                 }}<span class="text-sm font-normal text-(--text-muted)">/mois</span>
@@ -210,7 +214,8 @@ export class Billing {
 
   /* --- Calcul du montant : plan + nombre d'élèves --- */
   private readonly planSig = signal('');
-  private readonly studentsSig = signal(0);
+  /** Effectif de l'école sélectionnée (lecture seule, vient de /schools). */
+  protected readonly studentsSig = signal(0);
   protected readonly currency = computed(() => String(this.pricingRows()[0]?.currency ?? 'USD'));
   protected readonly planRow = computed(() =>
     this.pricingRows().find((r) => r.plan === this.planSig()),
@@ -245,7 +250,6 @@ export class Billing {
   protected readonly form = this.fb.nonNullable.group({
     schoolId: ['', Validators.required],
     subscriptionPlanOffered: ['', Validators.required],
-    students: [0, [Validators.required, Validators.min(0)]],
     notes: [''],
   });
 
@@ -263,20 +267,16 @@ export class Billing {
       },
       error: () => undefined,
     });
-    // Recalcule le montant quand le plan ou l'effectif change.
+    // Recalcule le montant quand le plan change.
     this.form.controls.subscriptionPlanOffered.valueChanges
       .pipe(takeUntilDestroyed())
       .subscribe((v) => this.planSig.set(v));
-    this.form.controls.students.valueChanges
-      .pipe(takeUntilDestroyed())
-      .subscribe((v) => this.studentsSig.set(Number(v) || 0));
   }
 
-  /** À la sélection d'une école : préremplir l'effectif depuis ses données. */
+  /** Effectif = donnée de l'école (non saisissable). */
   onSchoolChange(id: string): void {
     const s = this.schools().find((x) => x.id === id);
-    const count = Number(s?.['studentsCount'] ?? s?.['currentStudents'] ?? 0) || 0;
-    this.form.controls.students.setValue(count);
+    this.studentsSig.set(Number(s?.['studentsCount'] ?? s?.['currentStudents'] ?? 0) || 0);
   }
 
   protected statusTone(inv: SaasInvoice): BadgeTone {
@@ -344,7 +344,7 @@ export class Billing {
         next: () => {
           this.submitting.set(false);
           this.notify.success('Facture créée.');
-          this.form.reset({ subscriptionPlanOffered: this.planSig(), students: 0 });
+          this.form.reset({ subscriptionPlanOffered: this.planSig() });
           this.studentsSig.set(0);
           this.load();
         },
