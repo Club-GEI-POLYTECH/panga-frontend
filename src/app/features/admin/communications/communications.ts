@@ -1,6 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -115,6 +117,11 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
       <section class="lg:col-span-2">
         <panga-section-header icon="campaign" title="Annonces" [count]="announcements().length" />
         @if (announcements().length) {
+          <mat-form-field appearance="outline" class="w-full mb-3" subscriptSizing="dynamic">
+            <mat-label>Rechercher</mat-label>
+            <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+            <input matInput [formControl]="searchCtrl" placeholder="Titre, contenu…" />
+          </mat-form-field>
           <div class="flex flex-col gap-3">
             @for (a of visibleAnnouncements(); track a.id) {
               <div class="panga-card p-5">
@@ -222,14 +229,21 @@ export class Communications {
   protected readonly schoolId = signal('');
 
   protected readonly announcements = signal<Announcement[]>([]);
-  /** Pagination client de la liste des annonces. */
+  /** Pagination + recherche client de la liste des annonces. */
   protected readonly page = signal(1);
-  protected readonly pageMeta = computed(() =>
-    clientMeta(this.announcements().length, this.page()),
-  );
-  protected readonly visibleAnnouncements = computed(() =>
-    pageSlice(this.announcements(), this.page()),
-  );
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const q = this.search().toLowerCase();
+    if (!q) {
+      return this.announcements();
+    }
+    return this.announcements().filter((a) =>
+      `${a.title ?? ''} ${a.content ?? ''}`.toLowerCase().includes(q),
+    );
+  });
+  protected readonly pageMeta = computed(() => clientMeta(this.filtered().length, this.page()));
+  protected readonly visibleAnnouncements = computed(() => pageSlice(this.filtered(), this.page()));
   protected readonly notifications = signal<UserNotification[]>([]);
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
@@ -252,6 +266,10 @@ export class Communications {
     } else {
       this.loadAnnouncements();
     }
+    this.searchCtrl.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+    });
   }
 
   protected priorityTone(p: string): BadgeTone {
