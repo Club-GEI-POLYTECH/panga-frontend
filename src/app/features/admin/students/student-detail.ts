@@ -277,11 +277,13 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
                 <span class="text-sm text-(--text)">{{ label(p) }}</span>
                 <button
                   type="button"
-                  class="grid h-5 w-5 shrink-0 place-items-center rounded-full text-(--text-muted) transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-(--danger)"
+                  class="ml-0.5 shrink-0 leading-none text-(--text-muted) outline-none transition-colors hover:text-(--danger)"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
-                  <span class="material-symbols-outlined text-[16px] leading-none">close</span>
+                  <span class="material-symbols-outlined align-middle text-[18px] leading-none"
+                    >close</span
+                  >
                 </button>
               </span>
             }
