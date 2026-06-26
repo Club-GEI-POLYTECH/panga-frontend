@@ -271,19 +271,17 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <div class="flex flex-wrap gap-2 mb-4">
             @for (p of linkedParents(); track p.id) {
               <span
-                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1 py-1"
+                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1.5 py-1"
               >
                 <panga-avatar [name]="label(p)" [size]="24" />
                 <span class="text-sm text-(--text)">{{ label(p) }}</span>
                 <button
                   type="button"
-                  class="grid h-6 w-6 place-items-center rounded-full hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+                  class="grid h-5 w-5 shrink-0 place-items-center rounded-full text-(--text-muted) transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_14%,transparent)] hover:text-(--danger)"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
-                  <mat-icon fontSet="material-symbols-outlined" class="text-base! text-(--danger)">
-                    close
-                  </mat-icon>
+                  <span class="material-symbols-outlined text-[16px] leading-none">close</span>
                 </button>
               </span>
             }
