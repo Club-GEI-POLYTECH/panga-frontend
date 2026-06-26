@@ -7,10 +7,13 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AcademicsService } from '../services/academics.service';
 import { ClassesService } from '../services/classes.service';
@@ -39,6 +42,7 @@ function isPublished(b: Bulletin): boolean {
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatSelectModule,
     Avatar,
     EmptyState,
@@ -109,6 +113,13 @@ function isPublished(b: Bulletin): boolean {
 
       <section class="panga-card p-5">
         <panga-section-header icon="description" title="Bulletins" [count]="bulletins().length" />
+        @if (bulletins().length) {
+          <mat-form-field appearance="outline" class="w-full mb-2" subscriptSizing="dynamic">
+            <mat-label>Rechercher un élève</mat-label>
+            <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+            <input matInput [formControl]="searchCtrl" placeholder="Nom de l'élève…" />
+          </mat-form-field>
+        }
         @if (loading()) {
           <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
         } @else if (bulletins().length === 0) {
@@ -168,10 +179,21 @@ export class BulletinsList {
   protected readonly classId = signal('');
   protected readonly term = signal('TERM1');
   protected readonly bulletins = signal<Bulletin[]>([]);
-  /** Pagination client de la liste des bulletins de la classe. */
+  /** Pagination + recherche client de la liste des bulletins de la classe. */
   protected readonly page = signal(1);
-  protected readonly pageMeta = computed(() => clientMeta(this.bulletins().length, this.page()));
-  protected readonly visibleBulletins = computed(() => pageSlice(this.bulletins(), this.page()));
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const q = this.search().toLowerCase();
+    if (!q) {
+      return this.bulletins();
+    }
+    return this.bulletins().filter((b) =>
+      `${b.studentName ?? ''} ${b.studentId ?? ''}`.toLowerCase().includes(q),
+    );
+  });
+  protected readonly pageMeta = computed(() => clientMeta(this.filtered().length, this.page()));
+  protected readonly visibleBulletins = computed(() => pageSlice(this.filtered(), this.page()));
   private readonly allStudents = signal<Student[]>([]);
   protected readonly loading = signal(false);
   protected readonly generating = signal(false);
@@ -200,6 +222,10 @@ export class BulletinsList {
           .list({ page: 1, limit: 200, schoolYear: this.sy.filter() })
           .subscribe({ next: (r) => this.allStudents.set(r.items) });
       });
+    });
+    this.searchCtrl.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
     });
   }
 

@@ -8,7 +8,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -263,6 +265,31 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
       </form>
     }
 
+    <div class="panga-card p-4 mb-4 flex flex-wrap items-center gap-3">
+      <mat-form-field appearance="outline" class="flex-1 min-w-50" subscriptSizing="dynamic">
+        <mat-label>Rechercher</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+        <input matInput [formControl]="searchCtrl" placeholder="Nom, matricule…" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-44" subscriptSizing="dynamic">
+        <mat-label>Statut</mat-label>
+        <mat-select [value]="activeStatus()" (selectionChange)="filterByStatus($event.value)">
+          <mat-option value="">Tous</mat-option>
+          @for (o of statusOptions; track o.value) {
+            <mat-option [value]="o.value">{{ o.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-32" subscriptSizing="dynamic">
+        <mat-label>Par page</mat-label>
+        <mat-select [value]="limit()" (selectionChange)="changeLimit($event.value)">
+          @for (n of pageSizes; track n) {
+            <mat-option [value]="n">{{ n }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
     @if (loading()) {
       <panga-skeleton-table />
     } @else if (students().length === 0) {
@@ -380,6 +407,11 @@ export class StudentsList {
   protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
+  protected readonly limit = signal(20);
+  protected readonly pageSizes = [20, 50, 100];
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly activeStatus = signal('');
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
@@ -420,6 +452,23 @@ export class StudentsList {
           .subscribe({ next: (r) => this.classes.set(r.items) });
       });
     });
+    this.searchCtrl.valueChanges.pipe(debounceTime(300), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+      this.load();
+    });
+  }
+
+  filterByStatus(status: string): void {
+    this.activeStatus.set(status);
+    this.page.set(1);
+    this.load();
+  }
+
+  changeLimit(limit: number): void {
+    this.limit.set(limit);
+    this.page.set(1);
+    this.load();
   }
 
   protected fullName(s: Student): string {
@@ -429,7 +478,13 @@ export class StudentsList {
   private load(): void {
     this.loading.set(true);
     this.studentsApi
-      .list({ page: this.page(), limit: 10, schoolYear: this.sy.filter() })
+      .list({
+        page: this.page(),
+        limit: this.limit(),
+        schoolYear: this.sy.filter(),
+        search: this.search() || undefined,
+        status: this.activeStatus() || undefined,
+      })
       .subscribe({
         next: (res) => {
           this.students.set(res.items);

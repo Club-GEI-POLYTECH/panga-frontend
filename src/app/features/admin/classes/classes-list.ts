@@ -7,7 +7,9 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -81,6 +83,11 @@ function statusTone(status?: string): BadgeTone {
 
     <!-- Filtres -->
     <div class="flex flex-wrap items-center gap-3 mb-4">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-50">
+        <mat-label>Rechercher</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+        <input matInput [formControl]="searchCtrl" placeholder="Nom de classe…" />
+      </mat-form-field>
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
         <mat-label>Niveau d'éducation</mat-label>
         <mat-select [formControl]="eduLevelCtrl">
@@ -266,10 +273,19 @@ export class ClassesList {
   protected readonly tone = statusTone;
 
   protected readonly classes = signal<ClassInstance[]>([]);
-  /** Pagination client (l'endpoint classes renvoie tout le lot). */
+  /** Pagination + recherche côté client (l'endpoint classes renvoie tout le lot). */
   protected readonly page = signal(1);
-  protected readonly pageMeta = computed(() => clientMeta(this.classes().length, this.page()));
-  protected readonly visibleClasses = computed(() => pageSlice(this.classes(), this.page()));
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const q = this.search().toLowerCase();
+    if (!q) {
+      return this.classes();
+    }
+    return this.classes().filter((c) => this.label(c).toLowerCase().includes(q));
+  });
+  protected readonly pageMeta = computed(() => clientMeta(this.filtered().length, this.page()));
+  protected readonly visibleClasses = computed(() => pageSlice(this.filtered(), this.page()));
   protected readonly teachers = signal<Teacher[]>([]);
   protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly loading = signal(true);
@@ -314,6 +330,10 @@ export class ClassesList {
     this.classesApi.subOptions().subscribe({ next: (r) => this.subOptions.set(r.items) });
     this.eduLevelCtrl.valueChanges.subscribe(() => this.load());
     this.scheduleCtrl.valueChanges.subscribe(() => this.load());
+    this.searchCtrl.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+    });
     // Recharge à chaque changement d'année (sélecteur global).
     effect(() => {
       this.sy.selected();

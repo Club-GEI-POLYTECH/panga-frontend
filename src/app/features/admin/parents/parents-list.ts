@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -239,6 +241,14 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </form>
     }
 
+    <div class="panga-card p-4 mb-4">
+      <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+        <mat-label>Rechercher</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+        <input matInput [formControl]="searchCtrl" placeholder="Nom, e-mail, téléphone…" />
+      </mat-form-field>
+    </div>
+
     @if (loading()) {
       <panga-skeleton-table />
     } @else if (parents().length === 0) {
@@ -345,10 +355,21 @@ export class ParentsList {
   protected readonly statusOptions = PARENT_STATUS_OPTIONS;
 
   protected readonly parents = signal<Parent[]>([]);
-  /** Pagination client (l'endpoint /parents renvoie tout le lot). */
+  /** Pagination + recherche côté client (l'endpoint /parents renvoie tout le lot). */
   protected readonly page = signal(1);
-  protected readonly pageMeta = computed(() => clientMeta(this.parents().length, this.page()));
-  protected readonly visibleParents = computed(() => pageSlice(this.parents(), this.page()));
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const q = this.search().toLowerCase();
+    if (!q) {
+      return this.parents();
+    }
+    return this.parents().filter((p) =>
+      `${this.fullName(p)} ${p.email ?? ''} ${p.phone ?? ''}`.toLowerCase().includes(q),
+    );
+  });
+  protected readonly pageMeta = computed(() => clientMeta(this.filtered().length, this.page()));
+  protected readonly visibleParents = computed(() => pageSlice(this.filtered(), this.page()));
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
@@ -390,6 +411,10 @@ export class ParentsList {
 
   constructor() {
     this.load();
+    this.searchCtrl.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+    });
   }
 
   protected fullName(p: Parent): string {
