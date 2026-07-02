@@ -26,6 +26,7 @@ import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import type { PaginationMeta } from '../../../core/models/api.models';
@@ -76,6 +77,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
     EmptyState,
     PageHeader,
     Paginator,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -242,10 +244,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 <mat-label>Intitulé de l'évaluation</mat-label>
                 <input matInput [formControl]="bulkExamName" placeholder="ex. Interrogation 1" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Date de l'évaluation</mat-label>
-                <input matInput type="date" [formControl]="bulkExamDate" />
-              </mat-form-field>
+              <panga-date-field
+                class="w-full"
+                label="Date de l'évaluation"
+                [formControl]="bulkExamDate"
+              />
             </div>
 
             @if (selectedBulkPeriod()?.isLocked) {

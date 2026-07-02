@@ -22,6 +22,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { PaginationMeta } from '../../../core/models/api.models';
@@ -66,6 +67,7 @@ interface SlotRow {
     EmptyState,
     PageHeader,
     Paginator,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -435,10 +437,11 @@ interface SlotRow {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Date de la séance</mat-label>
-                <input matInput type="date" formControlName="lessonDate" />
-              </mat-form-field>
+              <panga-date-field
+                class="w-full"
+                label="Date de la séance"
+                formControlName="lessonDate"
+              />
               <mat-form-field appearance="outline">
                 <mat-label>Durée (heures)</mat-label>
                 <input

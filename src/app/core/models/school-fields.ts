@@ -4,12 +4,28 @@ import {
   EDUCATION_LEVEL_OPTIONS,
   SCHOOL_TYPE_OPTIONS,
 } from './school.enums';
+import {
+  COUNTRY_OPTIONS,
+  CURRENCY_OPTIONS,
+  LANGUAGE_OF_INSTRUCTION_OPTIONS,
+  TIMEZONE_OPTIONS,
+} from './geo.reference';
 
 /**
  * Schéma déclaratif des champs d'une école — source unique partagée par la fiche
  * admin (`my-school`), le détail super_admin et la création super_admin.
  */
-export type SchoolFieldType = 'text' | 'email' | 'tel' | 'textarea' | 'select' | 'multiselect';
+export type SchoolFieldType =
+  | 'text'
+  | 'email'
+  | 'tel'
+  | 'textarea'
+  | 'select'
+  | 'multiselect'
+  | 'phone'
+  | 'province'
+  | 'gps'
+  | 'currency-symbol';
 
 export interface SchoolField {
   key: string;
@@ -17,6 +33,7 @@ export interface SchoolField {
   type?: SchoolFieldType;
   options?: { value: string; label: string }[];
   wide?: boolean;
+  hint?: string;
 }
 
 export interface SchoolFieldGroup {
@@ -54,13 +71,13 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
     fields: [
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
+      { key: 'province', label: 'Province', type: 'province' },
       { key: 'postalCode', label: 'Code postal' },
-      { key: 'country', label: 'Pays' },
-      { key: 'gpsCoordinates', label: 'Coordonnées GPS' },
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
-      { key: 'fax', label: 'Fax', type: 'tel' },
+      { key: 'gpsCoordinates', label: 'Coordonnées GPS', type: 'gps', wide: true },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone' },
+      { key: 'fax', label: 'Fax', type: 'phone' },
       { key: 'email', label: 'E-mail', type: 'email' },
       { key: 'secondaryEmail', label: 'E-mail secondaire', type: 'email' },
       { key: 'website', label: 'Site web' },
@@ -72,21 +89,21 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
     fields: [
       { key: 'principalName', label: 'Directeur — nom' },
       { key: 'principalEmail', label: 'Directeur — e-mail', type: 'email' },
-      { key: 'principalPhone', label: 'Directeur — téléphone', type: 'tel' },
+      { key: 'principalPhone', label: 'Directeur — téléphone', type: 'phone' },
       { key: 'vicePrincipalName', label: 'Adjoint — nom' },
       { key: 'vicePrincipalEmail', label: 'Adjoint — e-mail', type: 'email' },
       { key: 'primaryDirectorName', label: 'Directeur primaire — nom' },
       { key: 'primaryDirectorEmail', label: 'Directeur primaire — e-mail', type: 'email' },
-      { key: 'primaryDirectorPhone', label: 'Directeur primaire — téléphone', type: 'tel' },
+      { key: 'primaryDirectorPhone', label: 'Directeur primaire — téléphone', type: 'phone' },
       { key: 'secondaryPrefectName', label: 'Préfet secondaire — nom' },
       { key: 'secondaryPrefectEmail', label: 'Préfet secondaire — e-mail', type: 'email' },
-      { key: 'secondaryPrefectPhone', label: 'Préfet secondaire — téléphone', type: 'tel' },
+      { key: 'secondaryPrefectPhone', label: 'Préfet secondaire — téléphone', type: 'phone' },
       { key: 'adminContactName', label: 'Contact admin — nom' },
       { key: 'adminContactEmail', label: 'Contact admin — e-mail', type: 'email' },
-      { key: 'adminContactPhone', label: 'Contact admin — téléphone', type: 'tel' },
+      { key: 'adminContactPhone', label: 'Contact admin — téléphone', type: 'phone' },
       { key: 'financeContactName', label: 'Contact finances — nom' },
       { key: 'financeContactEmail', label: 'Contact finances — e-mail', type: 'email' },
-      { key: 'financeContactPhone', label: 'Contact finances — téléphone', type: 'tel' },
+      { key: 'financeContactPhone', label: 'Contact finances — téléphone', type: 'phone' },
     ],
   },
   {
@@ -95,7 +112,12 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
     fields: [
       { key: 'curriculum', label: 'Curriculum' },
       { key: 'curriculumVersion', label: 'Version curriculum' },
-      { key: 'languageOfInstruction', label: "Langue d'enseignement" },
+      {
+        key: 'languageOfInstruction',
+        label: "Langue d'enseignement",
+        type: 'select',
+        options: LANGUAGE_OF_INSTRUCTION_OPTIONS,
+      },
     ],
   },
   {
@@ -119,7 +141,7 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
     title: 'Formats & localisation',
     icon: 'schedule',
     fields: [
-      { key: 'timezone', label: 'Fuseau horaire' },
+      { key: 'timezone', label: 'Fuseau horaire', type: 'select', options: TIMEZONE_OPTIONS },
       {
         key: 'dateFormat',
         label: 'Format de date',
@@ -139,8 +161,8 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
           { value: '12h', label: '12h' },
         ],
       },
-      { key: 'currency', label: 'Devise' },
-      { key: 'currencySymbol', label: 'Symbole devise' },
+      { key: 'currency', label: 'Devise', type: 'select', options: CURRENCY_OPTIONS },
+      { key: 'currencySymbol', label: 'Symbole devise', type: 'currency-symbol' },
     ],
   },
   {
@@ -194,7 +216,8 @@ export const SCHOOL_EDITABLE_KEYS = SCHOOL_EDITABLE_GROUPS.flatMap((g) =>
 
 /**
  * Construit le FormGroup d'une école. En mode création, ajoute le champ `code`
- * et rend `code`/`name`/`email` obligatoires.
+ * (facultatif — généré automatiquement par le backend s'il est omis) et rend
+ * `name`/`email` obligatoires.
  */
 export function buildSchoolFormGroup(create = false): FormGroup {
   const controls: Record<string, FormControl> = {};
@@ -212,10 +235,7 @@ export function buildSchoolFormGroup(create = false): FormGroup {
     });
   }
   if (create) {
-    controls['code'] = new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required],
-    });
+    controls['code'] = new FormControl('', { nonNullable: true });
   }
   return new FormGroup(controls);
 }

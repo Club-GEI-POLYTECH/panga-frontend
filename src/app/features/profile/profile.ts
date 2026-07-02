@@ -21,6 +21,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { AvatarService } from '../../core/auth/avatar.service';
 import type { LoginHistoryEntry } from '../../core/models/auth.models';
 import type { SchoolFieldGroup } from '../../core/models/school-fields';
+import { COUNTRY_OPTIONS, TIMEZONE_OPTIONS } from '../../core/models/geo.reference';
 import { NotificationService } from '../../shared/ui/notification.service';
 import { Avatar } from '../../shared/ui/avatar';
 import { EmptyState } from '../../shared/ui/empty-state';
@@ -63,13 +64,13 @@ const PROFILE_GROUPS: SchoolFieldGroup[] = [
     icon: 'contact_mail',
     fields: [
       { key: 'email', label: 'E-mail', type: 'email' },
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone' },
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
+      { key: 'province', label: 'Province', type: 'province' },
       { key: 'postalCode', label: 'Code postal' },
-      { key: 'country', label: 'Pays' },
     ],
   },
   {
@@ -85,7 +86,7 @@ const PROFILE_GROUPS: SchoolFieldGroup[] = [
           { value: 'en', label: 'English' },
         ],
       },
-      { key: 'timezone', label: 'Fuseau horaire' },
+      { key: 'timezone', label: 'Fuseau horaire', type: 'select', options: TIMEZONE_OPTIONS },
     ],
   },
   {
@@ -93,7 +94,7 @@ const PROFILE_GROUPS: SchoolFieldGroup[] = [
     icon: 'emergency',
     fields: [
       { key: 'emergencyContactName', label: 'Nom' },
-      { key: 'emergencyContactPhone', label: 'Téléphone', type: 'tel' },
+      { key: 'emergencyContactPhone', label: 'Téléphone', type: 'phone' },
       { key: 'emergencyContactRelation', label: 'Lien' },
     ],
   },

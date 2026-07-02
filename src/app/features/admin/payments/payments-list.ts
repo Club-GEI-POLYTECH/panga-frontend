@@ -24,6 +24,7 @@ import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
@@ -61,6 +62,7 @@ function isPaid(p: Payment): boolean {
     EmptyState,
     PageHeader,
     Paginator,
+    DateField,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -225,10 +227,7 @@ function isPaid(p: Payment): boolean {
               <mat-option value="card">Carte</mat-option>
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Date</mat-label>
-            <input matInput type="date" formControlName="paymentDate" />
-          </mat-form-field>
+          <panga-date-field class="w-full" label="Date" formControlName="paymentDate" />
           <div class="sm:col-span-2 flex justify-end">
             <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="savingPay()">
               Enregistrer

@@ -29,7 +29,17 @@ import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
 /** Création : champ « code » (accès) en tête, puis toutes les sections éditables. */
 const CREATE_GROUPS: SchoolFieldGroup[] = [
-  { title: 'Accès', icon: 'key', fields: [{ key: 'code', label: 'Code établissement' }] },
+  {
+    title: 'Accès',
+    icon: 'key',
+    fields: [
+      {
+        key: 'code',
+        label: 'Code établissement (facultatif)',
+        hint: 'Laissez vide pour une génération automatique (ex. PR-KIN-26-0001).',
+      },
+    ],
+  },
   ...SCHOOL_EDITABLE_GROUPS,
 ];
 

@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { SchoolYearStore, isValidSchoolYear } from '../../../core/school-year/school-year.store';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
@@ -25,6 +26,7 @@ function schoolYearValidator(c: { value: string }) {
     MatIconModule,
     MatInputModule,
     PageHeader,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -94,14 +96,16 @@ function schoolYearValidator(c: { value: string }) {
             <mat-error>Format attendu : AAAA-AAAA</mat-error>
           }
         </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Date de début (optionnel)</mat-label>
-          <input matInput type="date" formControlName="schoolYearStartDate" />
-        </mat-form-field>
-        <mat-form-field appearance="outline">
-          <mat-label>Date de fin (optionnel)</mat-label>
-          <input matInput type="date" formControlName="schoolYearEndDate" />
-        </mat-form-field>
+        <panga-date-field
+          class="w-full"
+          label="Date de début (optionnel)"
+          formControlName="schoolYearStartDate"
+        />
+        <panga-date-field
+          class="w-full"
+          label="Date de fin (optionnel)"
+          formControlName="schoolYearEndDate"
+        />
       </div>
       <div class="flex justify-end mt-2">
         <button

@@ -12,6 +12,7 @@ import { TeachersService } from '../services/teachers.service';
 import type { Teacher } from '../models/admin.models';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import {
   EMPLOYMENT_TYPE_OPTIONS,
   QUALIFICATION_LEVEL_OPTIONS,
@@ -21,9 +22,12 @@ import { personLabel } from '../shared/labels';
 import { employmentLabel } from '../shared/teacher-labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select';
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'phone' | 'province';
 interface Field {
   key: string;
   label: string;
@@ -56,13 +60,13 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel', fromUser: true },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel', fromUser: true },
+      { key: 'phone', label: 'Téléphone', type: 'phone', fromUser: true },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone', fromUser: true },
       { key: 'email', label: 'E-mail', type: 'email', fromUser: true },
       { key: 'address', label: 'Adresse', wide: true, fromUser: true },
       { key: 'city', label: 'Ville', fromUser: true },
-      { key: 'province', label: 'Province', fromUser: true },
-      { key: 'country', label: 'Pays', fromUser: true },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS, fromUser: true },
+      { key: 'province', label: 'Province', type: 'province', fromUser: true },
     ],
   },
   {
@@ -95,7 +99,7 @@ const GROUPS: Group[] = [
       { key: 'previousPosition', label: 'Poste précédent' },
       { key: 'office', label: 'Bureau' },
       { key: 'officeNumber', label: 'N° de bureau' },
-      { key: 'officePhone', label: 'Téléphone bureau', type: 'tel' },
+      { key: 'officePhone', label: 'Téléphone bureau', type: 'phone' },
       { key: 'officeHours', label: 'Heures de bureau' },
     ],
   },
@@ -121,6 +125,9 @@ const FROM_USER = new Set(
     MatSelectModule,
     MatTooltipModule,
     Avatar,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
   ],
   template: `
@@ -189,37 +196,51 @@ const FROM_USER = new Set(
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               @for (f of group.fields; track f.key) {
                 <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          <mat-option [value]="''">—</mat-option>
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        </mat-select>
+                  @if (f.type === 'date') {
+                    <panga-date-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'phone') {
+                    <panga-phone-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'province') {
+                    <panga-province-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else {
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            <mat-option [value]="''">—</mat-option>
+                            @for (o of f.options ?? []; track o.value) {
+                              <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                            }
+                          </mat-select>
+                        }
+                        @case ('number') {
+                          <input matInput type="number" [formControlName]="f.key" />
+                        }
+                        @default {
+                          <input
+                            matInput
+                            [type]="
+                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                            "
+                            [formControlName]="f.key"
+                          />
+                        }
                       }
-                      @case ('number') {
-                        <input matInput type="number" [formControlName]="f.key" />
-                      }
-                      @default {
-                        <input
-                          matInput
-                          [type]="
-                            f.type === 'date'
-                              ? 'date'
-                              : f.type === 'email'
-                                ? 'email'
-                                : f.type === 'tel'
-                                  ? 'tel'
-                                  : 'text'
-                          "
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
+                    </mat-form-field>
+                  }
                 </div>
               }
             </div>

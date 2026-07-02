@@ -24,6 +24,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { ClassInstance, ClassScheduleSlot, Student } from '../models/admin.models';
@@ -55,6 +56,7 @@ function today(): string {
     Avatar,
     EmptyState,
     PageHeader,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -75,10 +77,12 @@ function today(): string {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-40">
-        <mat-label>Date</mat-label>
-        <input matInput type="date" [formControl]="dateCtrl" (change)="reload()" />
-      </mat-form-field>
+      <panga-date-field
+        class="min-w-40"
+        label="Date"
+        [formControl]="dateCtrl"
+        (changed)="reload()"
+      />
       <mat-form-field appearance="outline" class="min-w-37.5">
         <mat-label>Mode</mat-label>
         <mat-select [value]="mode()" (selectionChange)="setMode($event.value)">
@@ -288,14 +292,18 @@ function today(): string {
               title="Rapport d'absences"
               [count]="report().length"
             >
-              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
-                <mat-label>Du</mat-label>
-                <input matInput type="date" [formControl]="fromCtrl" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
-                <mat-label>Au</mat-label>
-                <input matInput type="date" [formControl]="toCtrl" />
-              </mat-form-field>
+              <panga-date-field
+                class="w-37.5 -mb-5!"
+                label="Du"
+                subscriptSizing="dynamic"
+                [formControl]="fromCtrl"
+              />
+              <panga-date-field
+                class="w-37.5 -mb-5!"
+                label="Au"
+                subscriptSizing="dynamic"
+                [formControl]="toCtrl"
+              />
               <button
                 mat-flat-button
                 class="rounded-xl!"

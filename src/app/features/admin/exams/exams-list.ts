@@ -21,6 +21,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { PaginationMeta } from '../../../core/models/api.models';
@@ -56,6 +57,7 @@ interface CourseRef {
     EmptyState,
     PageHeader,
     Paginator,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -165,10 +167,7 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Date</mat-label>
-                <input matInput type="date" formControlName="examDate" />
-              </mat-form-field>
+              <panga-date-field class="w-full" label="Date" formControlName="examDate" />
               <mat-form-field appearance="outline">
                 <mat-label>Début</mat-label>
                 <input matInput type="time" formControlName="startTime" />
@@ -304,14 +303,8 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Début</mat-label>
-                <input matInput type="date" formControlName="startDate" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Fin</mat-label>
-                <input matInput type="date" formControlName="endDate" />
-              </mat-form-field>
+              <panga-date-field class="w-full" label="Début" formControlName="startDate" />
+              <panga-date-field class="w-full" label="Fin" formControlName="endDate" />
               <div class="flex items-end">
                 <button
                   mat-flat-button
