@@ -7,6 +7,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -34,22 +35,38 @@ import type { ClassInstance, Student } from '../models/admin.models';
 import type { ClassSubject } from '../models/course.models';
 import type {
   BulkCreateGradesDto,
+  ClassTermAverages,
   Grade,
   Period,
-  ProclamationResult,
-  ProclamationRow,
+  ProclamationRankRow,
+  ScopedProclamation,
+  StudentSubjectAverage,
+  StudentTermAverages,
+  SubjectClassAverage,
 } from '../models/grade.models';
 import {
   EXAM_TYPE_OPTIONS,
   GRADE_STATUS_OPTIONS,
   TERM_OPTIONS,
   labelOf,
+  periodLabel,
 } from '../../../core/models/grade.enums';
+import type { EnumOption } from '../../../core/models/school.enums';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface CourseRef {
   slotId: string;
   label: string;
+  /** Barème du slot : note maximale d'une note de période. */
+  maxPerPeriod?: number;
+  /** Barème du slot : note maximale d'une note d'examen. */
+  maxExam?: number;
+}
+
+/** Ligne de la grille de moyennes (élève + cellules alignées sur les matières). */
+interface AvgRow {
+  student: StudentTermAverages;
+  cells: (StudentSubjectAverage | undefined)[];
 }
 
 const STATUS_TONE: Record<string, BadgeTone> = {
@@ -64,6 +81,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   selector: 'panga-grades-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -309,7 +327,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             <panga-section-header
               icon="grade"
               title="Notes saisies"
-              [count]="gradesMeta()?.total ?? grades().length"
+              [count]="
+                clientPeriod()
+                  ? displayedGrades().length
+                  : (gradesMeta()?.total ?? displayedGrades().length)
+              "
             >
               <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
                 <mat-label>Cours</mat-label>
@@ -321,11 +343,24 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
-                <mat-label>Période</mat-label>
-                <mat-select [formControl]="filterTerm" (selectionChange)="reloadGrades()">
-                  <mat-option [value]="''">Toutes</mat-option>
-                  @for (o of terms; track o.value) {
+                <mat-label>Trimestre</mat-label>
+                <mat-select [value]="filterTerm()" (selectionChange)="setTerm($event.value)">
+                  <mat-option [value]="''">Tous</mat-option>
+                  @for (o of termOptions(); track o.value) {
                     <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
+                <mat-label>Période</mat-label>
+                <mat-select
+                  [value]="clientPeriod()"
+                  (selectionChange)="clientPeriod.set($event.value)"
+                  [disabled]="periodOptions().length === 0"
+                >
+                  <mat-option [value]="''">Toutes</mat-option>
+                  @for (p of periodOptions(); track p.id) {
+                    <mat-option [value]="p.id">{{ periodLabel(p) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -362,7 +397,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
             @if (loadingGrades()) {
               <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
-            } @else if (grades().length === 0) {
+            } @else if (displayedGrades().length === 0) {
               <panga-empty-state
                 icon="grade"
                 title="Aucune note"
@@ -370,7 +405,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
               />
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
-                @for (g of grades(); track g.id) {
+                @for (g of displayedGrades(); track g.id) {
                   <div class="flex items-center gap-4 px-5 py-3">
                     <panga-avatar [name]="gradeStudent(g)" [size]="36" />
                     <div class="min-w-0 flex-1">
@@ -379,8 +414,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                       </p>
                       <p class="text-xs text-(--text-muted) truncate">
                         {{ courseLabel(g) }}
-                        @if (g.term) {
-                          · {{ termLabel(g.term) }}
+                        @if (gradePeriodLabel(g); as pl) {
+                          · {{ pl }}
                         }
                         @if (g.examName) {
                           · {{ g.examName }}
@@ -425,66 +460,218 @@ const STATUS_TONE: Record<string, BadgeTone> = {
         @case ('averages') {
           <section class="panga-card p-5">
             <panga-section-header icon="leaderboard" title="Moyennes & proclamation">
-              <button
-                mat-flat-button
-                class="rounded-xl!"
-                [disabled]="loadingAverages()"
-                (click)="loadProclamation(true)"
-              >
-                <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
-              </button>
+              <div class="flex flex-wrap items-center gap-2">
+                <mat-form-field appearance="outline" class="w-40 -mb-5!" subscriptSizing="dynamic">
+                  <mat-label>Trimestre</mat-label>
+                  <mat-select [value]="avgTerm()" (selectionChange)="setAvgTerm($event.value)">
+                    @for (o of termOptions(); track o.value) {
+                      <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button
+                  mat-flat-button
+                  class="rounded-xl!"
+                  [disabled]="loadingAverages() || !avgTerm()"
+                  (click)="loadAverages(true)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
+                </button>
+              </div>
             </panga-section-header>
 
             @if (loadingAverages()) {
               <p class="text-sm text-(--text-muted) py-6 text-center">Calcul en cours…</p>
-            } @else if (!proclamation()) {
+            } @else if (!classAverages() && !proclamation()) {
               <panga-empty-state
                 icon="leaderboard"
-                title="Pas encore de classement"
-                description="Cliquez sur « Calculer » pour générer le classement et les tranches."
+                title="Pas encore de moyennes"
+                [description]="
+                  avgTerm()
+                    ? 'Cliquez sur « Calculer » pour obtenir la grille et le classement.'
+                    : 'Aucune période configurée pour cette classe.'
+                "
               />
             } @else {
+              @if (classAverages(); as ca) {
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-5">
+                  <div class="rounded-2xl border border-(--border) p-4">
+                    <p class="text-xs text-(--text-muted)">Moyenne de classe</p>
+                    <p class="text-2xl font-semibold" [style.color]="avgColor(ca.classAverage)">
+                      {{ pctOr(ca.classAverage) }}
+                    </p>
+                  </div>
+                  <div class="rounded-2xl border border-(--border) p-4">
+                    <p class="text-xs text-(--text-muted)">Effectif</p>
+                    <p class="text-2xl font-semibold text-(--text)">
+                      {{ ca.studentCount ?? avgStudents().length }}
+                    </p>
+                  </div>
+                  <div class="rounded-2xl border border-(--border) p-4">
+                    <p class="text-xs text-(--text-muted) mb-1">Statut</p>
+                    <panga-status-badge
+                      [label]="ca.isFinal ? 'Définitive' : 'Provisoire'"
+                      [tone]="ca.isFinal ? 'success' : 'warning'"
+                    />
+                  </div>
+                  @if (ca.computedAt) {
+                    <div class="rounded-2xl border border-(--border) p-4">
+                      <p class="text-xs text-(--text-muted)">Calculé le</p>
+                      <p class="text-sm font-medium text-(--text)">
+                        {{ ca.computedAt | date: 'dd/MM/yy HH:mm' }}
+                      </p>
+                    </div>
+                  }
+                </div>
+              }
+
               <div class="grid gap-4 sm:grid-cols-3 mb-5">
                 <div class="rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Réussite &gt; 75 %</p>
-                  <p class="text-2xl font-semibold text-(--success)">
-                    {{ tranche75().length }}
-                  </p>
+                  <p class="text-2xl font-semibold text-(--success)">{{ tranche75().length }}</p>
                 </div>
                 <div class="rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Entre 50 % et 75 %</p>
-                  <p class="text-2xl font-semibold text-(--brand-700)">
-                    {{ tranche50().length }}
-                  </p>
+                  <p class="text-2xl font-semibold text-(--brand-700)">{{ tranche50().length }}</p>
                 </div>
                 <div class="rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">En échec &lt; 50 %</p>
-                  <p class="text-2xl font-semibold text-(--danger)">
-                    {{ trancheLow().length }}
-                  </p>
+                  <p class="text-2xl font-semibold text-(--danger)">{{ trancheLow().length }}</p>
                 </div>
               </div>
 
-              <div class="divide-y divide-(--border) -mx-5">
-                @for (r of ranking(); track r.studentId || $index; let i = $index) {
-                  <div class="flex items-center gap-4 px-5 py-2.5">
-                    <span
-                      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
-                      [style.background]="rankBg(i)"
-                      [style.color]="rankFg(i)"
-                    >
-                      {{ r.rank || i + 1 }}
-                    </span>
-                    <panga-avatar [name]="r.studentName || '?'" [size]="32" />
-                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">
-                      {{ r.studentName || r.studentId || '—' }}
-                    </span>
-                    <span class="text-sm font-semibold" [style.color]="avgColor(r.overallAverage)">
-                      {{ pct(r.overallAverage) }}%
-                    </span>
+              <div class="mb-4 inline-flex rounded-xl border border-(--border) p-1">
+                <button
+                  class="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  [class.bg-(--brand-500)]="avgView() === 'grid'"
+                  [class.text-white]="avgView() === 'grid'"
+                  [class.text-(--text-muted)]="avgView() !== 'grid'"
+                  (click)="avgView.set('grid')"
+                >
+                  Grille des moyennes
+                </button>
+                <button
+                  class="rounded-lg px-3 py-1.5 text-sm font-medium"
+                  [class.bg-(--brand-500)]="avgView() === 'ranking'"
+                  [class.text-white]="avgView() === 'ranking'"
+                  [class.text-(--text-muted)]="avgView() !== 'ranking'"
+                  (click)="avgView.set('ranking')"
+                >
+                  Classement
+                </button>
+              </div>
+
+              @if (avgView() === 'grid') {
+                @if (avgMatrix().length === 0) {
+                  <panga-empty-state
+                    icon="table_chart"
+                    title="Aucune donnée"
+                    description="Aucune note pour ce trimestre."
+                  />
+                } @else {
+                  <div class="overflow-x-auto -mx-5 px-5">
+                    <table class="min-w-full text-sm border-collapse">
+                      <thead>
+                        <tr class="text-xs text-(--text-muted)">
+                          <th class="px-2 py-2 text-left font-medium">#</th>
+                          <th class="px-2 py-2 text-left font-medium">Élève</th>
+                          <th class="px-2 py-2 text-right font-medium">Générale</th>
+                          @for (s of avgSubjects(); track s.nationalProgramSlotId) {
+                            <th class="px-2 py-2 text-right font-medium whitespace-nowrap">
+                              {{ s.label }}
+                            </th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (row of avgMatrix(); track row.student.studentId) {
+                          <tr class="border-t border-(--border)">
+                            <td class="px-2 py-2 text-(--text-muted)">
+                              {{ row.student.rank ?? '—' }}
+                            </td>
+                            <td class="px-2 py-2 whitespace-nowrap font-medium text-(--text)">
+                              {{
+                                row.student.studentName ||
+                                  row.student.studentNumber ||
+                                  row.student.studentId
+                              }}
+                              @if (!row.student.isFinal) {
+                                <span
+                                  class="ml-1 text-(--warning)"
+                                  matTooltip="Provisoire (examen manquant)"
+                                  >•</span
+                                >
+                              }
+                            </td>
+                            <td
+                              class="px-2 py-2 text-right font-semibold"
+                              [style.color]="avgColor(row.student.generalAverage)"
+                            >
+                              {{ pctOr(row.student.generalAverage) }}
+                            </td>
+                            @for (c of row.cells; track $index) {
+                              <td
+                                class="px-2 py-2 text-right text-(--text)"
+                                [matTooltip]="cellTip(c)"
+                              >
+                                {{ cellVal(c) }}
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                      @if (avgSubjects().length) {
+                        <tfoot>
+                          <tr class="border-t-2 border-(--border) text-xs text-(--text-muted)">
+                            <td class="px-2 py-2"></td>
+                            <td class="px-2 py-2 font-medium">Moyenne de classe</td>
+                            <td class="px-2 py-2 text-right font-semibold text-(--text)">
+                              {{ pctOr(classAverages()?.classAverage) }}
+                            </td>
+                            @for (s of avgSubjects(); track s.nationalProgramSlotId) {
+                              <td class="px-2 py-2 text-right">
+                                {{ pctOr(s.classAverage) }}
+                              </td>
+                            }
+                          </tr>
+                        </tfoot>
+                      }
+                    </table>
                   </div>
                 }
-              </div>
+              } @else {
+                @if (ranking().length === 0) {
+                  <panga-empty-state
+                    icon="leaderboard"
+                    title="Aucun classement"
+                    description="Aucune note pour ce trimestre."
+                  />
+                } @else {
+                  <div class="divide-y divide-(--border) -mx-5">
+                    @for (r of ranking(); track r.studentId || $index; let i = $index) {
+                      <div class="flex items-center gap-4 px-5 py-2.5">
+                        <span
+                          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
+                          [style.background]="rankBg(i)"
+                          [style.color]="rankFg(i)"
+                        >
+                          {{ r.rank || i + 1 }}
+                        </span>
+                        <panga-avatar [name]="rankName(r)" [size]="32" />
+                        <span class="flex-1 min-w-0 text-sm text-(--text) truncate">
+                          {{ rankName(r) }}
+                        </span>
+                        <span
+                          class="text-sm font-semibold"
+                          [style.color]="avgColor(r.averagePercent)"
+                        >
+                          {{ pct(r.averagePercent) }}%
+                        </span>
+                      </div>
+                    }
+                  </div>
+                }
+              }
             }
           </section>
         }
@@ -500,7 +687,6 @@ export class GradesList {
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
 
-  protected readonly terms = TERM_OPTIONS;
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
   protected readonly tabs = [
     { key: 'entry' as const, label: 'Saisie' },
@@ -522,10 +708,17 @@ export class GradesList {
   protected readonly courses = signal<CourseRef[]>([]);
   protected readonly periods = signal<Period[]>([]);
 
-  protected readonly classStudents = computed(() => {
-    const id = this.classId();
-    const filtered = this.allStudents().filter((s) => s.classInstanceId === id);
-    return filtered.length ? filtered : this.allStudents();
+  // `allStudents` est déjà le roster de la classe sélectionnée (filtre serveur
+  // `classId`), donc on l'expose tel quel — pas de re-filtrage client.
+  protected readonly classStudents = computed(() => this.allStudents());
+
+  /** Index `studentId → élève` pour résoudre les noms quand la note ne les embarque pas. */
+  private readonly studentsById = computed(() => {
+    const m = new Map<string, Student>();
+    for (const s of this.allStudents()) {
+      m.set(s.id, s);
+    }
+    return m;
   });
 
   /* -------------------------------- Saisie --------------------------------- */
@@ -538,6 +731,9 @@ export class GradesList {
   protected readonly scores = signal<Record<string, string>>({});
   protected readonly savingBulk = signal(false);
   private readonly bulkPeriodId = signal('');
+  // Miroir signal de `bulkSlot.value` : un FormControl n'est pas suivi par un
+  // `computed`, donc `canSubmitBulk` ne réagissait pas au choix du cours.
+  private readonly bulkSlotId = signal('');
 
   protected readonly selectedBulkPeriod = computed(() =>
     this.periods().find((p) => p.id === this.bulkPeriodId()),
@@ -548,7 +744,7 @@ export class GradesList {
   );
   protected readonly canSubmitBulk = computed(
     () =>
-      !!this.bulkSlot.value &&
+      !!this.bulkSlotId() &&
       !!this.bulkPeriodId() &&
       !this.selectedBulkPeriod()?.isLocked &&
       this.filledCount() > 0,
@@ -556,8 +752,34 @@ export class GradesList {
 
   /* --------------------------------- Liste --------------------------------- */
   protected readonly filterSlot = new FormControl('', { nonNullable: true });
-  protected readonly filterTerm = new FormControl('', { nonNullable: true });
+  /** Filtre trimestre/semestre — envoyé au serveur (`term`, seul filtre supporté). */
+  protected readonly filterTerm = signal('');
+  /** Affinage période P1/P2/Examen — appliqué **côté client** sur la page chargée. */
+  protected readonly clientPeriod = signal('');
   protected readonly grades = signal<Grade[]>([]);
+
+  /** Termes réellement présents dans la classe (primaire → trimestres, etc.). */
+  protected readonly termOptions = computed<EnumOption[]>(() => {
+    const seen = new Set<string>();
+    for (const p of this.periods()) {
+      if (p.term) {
+        seen.add(p.term);
+      }
+    }
+    return TERM_OPTIONS.filter((o) => seen.has(o.value));
+  });
+  /** Périodes proposées à l'affinage, restreintes au trimestre sélectionné. */
+  protected readonly periodOptions = computed<Period[]>(() => {
+    const t = this.filterTerm();
+    const all = this.periods();
+    return t ? all.filter((p) => p.term === t) : all;
+  });
+  /** Notes affichées = page serveur (filtrée par trimestre) affinée par période. */
+  protected readonly displayedGrades = computed<Grade[]>(() => {
+    const pid = this.clientPeriod();
+    const list = this.grades();
+    return pid ? list.filter((g) => g.periodId === pid) : list;
+  });
   protected readonly gradesMeta = signal<PaginationMeta | null>(null);
   protected readonly loadingGrades = signal(false);
   private page = 1;
@@ -568,28 +790,50 @@ export class GradesList {
   protected readonly savingEdit = signal(false);
 
   /* ------------------------------- Moyennes -------------------------------- */
-  protected readonly proclamation = signal<ProclamationResult | null>(null);
+  /** Trimestre ciblé pour la grille de moyennes + la proclamation (§A/§B). */
+  protected readonly avgTerm = signal('');
+  /** Sous-vue de l'onglet Moyennes : grille détaillée ou classement. */
+  protected readonly avgView = signal<'grid' | 'ranking'>('grid');
+  protected readonly classAverages = signal<ClassTermAverages | null>(null);
+  protected readonly proclamation = signal<ScopedProclamation | null>(null);
   protected readonly loadingAverages = signal(false);
 
-  protected readonly ranking = computed<ProclamationRow[]>(() => {
-    const p = this.proclamation();
-    return p ? [...p.rows].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)) : [];
+  /** Colonnes matière de la grille (ordre = moyennes de classe). */
+  protected readonly avgSubjects = computed<SubjectClassAverage[]>(
+    () => this.classAverages()?.subjects ?? [],
+  );
+  /** Élèves de la grille, triés par rang. */
+  protected readonly avgStudents = computed<StudentTermAverages[]>(() =>
+    [...(this.classAverages()?.students ?? [])].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
+  );
+  /** Matrice élève × matière (cellules alignées sur `avgSubjects`). */
+  protected readonly avgMatrix = computed<AvgRow[]>(() => {
+    const subs = this.avgSubjects();
+    return this.avgStudents().map((student) => ({
+      student,
+      cells: subs.map((s) =>
+        student.subjects?.find((x) => x.nationalProgramSlotId === s.nationalProgramSlotId),
+      ),
+    }));
   });
-  protected readonly tranche75 = computed(() =>
-    this.ranking().filter((r) => this.pct(r.overallAverage) > 75),
+  /** Classement de la proclamation (tous, triés). */
+  protected readonly ranking = computed<ProclamationRankRow[]>(() =>
+    [...(this.proclamation()?.rankedAll ?? [])].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
   );
-  protected readonly tranche50 = computed(() =>
-    this.ranking().filter((r) => {
-      const v = this.pct(r.overallAverage);
-      return v >= 50 && v <= 75;
-    }),
-  );
-  protected readonly trancheLow = computed(() =>
-    this.ranking().filter((r) => this.pct(r.overallAverage) < 50),
-  );
+  protected readonly tranche75 = computed(() => this.proclamation()?.above75Percent ?? []);
+  protected readonly tranche50 = computed(() => this.proclamation()?.between50And75Percent ?? []);
+  protected readonly trancheLow = computed(() => this.proclamation()?.below50Percent ?? []);
 
   constructor() {
-    this.bulkPeriod.valueChanges.subscribe((v) => this.bulkPeriodId.set(v ?? ''));
+    // Sélection cours/période → synchronise les signaux + auto-remplit la note max.
+    this.bulkSlot.valueChanges.subscribe((v) => {
+      this.bulkSlotId.set(v ?? '');
+      this.applyAutoMax();
+    });
+    this.bulkPeriod.valueChanges.subscribe((v) => {
+      this.bulkPeriodId.set(v ?? '');
+      this.applyAutoMax();
+    });
     // Synchronise le champ année sur le sélecteur global et recharge.
     effect(() => {
       this.sy.selected();
@@ -606,9 +850,17 @@ export class GradesList {
     this.classId.set(id);
     this.resetEntry();
     this.proclamation.set(null);
+    // Les cours/périodes changent avec la classe → on repart de « Tous / Toutes »
+    // pour ne pas envoyer un filtre appartenant à l'ancienne classe.
+    this.filterSlot.setValue('', { emitEvent: false });
+    this.filterTerm.set('');
+    this.clientPeriod.set('');
     forkJoin({
+      // Roster côté serveur : le filtre `classId` cible l'instance de classe.
+      // L'entité élève renvoie sa classe sous `classId` (non normalisé), un
+      // filtre client sur `classInstanceId` renverrait une liste vide.
       students: this.studentsApi
-        .list({ page: 1, limit: 200, schoolYear: this.schoolYear.value })
+        .list({ page: 1, limit: 500, classId: id, schoolYear: this.schoolYear.value })
         .pipe(catchError(() => of({ items: [] }))),
       courses: this.subjectsApi
         .classSubjects({ classId: id, schoolYear: this.schoolYear.value })
@@ -618,6 +870,10 @@ export class GradesList {
       this.allStudents.set(r.students.items);
       this.courses.set(toCourses(r.courses.items));
       this.periods.set(r.periods);
+      // Réinitialise l'onglet Moyennes et cible le 1er trimestre disponible.
+      this.classAverages.set(null);
+      this.proclamation.set(null);
+      this.avgTerm.set(this.termOptions()[0]?.value ?? '');
       this.reloadGrades();
     });
   }
@@ -661,6 +917,23 @@ export class GradesList {
   setScore(studentId: string, ev: Event): void {
     const value = (ev.target as HTMLInputElement).value;
     this.scores.update((m) => ({ ...m, [studentId]: value }));
+  }
+
+  /**
+   * Auto-remplit la note maximale depuis le barème du cours sélectionné :
+   * `maxPerPeriod` pour une note de période, `maxExam` pour une note d'examen.
+   * Ne fait rien si le barème est inconnu (l'utilisateur peut saisir à la main).
+   */
+  private applyAutoMax(): void {
+    const course = this.courses().find((c) => c.slotId === this.bulkSlotId());
+    if (!course) {
+      return;
+    }
+    const isExam = this.selectedBulkPeriod()?.periodType === 'exam';
+    const max = isExam ? course.maxExam : course.maxPerPeriod;
+    if (max != null) {
+      this.bulkMaxScore.setValue(max);
+    }
   }
 
   submitBulk(): void {
@@ -728,6 +1001,13 @@ export class GradesList {
     this.loadGrades();
   }
 
+  /** Change de trimestre : filtre serveur + réinitialise l'affinage période. */
+  setTerm(term: string): void {
+    this.filterTerm.set(term);
+    this.clientPeriod.set('');
+    this.reloadGrades();
+  }
+
   private loadGrades(): void {
     this.loadingGrades.set(true);
     this.gradesApi
@@ -735,7 +1015,7 @@ export class GradesList {
         classId: this.classId(),
         schoolYear: this.schoolYear.value,
         nationalProgramSlotId: this.filterSlot.value || undefined,
-        term: this.filterTerm.value || undefined,
+        term: this.filterTerm() || undefined,
         page: this.page,
         limit: 20,
       })
@@ -795,22 +1075,35 @@ export class GradesList {
 
   /* ------------------------------- Moyennes -------------------------------- */
 
-  loadProclamation(recompute = false): void {
-    if (!this.classId()) {
+  setAvgTerm(term: string): void {
+    this.avgTerm.set(term);
+    this.loadAverages();
+  }
+
+  /**
+   * Charge la grille de moyennes (§A) et la proclamation (§B) pour le trimestre
+   * sélectionné. `recompute` force d'abord un recalcul persistant côté back.
+   */
+  loadAverages(recompute = false): void {
+    const term = this.avgTerm();
+    if (!this.classId() || !term) {
       return;
     }
     this.loadingAverages.set(true);
-    const run = () =>
-      this.gradesApi.proclamation(this.classId(), this.yr()).subscribe({
-        next: (r) => {
-          this.proclamation.set(normalizeProclamation(r));
-          this.loadingAverages.set(false);
-        },
-        error: () => {
-          this.proclamation.set({ rows: [], above75: [], between50And75: [], below50: [] });
-          this.loadingAverages.set(false);
-        },
+    const run = () => {
+      forkJoin({
+        averages: this.gradesApi
+          .classAverages(this.classId(), this.yr(), term)
+          .pipe(catchError(() => of(null))),
+        proclamation: this.gradesApi
+          .proclamation(this.classId(), this.yr(), term)
+          .pipe(catchError(() => of(null))),
+      }).subscribe((r) => {
+        this.classAverages.set(r.averages);
+        this.proclamation.set(r.proclamation);
+        this.loadingAverages.set(false);
       });
+    };
     if (recompute) {
       this.gradesApi.computeClassAverages(this.classId(), this.yr()).subscribe({
         next: () => run(),
@@ -819,6 +1112,26 @@ export class GradesList {
     } else {
       run();
     }
+  }
+
+  /** Nom lisible d'une ligne de classement. */
+  protected rankName(r: ProclamationRankRow): string {
+    return (
+      `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || r.studentNumber || r.studentId || '—'
+    );
+  }
+  /** Valeur affichée d'une cellule (moyenne de trimestre). */
+  protected cellVal(c: StudentSubjectAverage | undefined): string {
+    return c?.termAverage != null ? `${this.pct(c.termAverage)}%` : '—';
+  }
+  /** Infobulle P1/P2/Examen d'une cellule. */
+  protected cellTip(c: StudentSubjectAverage | undefined): string {
+    if (!c) {
+      return '';
+    }
+    const part = (label: string, v: number | null | undefined) =>
+      v === null || v === undefined ? `${label} —` : `${label} ${this.num(v)}`;
+    return `${part('P1', c.period1)} · ${part('P2', c.period2)} · ${part('Ex', c.exam)}`;
   }
 
   /* -------------------------------- Helpers -------------------------------- */
@@ -830,27 +1143,38 @@ export class GradesList {
   protected pct(v: unknown): number {
     return Math.round(this.num(v));
   }
+  /** Pourcentage affiché, ou « — » si absent (null/undefined). */
+  protected pctOr(v: number | null | undefined): string {
+    return v === null || v === undefined ? '—' : `${this.pct(v)}%`;
+  }
   protected studentName(s: Student): string {
     return `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id;
   }
   protected gradeStudent(g: Grade): string {
     const s = (g.student ?? {}) as Record<string, unknown>;
-    return (
+    const embedded =
       `${(s['firstName'] as string) ?? ''} ${(s['lastName'] as string) ?? ''}`.trim() ||
-      (s['fullName'] as string) ||
-      g.studentId ||
-      '—'
-    );
+      (s['fullName'] as string);
+    if (embedded) {
+      return embedded;
+    }
+    // La note ne porte pas d'objet `student` peuplé → on résout depuis la liste
+    // d'élèves déjà chargée pour éviter d'afficher l'UUID brut.
+    const known = g.studentId ? this.studentsById().get(g.studentId) : undefined;
+    return known ? this.studentName(known) : g.studentId || '—';
   }
   protected courseLabel(g: Grade): string {
     return g.nationalProgramSlot?.labelFr ?? g.nationalProgramSlot?.programCode ?? 'Cours';
   }
-  protected periodLabel(p: Period): string {
-    const isExam = p.periodType === 'exam';
-    return `${this.termLabel(p.term)}${isExam ? ' — Examen' : ' — P' + (p.periodNumber ?? '')}`;
-  }
+  /** Libellé de période partagé (« 1er trimestre — Examen » / « … — P1 »). */
+  protected readonly periodLabel = periodLabel;
   protected termLabel(t: string | undefined): string {
     return labelOf(TERM_OPTIONS, t);
+  }
+  /** Libellé de période d'une note : période réelle si connue, sinon trimestre. */
+  protected gradePeriodLabel(g: Grade): string {
+    const p = g.periodId ? this.periods().find((x) => x.id === g.periodId) : undefined;
+    return p ? this.periodLabel(p) : g.term ? this.termLabel(g.term) : '';
   }
   protected statusLabel(s: string | undefined): string {
     return labelOf(GRADE_STATUS_OPTIONS, s ?? 'draft');
@@ -885,7 +1209,7 @@ export class GradesList {
         classId: this.classId(),
         schoolYear: this.schoolYear.value,
         nationalProgramSlotId: this.filterSlot.value || undefined,
-        term: this.filterTerm.value || undefined,
+        term: this.filterTerm() || undefined,
       })
       .subscribe({ next: (b) => downloadBlob(b, 'notes.xlsx') });
   }
@@ -911,11 +1235,22 @@ export class GradesList {
 
 function toCourses(subjects: ClassSubject[]): CourseRef[] {
   return subjects
-    .map((cs) => ({
-      slotId: cs.nationalProgramSlotId ?? '',
-      label: cs.nationalProgramSlot?.labelFr ?? cs.nationalProgramSlot?.programCode ?? 'Cours',
-    }))
+    .map((cs) => {
+      const slot = (cs.nationalProgramSlot ?? {}) as Record<string, unknown>;
+      return {
+        slotId: cs.nationalProgramSlotId ?? '',
+        label: (slot['labelFr'] as string) ?? (slot['programCode'] as string) ?? 'Cours',
+        maxPerPeriod: numOrUndef(slot['maxPerPeriod']),
+        maxExam: numOrUndef(slot['maxExam']),
+      };
+    })
     .filter((c) => c.slotId);
+}
+
+/** Nombre strictement positif, ou `undefined` (barème inconnu). */
+function numOrUndef(v: unknown): number | undefined {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? parseFloat(v) : NaN;
+  return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
 function downloadBlob(blob: Blob, filename: string): void {
@@ -925,36 +1260,4 @@ function downloadBlob(blob: Blob, filename: string): void {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-/** Normalise la réponse proclamation (rows + tranches), formes variables. */
-function normalizeProclamation(data: unknown): ProclamationResult {
-  const o = (data ?? {}) as Record<string, unknown>;
-  const rowsRaw = (o['rows'] ?? o['ranking'] ?? o['students'] ?? o['results'] ?? o['data']) as
-    | unknown[]
-    | undefined;
-  const rows = (Array.isArray(rowsRaw) ? rowsRaw : []).map((raw) => {
-    const r = (raw ?? {}) as Record<string, unknown>;
-    const s = (r['student'] ?? {}) as Record<string, unknown>;
-    const name =
-      (r['studentName'] as string) ||
-      `${(s['firstName'] as string) ?? ''} ${(s['lastName'] as string) ?? ''}`.trim() ||
-      (s['fullName'] as string) ||
-      '';
-    const avg =
-      r['overallAverage'] ?? r['average'] ?? r['generalAverage'] ?? r['overallAveragePercent'];
-    return {
-      studentId: (r['studentId'] as string) ?? (s['id'] as string),
-      studentName: name,
-      rank: r['rank'] as number | undefined,
-      overallAverage: typeof avg === 'string' ? parseFloat(avg) : (avg as number),
-      ...r,
-    } as ProclamationRow;
-  });
-  return {
-    rows,
-    above75: (o['above75'] as ProclamationRow[]) ?? [],
-    between50And75: (o['between50And75'] as ProclamationRow[]) ?? [],
-    below50: (o['below50'] as ProclamationRow[]) ?? [],
-  };
 }

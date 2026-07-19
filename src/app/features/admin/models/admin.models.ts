@@ -239,6 +239,172 @@ export interface Bulletin {
   [key: string]: unknown;
 }
 
+/** Ligne « matière » d'un bulletin (aperçu ou généré). */
+export interface BulletinSubjectGrade {
+  nationalProgramSlotId?: string;
+  subjectName?: string;
+  subjectCode?: string;
+  coefficient?: number;
+  period1Average?: number | null;
+  period2Average?: number | null;
+  examScore?: number | null;
+  term1Average?: number | null;
+  term2Average?: number | null;
+  term3Average?: number | null;
+  semester1Average?: number | null;
+  semester2Average?: number | null;
+  finalAverage?: number | null;
+  letterGrade?: string;
+  gradePoint?: number;
+  countsForAverage?: boolean;
+  isSlotNotOffered?: boolean;
+  [key: string]: unknown;
+}
+
+/* ---- Snapshot ministériel (bulletin officiel RDC) — formes primaire/secondaire ---- */
+
+/** Points d'une ligne pour un terme (trimestre) ou semestre. Champs tolérants. */
+export interface SnapshotTermCell {
+  period1?: number | null;
+  period2?: number | null;
+  exam?: number | null;
+  trimester?: number | null;
+  semester?: number | null;
+  period1Obtained?: number | null;
+  period2Obtained?: number | null;
+  examObtained?: number | null;
+  trimesterObtained?: number | null;
+  trimesterPercent?: number | null;
+  semesterPercent?: number | null;
+  [key: string]: unknown;
+}
+
+/** Détail « terme courant » d'une ligne primaire (points bruts sur maxima). */
+export interface SnapshotTrimestreCourant {
+  maxExam?: number;
+  maxTrimester?: number;
+  period1Obtained?: number | null;
+  period2Obtained?: number | null;
+  examObtained?: number | null;
+  trimesterObtained?: number | null;
+  trimesterPercent?: number | null;
+  [key: string]: unknown;
+}
+
+/** Une branche/matière du programme (ligne du bulletin). */
+export interface SnapshotLine {
+  programCode?: string;
+  labelFr?: string;
+  maxPerPeriod?: number;
+  displayOrder?: number;
+  scoringMode?: string;
+  trimestreCourant?: SnapshotTrimestreCourant | null;
+  /** Points par trimestre (G1) — clés TERM1/TERM2/TERM3. */
+  terms?: Record<string, SnapshotTermCell | null>;
+  /** Points par semestre (G2, secondaire) — clés SEMESTER1/SEMESTER2. */
+  semestres?: Record<string, SnapshotTermCell | null>;
+  [key: string]: unknown;
+}
+
+export interface SnapshotBranch {
+  labelFr?: string;
+  lines?: SnapshotLine[];
+  [key: string]: unknown;
+}
+
+export interface SnapshotDomain {
+  code?: string;
+  labelFr?: string;
+  branches?: SnapshotBranch[];
+  [key: string]: unknown;
+}
+
+/** Snapshot officiel (primaire = pas de `payloadKind` ; secondaire = `rdc_secondary_official`). */
+export interface MinisterialSnapshot {
+  payloadKind?: string;
+  band?: string;
+  track?: string;
+  presetTitleFr?: string;
+  referenceSchoolYear?: string;
+  term?: string;
+  domains?: SnapshotDomain[];
+  maximaGeneraux?: {
+    sumMaxPerPeriod?: number;
+    sumMaxExam?: number;
+    sumMaxTrimester?: number;
+    sumMaxYear?: number;
+    sumMaxExamPerSemester?: number;
+    sumMaxSemester?: number;
+    [key: string]: unknown;
+  };
+  synthese?: {
+    pourcentageTrimestreCourant?: number | null;
+    pourcentageSemestreCourant?: number | null;
+    place?: number | null;
+    nombreEleves?: number | null;
+    pointsTrimestreObtained?: number | null;
+    pointsTrimestreMaximum?: number | null;
+    pourcentageTrimestreOfficielPoints?: number | null;
+    decision?: string | null;
+    [key: string]: unknown;
+  };
+  champsQualitatifs?: { application?: string | null; conduite?: string | null };
+  [key: string]: unknown;
+}
+
+/** Bulletin complet — forme renvoyée par l'aperçu (§C) et la génération. */
+export interface BulletinPreview {
+  id?: string | null;
+  preview?: boolean;
+  status?: string;
+  schoolId?: string;
+  studentId?: string;
+  studentName?: string;
+  classId?: string;
+  schoolYear?: string;
+  term?: string;
+  totalAverage?: number | null;
+  weightedAverage?: number | null;
+  gpa?: number;
+  rank?: number;
+  rankOutOf?: number;
+  percentile?: number;
+  totalSubjects?: number;
+  passedSubjects?: number;
+  failedSubjects?: number;
+  subjectGrades?: BulletinSubjectGrade[];
+  totalAttendanceDays?: number;
+  presentDays?: number;
+  absentDays?: number;
+  attendancePercentage?: number;
+  overallComment?: string | null;
+  classTeacherComment?: string | null;
+  /** Structure officielle RDC (bulletin ministériel) si le programme est lié. */
+  ministerialSnapshot?: MinisterialSnapshot | null;
+  [key: string]: unknown;
+}
+
+/** Corps de `POST /bulletins/generate-class`. */
+export interface GenerateClassDto {
+  classId: string;
+  schoolYear: string;
+  term: string;
+  generatePdf: boolean;
+  publishImmediately: boolean;
+}
+
+/** Résultat d'une génération en bloc (§D). */
+export interface GenerateClassResult {
+  classId?: string;
+  schoolYear?: string;
+  term?: string;
+  total?: number;
+  generated?: number;
+  skipped?: number;
+  errors?: { studentId?: string; message?: string }[];
+  [key: string]: unknown;
+}
+
 export interface Announcement {
   id: string;
   title?: string;
@@ -334,6 +500,12 @@ export interface CreateSchoolSubOptionDto {
 }
 
 export interface PromoteStudentsDto {
+  /**
+   * Instance source. Le backend l'écrase avec le `:id` de l'URL, mais le
+   * ValidationPipe (whitelist + IsNotEmpty) l'exige dans le body → renseigné
+   * systématiquement par `ClassesService.promote()`. Optionnel côté appelant.
+   */
+  fromClassInstanceId?: string;
   toClassInstanceId: string;
   toSchoolYear: string;
   action: string;

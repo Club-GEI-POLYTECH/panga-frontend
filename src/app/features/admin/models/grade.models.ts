@@ -156,3 +156,77 @@ export interface AnnualAverageResult {
   annualAveragePercent?: number;
   [key: string]: unknown;
 }
+
+/* -------- Grille de moyennes de classe par trimestre (GET …/averages) ------- */
+
+/** Moyenne de classe pour une matière. */
+export interface SubjectClassAverage {
+  nationalProgramSlotId?: string;
+  label?: string;
+  classAverage?: number | null;
+}
+
+/** Détail d'un élève sur une matière (P1/P2/Examen → moyenne de trimestre). */
+export interface StudentSubjectAverage {
+  nationalProgramSlotId?: string;
+  label?: string;
+  period1?: number | null;
+  period2?: number | null;
+  exam?: number | null;
+  termAverage?: number | null;
+  /** true si P1+P2+Examen présents (moyenne définitive), sinon provisoire. */
+  isFinal?: boolean;
+}
+
+/** Ligne élève de la grille de classe (moyenne générale + par matière). */
+export interface StudentTermAverages {
+  studentId?: string;
+  studentNumber?: string;
+  studentName?: string;
+  generalAverage?: number | null;
+  rank?: number;
+  isFinal?: boolean;
+  subjects?: StudentSubjectAverage[];
+}
+
+/** Grille complète des moyennes d'une classe pour un trimestre (§A). */
+export interface ClassTermAverages {
+  classId?: string;
+  schoolYear?: string;
+  term?: string;
+  /** true si toute la classe a P1+P2+Examen partout. */
+  isFinal?: boolean;
+  classAverage?: number | null;
+  computedAt?: string;
+  studentCount?: number;
+  subjects?: SubjectClassAverage[];
+  students?: StudentTermAverages[];
+  [key: string]: unknown;
+}
+
+/* ------------- Proclamation scopée par trimestre (GET …/proclamation) ------- */
+
+/** Ligne de classement renvoyée par la proclamation scopée. */
+export interface ProclamationRankRow {
+  rank?: number;
+  studentId?: string;
+  studentNumber?: string;
+  firstName?: string;
+  lastName?: string;
+  averagePercent?: number;
+  [key: string]: unknown;
+}
+
+/** Proclamation d'une classe, scopée (`term` null = annuel). */
+export interface ScopedProclamation {
+  classId?: string;
+  schoolYear?: string;
+  term?: string | null;
+  computedAt?: string;
+  studentCount?: number;
+  above75Percent?: ProclamationRankRow[];
+  between50And75Percent?: ProclamationRankRow[];
+  below50Percent?: ProclamationRankRow[];
+  rankedAll?: ProclamationRankRow[];
+  [key: string]: unknown;
+}

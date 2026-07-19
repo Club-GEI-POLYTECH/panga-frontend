@@ -7,11 +7,12 @@ import type {
   AnnualAverageResult,
   BulkCreateGradesDto,
   CalculateAverageDto,
+  ClassTermAverages,
   CreateGradeDto,
   CreatePeriodDto,
   Grade,
   Period,
-  ProclamationResult,
+  ScopedProclamation,
 } from '../models/grade.models';
 
 interface GradeFilter {
@@ -107,13 +108,28 @@ export class GradesService {
       .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
   }
 
-  /** Liste de proclamation (classement + tranches 75 % / 50 %). */
-  proclamation(classId: string, schoolYear: string): Observable<ProclamationResult> {
+  /**
+   * Grille des moyennes d'une classe pour un trimestre (§A) : par élève et par
+   * matière (P1/P2/Examen → moyenne de trimestre) + moyennes de classe.
+   */
+  classAverages(classId: string, schoolYear: string, term: string): Observable<ClassTermAverages> {
+    return this.http
+      .get<unknown>(`${this.base}/classes/${classId}/averages`, {
+        params: toHttpParams({ schoolYear, term }),
+      })
+      .pipe(map((r) => unwrapEnvelope<ClassTermAverages>(r)));
+  }
+
+  /**
+   * Proclamation scopée (§B) : classement + tranches. `term` optionnel — omis =
+   * classement annuel.
+   */
+  proclamation(classId: string, schoolYear: string, term?: string): Observable<ScopedProclamation> {
     return this.http
       .get<unknown>(`${this.base}/classes/${classId}/proclamation`, {
-        params: toHttpParams({ schoolYear }),
+        params: toHttpParams({ schoolYear, term }),
       })
-      .pipe(map((r) => unwrapEnvelope<ProclamationResult>(r)));
+      .pipe(map((r) => unwrapEnvelope<ScopedProclamation>(r)));
   }
 
   /** Toutes les moyennes d'un élève (par matière + générale). */
