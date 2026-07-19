@@ -110,16 +110,26 @@ const USER_FIELDS = [
 
 function flattenStudent(student: Student): Student {
   const raw = student as Record<string, unknown>;
-  const user = raw['user'] as Record<string, unknown> | undefined;
-  if (!user) {
-    return student;
-  }
   const flat: Record<string, unknown> = { ...raw };
-  for (const key of USER_FIELDS) {
-    const current = flat[key];
-    if ((current === undefined || current === null || current === '') && user[key] != null) {
-      flat[key] = user[key];
+  const user = raw['user'] as Record<string, unknown> | undefined;
+  if (user) {
+    for (const key of USER_FIELDS) {
+      const current = flat[key];
+      if ((current === undefined || current === null || current === '') && user[key] != null) {
+        flat[key] = user[key];
+      }
     }
+  }
+  // L'API renvoie la classe de l'élève sous `classId` (id d'instance), pas
+  // `classInstanceId`. On normalise pour que les filtres de roster par classe
+  // (Notes, détail classe…) fonctionnent de façon fiable.
+  if (
+    (flat['classInstanceId'] === undefined ||
+      flat['classInstanceId'] === null ||
+      flat['classInstanceId'] === '') &&
+    flat['classId'] != null
+  ) {
+    flat['classInstanceId'] = flat['classId'];
   }
   return flat as Student;
 }

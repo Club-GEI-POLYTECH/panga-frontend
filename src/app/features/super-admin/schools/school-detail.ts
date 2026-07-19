@@ -1,19 +1,11 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSelectModule } from '@angular/material/select';
 import { SchoolsService } from '../services/schools.service';
-import type { PlatformSchool, SchoolAuthority } from '../models/platform.models';
-import {
-  AUTHORITY_EDU_LEVEL_OPTIONS,
-  AUTHORITY_ROLE_OPTIONS,
-} from '../../../core/models/school.enums';
+import type { PlatformSchool } from '../models/platform.models';
 import {
   SCHOOL_READONLY_GROUPS,
   buildSchoolFormGroup,
@@ -24,7 +16,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { SchoolFieldsForm } from '../../../shared/ui/school-fields-form';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { StatusBadge } from '../../../shared/ui/status-badge';
+import { AuthoritiesManager } from '../../admin/school/authorities-manager';
 
 /** Détail d'une école : sections complètes, update direct, autorités (super_admin). */
 @Component({
@@ -32,17 +24,13 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
-    ReactiveFormsModule,
     MatButtonModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatProgressSpinnerModule,
-    MatSelectModule,
     Avatar,
     SchoolFieldsForm,
     SectionHeader,
-    StatusBadge,
+    AuthoritiesManager,
   ],
   providers: [DatePipe],
   template: `
@@ -121,89 +109,8 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
         }
       </section>
 
-      <!-- Autorités -->
-      <section class="panga-card p-5">
-        <panga-section-header
-          icon="shield_person"
-          title="Autorités"
-          [count]="authorities().length"
-        />
-
-        @if (authorities().length) {
-          <div class="grid gap-3 sm:grid-cols-2 mb-6">
-            @for (a of authorities(); track a.id) {
-              <div class="flex items-center gap-3 rounded-2xl border border-(--border) p-3">
-                <panga-avatar [name]="a.displayName || a.roleCode || '?'" [size]="40" />
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-(--text) truncate">
-                    {{ a.displayName || a.roleCode }}
-                  </p>
-                  <p class="text-xs text-(--text-muted) truncate">{{ a.email }}</p>
-                  <div class="mt-1 flex flex-wrap gap-1.5">
-                    @if (a.roleCode) {
-                      <panga-status-badge [label]="a.roleCode" tone="brand" [dot]="false" />
-                    }
-                    @if (a.educationLevel) {
-                      <panga-status-badge [label]="a.educationLevel" tone="info" [dot]="false" />
-                    }
-                  </div>
-                </div>
-                <button mat-icon-button (click)="removeAuthority(a.id)" aria-label="Supprimer">
-                  <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)">
-                    delete
-                  </mat-icon>
-                </button>
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="text-sm text-(--text-muted) mb-6">Aucune autorité enregistrée.</p>
-        }
-
-        <div class="rounded-2xl bg-[color-mix(in_srgb,var(--brand-500)_5%,transparent)] p-4">
-          <p class="text-sm font-medium text-(--text) mb-3">Ajouter une autorité</p>
-          <form
-            [formGroup]="authForm"
-            (ngSubmit)="addAuthority()"
-            class="grid gap-3 sm:grid-cols-2"
-          >
-            <mat-form-field appearance="outline">
-              <mat-label>Nom affiché</mat-label>
-              <input matInput formControlName="displayName" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>E-mail</mat-label>
-              <input matInput type="email" formControlName="email" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Rôle</mat-label>
-              <mat-select formControlName="roleCode">
-                @for (o of authorityRoles; track o.value) {
-                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Niveau</mat-label>
-              <mat-select formControlName="educationLevel">
-                @for (o of authorityLevels; track o.value) {
-                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <div class="sm:col-span-2 flex justify-end">
-              <button
-                mat-flat-button
-                class="rounded-xl!"
-                type="submit"
-                [disabled]="addingAuthority()"
-              >
-                Ajouter
-              </button>
-            </div>
-          </form>
-        </div>
-      </section>
+      <!-- Autorités (préfet, directeur…) -->
+      <panga-authorities-manager [schoolId]="id" />
     }
   `,
 })
@@ -211,34 +118,21 @@ export class SchoolDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly schoolsApi = inject(SchoolsService);
-  private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
   private readonly datePipe = inject(DatePipe);
 
-  private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+  protected readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
   protected readonly readonly = SCHOOL_READONLY_GROUPS;
-  protected readonly authorityRoles = AUTHORITY_ROLE_OPTIONS;
-  protected readonly authorityLevels = AUTHORITY_EDU_LEVEL_OPTIONS;
 
   protected readonly school = signal<PlatformSchool | null>(null);
-  protected readonly authorities = signal<SchoolAuthority[]>([]);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
-  protected readonly addingAuthority = signal(false);
 
   protected readonly form = buildSchoolFormGroup();
 
-  protected readonly authForm = this.fb.nonNullable.group({
-    displayName: ['', Validators.required],
-    email: ['', [Validators.required, Validators.email]],
-    roleCode: ['principal', Validators.required],
-    educationLevel: ['all', Validators.required],
-  });
-
   constructor() {
     this.load();
-    this.loadAuthorities();
   }
 
   private load(): void {
@@ -249,12 +143,6 @@ export class SchoolDetail {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
-    });
-  }
-
-  private loadAuthorities(): void {
-    this.schoolsApi.authorities(this.id).subscribe({
-      next: (res) => this.authorities.set(res.items),
     });
   }
 
@@ -296,32 +184,6 @@ export class SchoolDetail {
       next: () => {
         this.notify.success('École supprimée.');
         void this.router.navigate(['/', 'platform', 'schools']);
-      },
-    });
-  }
-
-  addAuthority(): void {
-    if (this.authForm.invalid || this.addingAuthority()) {
-      this.authForm.markAllAsTouched();
-      return;
-    }
-    this.addingAuthority.set(true);
-    this.schoolsApi.createAuthority(this.id, this.authForm.getRawValue()).subscribe({
-      next: () => {
-        this.addingAuthority.set(false);
-        this.notify.success('Autorité ajoutée.');
-        this.authForm.reset({ roleCode: 'principal', educationLevel: 'all' });
-        this.loadAuthorities();
-      },
-      error: () => this.addingAuthority.set(false),
-    });
-  }
-
-  removeAuthority(authorityId: string): void {
-    this.schoolsApi.removeAuthority(this.id, authorityId).subscribe({
-      next: () => {
-        this.notify.success('Autorité supprimée.');
-        this.loadAuthorities();
       },
     });
   }

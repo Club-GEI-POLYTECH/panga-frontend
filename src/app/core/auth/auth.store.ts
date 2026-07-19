@@ -1,6 +1,7 @@
 import { computed } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import type { Role, School, User } from '../models/auth.models';
+import { hasPermission } from './permissions';
 
 type AuthStatus = 'idle' | 'authenticating' | 'authenticated' | 'error';
 
@@ -8,12 +9,15 @@ interface AuthState {
   user: User | null;
   activeSchool: School | null;
   status: AuthStatus;
+  /** Permissions RBAC (`resource.action`) ; `null` = pas encore chargées. */
+  permissions: string[] | null;
 }
 
 const initialState: AuthState = {
   user: null,
   activeSchool: null,
   status: 'idle',
+  permissions: null,
 };
 
 /**
@@ -39,6 +43,18 @@ export const AuthStore = signalStore(
   withMethods((store) => ({
     setSession(user: User, activeSchool: School | null): void {
       patchState(store, { user, activeSchool, status: 'authenticated' });
+    },
+    /** Enregistre les permissions RBAC récupérées via `GET /auth/permissions`. */
+    setPermissions(permissions: string[]): void {
+      patchState(store, { permissions });
+    },
+    /**
+     * L'utilisateur a-t-il la permission `required` (ex. `students.create`) ?
+     * Réactif (lit le signal `permissions`) : utilisable directement en template.
+     * Fail-open tant que les permissions ne sont pas chargées (cf. hasPermission).
+     */
+    can(required: string): boolean {
+      return hasPermission(store.permissions(), required);
     },
     /** Met à jour l'utilisateur sans toucher à l'école active (ex. édition profil). */
     setUser(user: User): void {

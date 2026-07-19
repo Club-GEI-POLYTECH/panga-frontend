@@ -2,6 +2,7 @@
  * Modèles « présences » (module attendance). Champs optionnels + index
  * signature : on s'appuie sur des mappers tolérants côté service.
  */
+import type { AttendanceStatus, AttendanceType } from '../../../core/models/attendance.enums';
 import type { ClassScheduleSlot } from './admin.models';
 
 /** Ligne de présence (table `attendances`). */
@@ -63,8 +64,9 @@ export interface UpsertAttendanceDto {
   studentId: string;
   classInstanceId: string;
   date: string;
-  attendanceType: 'daily' | 'period';
-  status: string;
+  attendanceType: AttendanceType;
+  /** `classScheduleSlotId` est requis côté backend si `attendanceType === 'period'`. */
+  status: AttendanceStatus;
   classScheduleSlotId?: string;
   notes?: string;
 }

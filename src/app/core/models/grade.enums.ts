@@ -58,3 +58,24 @@ export function labelOf(options: EnumOption[], value: string | undefined | null)
   }
   return options.find((o) => o.value === value)?.label ?? value;
 }
+
+/** Forme minimale d'une période pour l'affichage. */
+export interface PeriodLike {
+  term?: string | null;
+  periodType?: string | null;
+  periodNumber?: number | null;
+  label?: string | null;
+  id?: string | null;
+}
+
+/**
+ * Libellé lisible d'une période, uniforme dans toute l'app :
+ * « 1er trimestre — Examen » (période d'examen) ou « 1er trimestre — P1 » (période
+ * normale). Utilisé par tous les sélecteurs de période (saisie notes, journal…).
+ */
+export function periodLabel(p: PeriodLike): string {
+  const term = p.term ? labelOf(TERM_OPTIONS, p.term) : '';
+  const suffix =
+    p.periodType === 'exam' ? ' — Examen' : p.periodNumber ? ` — P${p.periodNumber}` : '';
+  return `${term}${suffix}`.trim() || p.label || p.id || '';
+}

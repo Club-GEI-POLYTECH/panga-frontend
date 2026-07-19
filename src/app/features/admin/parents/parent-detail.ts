@@ -9,8 +9,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ParentsService } from '../services/parents.service';
+import { StudentsService } from '../services/students.service';
 import { UsersService } from '../services/users.service';
-import type { Parent } from '../models/admin.models';
+import type { Parent, Student } from '../models/admin.models';
+import { personLabel } from '../shared/labels';
 import type { EnumOption } from '../../../core/models/school.enums';
 import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
@@ -276,6 +278,32 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <!-- Enfants liés -->
       <section class="panga-card p-5">
         <panga-section-header icon="school" title="Enfants liés" [count]="children().length" />
+
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-55">
+            <mat-label>Lier un enfant</mat-label>
+            <mat-select [formControl]="childCtrl">
+              @for (s of linkableStudents(); track s.id) {
+                <mat-option [value]="s.id">
+                  {{ studentLabel(s) }}
+                  @if (s.studentNumber || s.matricule) {
+                    · {{ s.studentNumber || s.matricule }}
+                  }
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button
+            mat-flat-button
+            class="rounded-xl!"
+            [disabled]="!childCtrl.value || linking()"
+            (click)="linkChild()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">link</mat-icon>
+            Lier
+          </button>
+        </div>
+
         @if (children().length === 0) {
           <p class="text-sm text-(--text-muted)">Aucun enfant lié.</p>
         } @else {
@@ -304,6 +332,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
 export class ParentDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly parentsApi = inject(ParentsService);
+  private readonly studentsApi = inject(StudentsService);
   private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
@@ -341,6 +370,17 @@ export class ParentDetail {
     () => (this.parent()?.students ?? []) as Record<string, unknown>[],
   );
 
+  /* ------------------------------ Lier un enfant --------------------------- */
+  protected readonly allStudents = signal<Student[]>([]);
+  protected readonly childCtrl = new FormControl('', { nonNullable: true });
+  protected readonly linking = signal(false);
+  protected readonly studentLabel = personLabel;
+  /** Élèves sélectionnables = ceux pas déjà rattachés à ce parent. */
+  protected readonly linkableStudents = computed(() => {
+    const linked = new Set(this.children().map((c) => this.childId(c)));
+    return this.allStudents().filter((s) => !linked.has(s.id));
+  });
+
   protected readonly form = new FormGroup({
     ...Object.fromEntries(TEXT_KEYS.map((k) => [k, new FormControl('', { nonNullable: true })])),
     ...Object.fromEntries(
@@ -349,6 +389,13 @@ export class ParentDetail {
   });
 
   constructor() {
+    this.reload();
+    this.studentsApi
+      .list({ page: 1, limit: 500 })
+      .subscribe({ next: (r) => this.allStudents.set(r.items) });
+  }
+
+  private reload(): void {
     this.parentsApi.get(this.id).subscribe({
       next: (p) => {
         this.parent.set(p);
@@ -356,6 +403,24 @@ export class ParentDetail {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  /** Rattache l'élève choisi à ce parent (POST /students/:id/parents). */
+  linkChild(): void {
+    const studentId = this.childCtrl.value;
+    if (!studentId || this.linking()) {
+      return;
+    }
+    this.linking.set(true);
+    this.studentsApi.linkParent(studentId, this.id).subscribe({
+      next: () => {
+        this.linking.set(false);
+        this.childCtrl.reset('');
+        this.notify.success('Enfant rattaché.');
+        this.reload();
+      },
+      error: () => this.linking.set(false),
     });
   }
 

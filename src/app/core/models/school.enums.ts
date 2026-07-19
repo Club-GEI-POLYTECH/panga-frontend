@@ -74,3 +74,24 @@ export const AUTHORITY_EDU_LEVEL_OPTIONS: EnumOption[] = [
   { value: 'primary', label: 'Primaire' },
   { value: 'secondary', label: 'Secondaire' },
 ];
+
+/** Niveau logique de chaque rôle (pour filtrer les rôles selon le niveau choisi). */
+export const AUTHORITY_ROLE_LEVEL: Record<string, 'primary' | 'secondary' | 'all'> = {
+  primary_director: 'primary',
+  primary_deputy_director: 'primary',
+  secondary_prefect: 'secondary',
+  secondary_deputy_prefect: 'secondary',
+  principal: 'all',
+  vice_principal: 'all',
+};
+
+/**
+ * Rôles proposés pour un niveau donné : ceux du niveau + les rôles « tous niveaux ».
+ * Confort UX (le backend n'impose pas la cohérence rôle/niveau).
+ */
+export function authorityRolesForLevel(level: string): EnumOption[] {
+  return AUTHORITY_ROLE_OPTIONS.filter((o) => {
+    const roleLevel = AUTHORITY_ROLE_LEVEL[o.value];
+    return roleLevel === 'all' || level === 'all' || roleLevel === level;
+  });
+}

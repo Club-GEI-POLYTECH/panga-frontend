@@ -25,7 +25,7 @@ import {
   isSecurityNotif,
   type AppNotification,
 } from '../core/notifications/notifications.store';
-import { navSectionsForRole } from './nav.config';
+import { navSectionsFor } from './nav.config';
 import { SchoolSwitcher } from './school-switcher';
 
 /** Shell applicatif commun à tous les rôles (la nav est filtrée par rôle). */
@@ -80,7 +80,10 @@ export class MainShell {
   );
   protected readonly sidenavOpened = computed(() => (this.isMobile() ? this.mobileOpen() : true));
   protected readonly lang = signal(this.transloco.getActiveLang());
-  protected readonly navSections = computed(() => navSectionsForRole(this.store.role()));
+  // Réactif : lit `role()` et (via `can`) le signal `permissions()` du store.
+  protected readonly navSections = computed(() =>
+    navSectionsFor(this.store.role(), (perm) => this.store.can(perm)),
+  );
   protected readonly roleKey = computed(() => `roles.${this.store.role() ?? 'unknown'}`);
   protected readonly email = computed(() => this.store.user()?.email ?? '');
   protected readonly location = computed(() => {

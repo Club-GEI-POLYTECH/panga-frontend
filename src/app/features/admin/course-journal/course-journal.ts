@@ -32,11 +32,13 @@ import { CourseJournalService } from '../services/course-journal.service';
 import { ParentsService } from '../services/parents.service';
 import { SubjectsService } from '../services/subjects.service';
 import type { OpenFromProgramResult } from '../services/subjects.service';
+import { TeachersService } from '../services/teachers.service';
 import { CurriculumService } from '../../super-admin/services/curriculum.service';
-import type { ClassInstance, Period } from '../models/admin.models';
+import type { ClassInstance, Period, Teacher } from '../models/admin.models';
 import type { NationalProgram } from '../../super-admin/models/platform.models';
 import type { ClassSubject, CourseOverviewRow, LessonLogEntry } from '../models/course.models';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+import { periodLabel } from '../../../core/models/grade.enums';
 
 interface ChildRef {
   studentId: string;
@@ -112,6 +114,21 @@ interface SlotRow {
             <mat-option [value]="''">Toutes les périodes</mat-option>
             @for (p of periods(); track p.id) {
               <mat-option [value]="p.id">{{ periodLabel(p) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+
+      @if (subjects().length) {
+        <mat-form-field appearance="outline" class="min-w-45">
+          <mat-label>Cours</mat-label>
+          <mat-select
+            [value]="courseFilterId()"
+            (selectionChange)="selectCourseFilter($event.value)"
+          >
+            <mat-option [value]="''">Tous les cours</mat-option>
+            @for (cs of subjects(); track cs.id) {
+              <mat-option [value]="cs.id">{{ subjectLabel(cs) }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
@@ -354,6 +371,80 @@ interface SlotRow {
         }
       </section>
 
+      <!-- Cours ouverts (admin) : enseignant / volume / suppression -->
+      @if (isAdmin() && classInstanceId() && subjects().length) {
+        <section class="panga-card p-5 mb-6">
+          <panga-section-header
+            icon="menu_book"
+            title="Cours ouverts"
+            [count]="subjects().length"
+          />
+          <form
+            [formGroup]="courseForm"
+            (ngSubmit)="saveCourse()"
+            class="flex flex-wrap items-end gap-3 mb-4"
+          >
+            <mat-form-field appearance="outline" class="flex-1 min-w-55">
+              <mat-label>Cours</mat-label>
+              <mat-select
+                formControlName="classSubjectId"
+                (selectionChange)="onCoursePick($event.value)"
+              >
+                @for (cs of subjects(); track cs.id) {
+                  <mat-option [value]="cs.id">{{ subjectLabel(cs) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="flex-1 min-w-45">
+              <mat-label>Enseignant</mat-label>
+              <mat-select formControlName="teacherId">
+                <mat-option [value]="''">—</mat-option>
+                @for (t of teachers(); track t.id) {
+                  <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="w-32">
+              <mat-label>H / semaine</mat-label>
+              <input matInput type="number" formControlName="hoursPerWeek" min="0" />
+            </mat-form-field>
+            <button
+              mat-flat-button
+              class="rounded-xl!"
+              type="submit"
+              [disabled]="courseForm.invalid || savingCourse()"
+            >
+              {{ savingCourse() ? '…' : 'Enregistrer' }}
+            </button>
+          </form>
+
+          <div class="rounded-xl border border-(--border) divide-y divide-(--border)">
+            @for (cs of subjects(); track cs.id) {
+              <div class="flex items-center justify-between gap-3 px-3 py-2">
+                <div class="min-w-0">
+                  <p class="text-sm text-(--text) truncate">{{ subjectLabel(cs) }}</p>
+                  <p class="text-xs text-(--text-muted) truncate">
+                    {{ courseTeacherName(cs) || 'Sans enseignant' }} ·
+                    {{ cs.hoursPerWeek ?? '—' }} h/sem
+                  </p>
+                </div>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Fermer ce cours"
+                  [disabled]="deletingCourseId() === cs.id"
+                  (click)="deleteCourse(cs)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
+                    >delete</mat-icon
+                  >
+                </button>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <!-- Heures prévues (admin) -->
       @if (isAdmin() && classInstanceId()) {
         <section class="panga-card p-5 mb-6">
@@ -381,7 +472,14 @@ interface SlotRow {
             </mat-form-field>
             <mat-form-field appearance="outline" class="w-35">
               <mat-label>Heures prévues</mat-label>
-              <input matInput type="number" formControlName="plannedHours" min="0" />
+              <input
+                matInput
+                type="number"
+                formControlName="plannedHours"
+                min="0"
+                max="99999.99"
+                step="any"
+              />
             </mat-form-field>
             <button
               mat-flat-button
@@ -448,8 +546,9 @@ interface SlotRow {
                   matInput
                   type="number"
                   formControlName="durationHours"
-                  min="0.25"
-                  step="0.25"
+                  min="0.01"
+                  max="24"
+                  step="any"
                 />
               </mat-form-field>
               <mat-form-field appearance="outline" class="sm:col-span-2">
@@ -458,15 +557,20 @@ interface SlotRow {
               </mat-form-field>
               <mat-form-field appearance="outline" class="sm:col-span-2">
                 <mat-label>Contenu / résumé</mat-label>
-                <textarea matInput rows="2" formControlName="summary"></textarea>
+                <textarea matInput rows="2" formControlName="summary" maxlength="5000"></textarea>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Devoirs</mat-label>
-                <textarea matInput rows="2" formControlName="homework"></textarea>
+                <textarea matInput rows="2" formControlName="homework" maxlength="5000"></textarea>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Compétences travaillées</mat-label>
-                <textarea matInput rows="2" formControlName="skillsCovered"></textarea>
+                <textarea
+                  matInput
+                  rows="2"
+                  formControlName="skillsCovered"
+                  maxlength="5000"
+                ></textarea>
               </mat-form-field>
             </div>
             <div class="flex justify-end gap-2">
@@ -559,6 +663,7 @@ export class CourseJournal {
   private readonly subjectsApi = inject(SubjectsService);
   private readonly journal = inject(CourseJournalService);
   private readonly curriculum = inject(CurriculumService);
+  private readonly teachersApi = inject(TeachersService);
   private readonly parents = inject(ParentsService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
@@ -569,7 +674,11 @@ export class CourseJournal {
   );
   protected readonly isTeacher = computed(() => this.role() === 'teacher');
   protected readonly isParent = computed(() => this.role() === 'parent');
-  /** Enseignant & super_admin créent/éditent des séances (cf. backend Roles). */
+  /**
+   * Création/édition de séances : réservée aux enseignants (et super_admin).
+   * Le backend impose que seul l'enseignant **assigné à la matière** puisse saisir
+   * (403 sinon) — l'admin en est donc volontairement exclu côté UI.
+   */
   protected readonly canEdit = computed(
     () => this.role() === 'teacher' || this.role() === 'super_admin',
   );
@@ -583,8 +692,15 @@ export class CourseJournal {
   protected readonly studentId = signal('');
   protected readonly periods = signal<Period[]>([]);
   protected readonly periodId = signal('');
+  /** Filtre « par cours » appliqué à l'aperçu et aux séances (vide = tous). */
+  protected readonly courseFilterId = signal('');
   protected readonly subjects = signal<ClassSubject[]>([]);
   protected readonly programs = signal<NationalProgram[]>([]);
+
+  /* --- Gestion des cours ouverts (admin) : enseignant / volume / suppression --- */
+  protected readonly teachers = signal<Teacher[]>([]);
+  protected readonly savingCourse = signal(false);
+  protected readonly deletingCourseId = signal<string | null>(null);
 
   /* --- Ouverture des cours depuis le programme lié --- */
   protected readonly showOpenPanel = signal(false);
@@ -621,8 +737,15 @@ export class CourseJournal {
     periodId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     plannedHours: new FormControl(0, {
       nonNullable: true,
-      validators: [Validators.required, Validators.min(0)],
+      validators: [Validators.required, Validators.min(0), Validators.max(99999.99)],
     }),
+  });
+
+  /** Édition d'un cours ouvert : enseignant + volume hebdomadaire. */
+  protected readonly courseForm = new FormGroup({
+    classSubjectId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    teacherId: new FormControl('', { nonNullable: true }),
+    hoursPerWeek: new FormControl<number | null>(null),
   });
 
   protected readonly entryForm = new FormGroup({
@@ -662,6 +785,11 @@ export class CourseJournal {
       this.loadChildren();
     } else {
       this.loadPrograms();
+      if (this.isAdmin()) {
+        this.teachersApi
+          .list({ page: 1, limit: 200 })
+          .subscribe({ next: (r) => this.teachers.set(r.items) });
+      }
       // Synchronise le champ année sur le sélecteur global et recharge.
       effect(() => {
         this.sy.selected();
@@ -682,6 +810,7 @@ export class CourseJournal {
     this.classInstanceId.set(id);
     this.studentId.set('');
     this.periodId.set('');
+    this.courseFilterId.set('');
     forkJoin({
       periods: this.academics
         .periods(id, this.schoolYear.value)
@@ -700,11 +829,17 @@ export class CourseJournal {
   selectStudent(id: string): void {
     this.studentId.set(id);
     this.classInstanceId.set('');
+    this.courseFilterId.set('');
     this.reload();
   }
 
   selectPeriod(id: string): void {
     this.periodId.set(id);
+    this.reload();
+  }
+
+  selectCourseFilter(id: string): void {
+    this.courseFilterId.set(id);
     this.reload();
   }
 
@@ -722,12 +857,14 @@ export class CourseJournal {
     studentId?: string;
     schoolYear: string;
     periodId?: string;
+    classSubjectId?: string;
   } {
     return {
       classInstanceId: this.isParent() ? undefined : this.classInstanceId() || undefined,
       studentId: this.isParent() ? this.studentId() || undefined : undefined,
       schoolYear: this.schoolYear.value,
       periodId: this.periodId() || undefined,
+      classSubjectId: this.courseFilterId() || undefined,
     };
   }
 
@@ -949,6 +1086,89 @@ export class CourseJournal {
       });
   }
 
+  /* --------------------------- Cours ouverts (admin) ----------------------- */
+
+  /** Libellé lisible d'un enseignant (le backend imbrique l'identité sous `user`). */
+  protected teacherLabel(t: Teacher): string {
+    const user = (t.user ?? (t as Record<string, unknown>)) as Record<string, unknown>;
+    const full =
+      `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim();
+    return full || (user['name'] as string) || (t.employeeNumber ?? '—');
+  }
+
+  /** Nom de l'enseignant affecté à un cours, pour la ligne récapitulative. */
+  protected courseTeacherName(cs: ClassSubject): string {
+    const t = this.teachers().find((x) => x.id === cs.teacherId);
+    return t ? this.teacherLabel(t) : '';
+  }
+
+  /** Pré-remplit le formulaire d'édition avec l'enseignant/volume du cours choisi. */
+  onCoursePick(id: string): void {
+    const cs = this.subjects().find((s) => s.id === id);
+    this.courseForm.patchValue(
+      { teacherId: cs?.teacherId ?? '', hoursPerWeek: cs?.hoursPerWeek ?? null },
+      { emitEvent: false },
+    );
+  }
+
+  saveCourse(): void {
+    if (this.courseForm.invalid || this.savingCourse()) {
+      this.courseForm.markAllAsTouched();
+      return;
+    }
+    const v = this.courseForm.getRawValue();
+    this.savingCourse.set(true);
+    this.subjectsApi
+      .updateClassSubject(v.classSubjectId, {
+        teacherId: v.teacherId || undefined,
+        hoursPerWeek: v.hoursPerWeek === null ? undefined : Number(v.hoursPerWeek),
+      })
+      .subscribe({
+        next: () => {
+          this.savingCourse.set(false);
+          this.notify.success('Cours mis à jour.');
+          this.refreshSubjects();
+        },
+        error: () => this.savingCourse.set(false),
+      });
+  }
+
+  deleteCourse(cs: ClassSubject): void {
+    if (this.deletingCourseId()) {
+      return;
+    }
+    if (!confirm(`Fermer le cours « ${this.subjectLabel(cs)} » ? Cette action est irréversible.`)) {
+      return;
+    }
+    this.deletingCourseId.set(cs.id);
+    this.subjectsApi.deleteClassSubject(cs.id).subscribe({
+      next: () => {
+        this.deletingCourseId.set(null);
+        this.notify.success('Cours fermé.');
+        if (this.courseForm.getRawValue().classSubjectId === cs.id) {
+          this.courseForm.reset({ teacherId: '', hoursPerWeek: null });
+        }
+        this.refreshSubjects();
+      },
+      error: () => this.deletingCourseId.set(null),
+    });
+  }
+
+  /** Recharge la liste des cours de la classe active (après édition/suppression). */
+  private refreshSubjects(): void {
+    const id = this.classInstanceId();
+    if (!id) {
+      return;
+    }
+    this.subjectsApi
+      .classSubjects({ classId: id, schoolYear: this.schoolYear.value })
+      .pipe(catchError(() => of({ items: [] as ClassSubject[] })))
+      .subscribe((r) => {
+        this.subjects.set(r.items);
+        this.loadOverview();
+      });
+  }
+
   /* -------------------------------- Séances -------------------------------- */
 
   toggleForm(): void {
@@ -1076,11 +1296,8 @@ export class CourseJournal {
     );
   }
 
-  protected periodLabel(p: Period): string {
-    return (
-      `${p.term ?? ''}${p.periodNumber ? ' — P' + p.periodNumber : ''}`.trim() || p.label || p.id
-    );
-  }
+  /** Libellé de période partagé (« 1er trimestre — Examen » / « … — P1 »). */
+  protected readonly periodLabel = periodLabel;
 
   protected pct(ratio: number): number {
     return Math.round(Math.max(0, Math.min(1, ratio)) * 100);

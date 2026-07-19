@@ -92,3 +92,46 @@ export interface CreateLessonLogEntryDto {
 export type UpdateLessonLogEntryDto = Partial<
   Omit<CreateLessonLogEntryDto, 'classSubjectId' | 'periodId'>
 >;
+
+/** Créneau horaire indicatif d'un cours (hint pédagogique, ≠ ClassScheduleSlot). */
+export interface ClassSubjectScheduleHint {
+  start: string;
+  end: string;
+  room?: string;
+}
+
+/** POST /subjects/class-subjects — ouvre un cours unitaire sur une INSTANCE de classe. */
+export interface CreateClassSubjectDto {
+  /** ID de l'INSTANCE de classe (jamais le template). */
+  classId: string;
+  nationalProgramSlotId: string;
+  schoolYear: string;
+  teacherId?: string;
+  assistantTeacherId?: string;
+  hoursPerWeek?: number;
+  totalHoursPerTerm?: number;
+  totalHoursPerYear?: number;
+  scheduleType?: 'fixed' | 'flexible' | 'rotating';
+  roomNumber?: string;
+  building?: string;
+  labRequired?: boolean;
+  labRoom?: string;
+  /** Hint par jour ({ monday: [{ start, end, room }], … }) — indicatif. */
+  schedule?: Record<string, ClassSubjectScheduleHint[]>;
+}
+
+/** PUT /subjects/class-subjects/:id — champs modifiables (identité figée). */
+export type UpdateClassSubjectDto = Partial<
+  Omit<CreateClassSubjectDto, 'classId' | 'nationalProgramSlotId' | 'schoolYear'>
+>;
+
+/**
+ * POST /subjects/copy-version — copie matières + horaires d'une année sur l'autre.
+ * ⚠️ Forme du DTO à confirmer côté backend avant tout appel réel (ValidationPipe
+ * whitelist : un champ inconnu → 400).
+ */
+export interface CopyVersionDto {
+  classId: string;
+  fromSchoolYear: string;
+  toSchoolYear: string;
+}

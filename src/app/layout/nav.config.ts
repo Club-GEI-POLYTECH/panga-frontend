@@ -10,7 +10,16 @@ export interface NavItem {
   icon: string;
   /** Chemin de route (sous le shell) */
   path: string;
+  /**
+   * Rôles autorisés — utilisé pour les entrées « personnelles » (espace élève,
+   * plateforme super_admin, dashboard) qui n'ont pas de permission RBAC dédiée.
+   */
   roles: Role[];
+  /**
+   * Permission RBAC (`resource.action`) requise. Si présente, elle **prime** sur
+   * `roles` pour le filtrage : l'entrée s'affiche ssi l'utilisateur a la permission.
+   */
+  permission?: string;
   /** Regroupement dans la barre latérale. */
   group: NavGroup;
 }
@@ -25,7 +34,7 @@ const ALL: Role[] = ['super_admin', 'admin', 'teacher', 'parent', 'student'];
 /** Ordre des groupes dans la barre latérale. */
 const GROUP_ORDER: NavGroup[] = ['main', 'gestion', 'pedagogie', 'communication'];
 
-/** Navigation principale, filtrée par rôle puis regroupée. */
+/** Navigation principale, filtrée par permission/rôle puis regroupée. */
 export const NAV_ITEMS: NavItem[] = [
   // Le super_admin a son propre tableau de bord plateforme (cf. ci-dessous).
   {
@@ -43,7 +52,14 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ['super_admin'],
     group: 'main',
   },
-  { labelKey: 'nav.school', icon: 'apartment', path: 'my-school', roles: ['admin'], group: 'main' },
+  {
+    labelKey: 'nav.school',
+    icon: 'apartment',
+    path: 'my-school',
+    roles: ['admin'],
+    permission: 'schools.read',
+    group: 'main',
+  },
   {
     labelKey: 'nav.schools',
     icon: 'apartment',
@@ -84,14 +100,23 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'school',
     path: 'students',
     roles: ['admin'],
+    permission: 'students.read',
     group: 'gestion',
   },
-  { labelKey: 'nav.teachers', icon: 'badge', path: 'teachers', roles: ['admin'], group: 'gestion' },
+  {
+    labelKey: 'nav.teachers',
+    icon: 'badge',
+    path: 'teachers',
+    roles: ['admin'],
+    permission: 'teachers.read',
+    group: 'gestion',
+  },
   {
     labelKey: 'nav.parents',
     icon: 'family_restroom',
     path: 'parents',
     roles: ['admin'],
+    permission: 'parents.read',
     group: 'gestion',
   },
   {
@@ -99,6 +124,14 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'meeting_room',
     path: 'classes',
     roles: ['admin', 'teacher'],
+    permission: 'classes.read',
+    group: 'pedagogie',
+  },
+  {
+    labelKey: 'nav.schedule',
+    icon: 'calendar_month',
+    path: 'emploi-du-temps',
+    roles: ['teacher', 'parent'],
     group: 'pedagogie',
   },
   {
@@ -134,6 +167,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'grade',
     path: 'grades',
     roles: ['admin', 'teacher', 'parent'],
+    permission: 'grades.read',
     group: 'pedagogie',
   },
   {
@@ -141,6 +175,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'description',
     path: 'bulletins',
     roles: ['admin', 'teacher', 'parent'],
+    permission: 'bulletins.read',
     group: 'pedagogie',
   },
   {
@@ -148,6 +183,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'auto_stories',
     path: 'course-journal',
     roles: ['admin', 'teacher', 'parent'],
+    permission: 'course-journal.read',
     group: 'pedagogie',
   },
   {
@@ -155,6 +191,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'fact_check',
     path: 'attendance',
     roles: ['admin', 'teacher', 'parent'],
+    permission: 'attendance.read',
     group: 'pedagogie',
   },
   {
@@ -162,6 +199,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'workspace_premium',
     path: 'promotions',
     roles: ['admin', 'teacher'],
+    permission: 'promotions.read',
     group: 'pedagogie',
   },
   {
@@ -169,6 +207,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'quiz',
     path: 'exams',
     roles: ['admin', 'teacher'],
+    permission: 'exams.read',
     group: 'pedagogie',
   },
   {
@@ -176,6 +215,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'payments',
     path: 'payments',
     roles: ['admin', 'parent'],
+    permission: 'payments.read',
     group: 'gestion',
   },
   {
@@ -183,6 +223,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'gavel',
     path: 'discipline',
     roles: ['admin', 'teacher', 'parent'],
+    permission: 'discipline.read',
     group: 'pedagogie',
   },
   {
@@ -190,6 +231,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'analytics',
     path: 'reports',
     roles: ['admin', 'teacher'],
+    permission: 'reports.read',
     group: 'pedagogie',
   },
   {
@@ -204,20 +246,37 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'settings',
     path: 'settings',
     roles: ['admin'],
+    permission: 'settings.read',
     group: 'gestion',
   },
 ];
 
-export function navForRole(role: Role | null): NavItem[] {
+/**
+ * Une entrée est-elle visible ? Si elle porte une `permission`, on interroge le
+ * prédicat RBAC `can` ; sinon on retombe sur le rôle (entrées personnelles).
+ */
+function isVisible(item: NavItem, role: Role | null, can: (perm: string) => boolean): boolean {
+  // super_admin : contexte plateforme cross-tenant → uniquement ses entrées
+  // dédiées, même s'il possède `manage` (donc `can`) sur toutes les ressources.
+  if (role === 'super_admin') {
+    return item.roles.includes('super_admin');
+  }
+  if (item.permission) {
+    return can(item.permission);
+  }
+  return role !== null && item.roles.includes(role);
+}
+
+export function navForRole(role: Role | null, can: (perm: string) => boolean): NavItem[] {
   if (!role) {
     return [];
   }
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+  return NAV_ITEMS.filter((item) => isVisible(item, role, can));
 }
 
 /** Navigation regroupée par section (groupes vides omis). */
-export function navSectionsForRole(role: Role | null): NavSection[] {
-  const items = navForRole(role);
+export function navSectionsFor(role: Role | null, can: (perm: string) => boolean): NavSection[] {
+  const items = navForRole(role, can);
   return GROUP_ORDER.map((group) => ({
     group,
     items: items.filter((i) => i.group === group),

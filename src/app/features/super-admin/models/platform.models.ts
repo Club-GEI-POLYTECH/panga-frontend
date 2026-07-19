@@ -24,10 +24,20 @@ export interface PlatformSchool {
 
 export interface SchoolAuthority {
   id: string;
+  schoolId?: string;
   educationLevel?: string;
   roleCode?: string;
+  /** Enseignant nommé (identité dénormalisée dans displayName/email/phone). */
+  teacherId?: string | null;
+  userId?: string | null;
   displayName?: string;
   email?: string;
+  phone?: string;
+  activeFrom?: string | null;
+  activeTo?: string | null;
+  /** Pilote le « double rôle » : une autorité active donne les droits admin. */
+  isActive?: boolean;
+  metadata?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
@@ -226,9 +236,23 @@ export interface UpdateSchoolDto {
 export interface CreateAuthorityDto {
   educationLevel: string;
   roleCode: string;
-  displayName: string;
-  email: string;
+  /** Enseignant à nommer : identité auto-remplie + droits admin accordés. */
+  teacherId?: string;
+  /** Utilisateur interne existant (ignoré si teacherId fourni). */
+  userId?: string;
+  /** Optionnels : auto-remplis depuis l'enseignant si omis. */
+  displayName?: string;
+  email?: string;
+  phone?: string;
+  activeFrom?: string;
+  activeTo?: string;
+  /** Défaut true. Pilote le double rôle. */
+  isActive?: boolean;
+  metadata?: Record<string, unknown>;
 }
+
+/** Mise à jour partielle d'une autorité. */
+export type UpdateAuthorityDto = Partial<CreateAuthorityDto>;
 
 export interface RegisterUserDto {
   email: string;

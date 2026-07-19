@@ -9,6 +9,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeachersService } from '../services/teachers.service';
+import { UsersService } from '../services/users.service';
 import type { Teacher } from '../models/admin.models';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
@@ -26,6 +27,7 @@ import { DateField } from '../../../shared/ui/date-field';
 import { PhoneField } from '../../../shared/ui/phone-field';
 import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'phone' | 'province';
 interface Field {
@@ -129,6 +131,7 @@ const FROM_USER = new Set(
     PhoneField,
     ProvinceField,
     SectionHeader,
+    CredentialReveal,
   ],
   template: `
     <a
@@ -140,6 +143,15 @@ const FROM_USER = new Set(
       >
       Enseignants
     </a>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Nouveau mot de passe — accès enseignant"
+        [identifier]="identifier()"
+        [password]="c"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -176,6 +188,15 @@ const FROM_USER = new Set(
                 teacher()?.status
               }}</span>
             }
+            <button
+              mat-stroked-button
+              class="rounded-xl! text-white! border-white/40!"
+              [disabled]="resetting() || !userId()"
+              (click)="resetPassword()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+              Réinitialiser le mot de passe
+            </button>
             <button
               mat-icon-button
               class="text-white!"
@@ -335,6 +356,7 @@ export class TeacherDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly teachersApi = inject(TeachersService);
+  private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -344,6 +366,15 @@ export class TeacherDetail {
   protected readonly teacher = signal<Teacher | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly resetting = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois par la réinitialisation. */
+  protected readonly credential = signal<string | null>(null);
+  /** Id du compte utilisateur (nécessaire au reset) : `userId` ou `user.id`. */
+  protected readonly userId = computed(() => {
+    const t = this.teacher() as Record<string, unknown> | null;
+    const user = (t?.['user'] ?? {}) as Record<string, unknown>;
+    return (t?.['userId'] ?? user['id']) as string | undefined;
+  });
 
   protected readonly homerooms = computed(() => this.teacher()?.classInstancesAsTeacher ?? []);
   protected readonly courses = computed(() => this.teacher()?.classSubjects ?? []);
@@ -370,8 +401,35 @@ export class TeacherDetail {
     const t = this.teacher();
     return t ? personLabel((t.user ?? t) as Record<string, unknown>) : '';
   }
+  /** Identifiant de connexion affiché avec le mot de passe temporaire. */
+  protected identifier(): string {
+    const user = (this.teacher()?.user ?? {}) as Record<string, unknown>;
+    return (
+      this.str(user['email']) ||
+      this.str(user['username']) ||
+      this.str(this.teacher()?.employeeNumber)
+    );
+  }
   protected str(v: unknown): string {
     return v === null || v === undefined ? '' : String(v);
+  }
+
+  resetPassword(): void {
+    const uid = this.userId();
+    if (!uid || this.resetting()) {
+      return;
+    }
+    this.resetting.set(true);
+    this.usersApi.resetPassword(uid).subscribe({
+      next: (r) => {
+        this.resetting.set(false);
+        if (r.temporaryPassword) {
+          this.credential.set(r.temporaryPassword);
+        }
+        this.notify.success('Mot de passe réinitialisé.');
+      },
+      error: () => this.resetting.set(false),
+    });
   }
 
   remove(): void {
