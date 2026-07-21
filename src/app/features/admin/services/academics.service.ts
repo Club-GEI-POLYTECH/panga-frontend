@@ -72,7 +72,7 @@ export class AcademicsService {
   classBulletins(
     classId: string,
     schoolYear: string,
-    term: string,
+    term?: string,
   ): Observable<ListResult<Bulletin>> {
     return this.http
       .get<unknown>(`${this.base}/bulletins/classes/${classId}`, {
@@ -85,12 +85,17 @@ export class AcademicsService {
     return this.http.post<unknown>(`${this.base}/bulletins/${id}/publish`, {});
   }
 
-  /** Aperçu (dry-run) d'un bulletin — rien n'est persisté (§C). */
+  /**
+   * Aperçu (dry-run) d'un bulletin — rien n'est persisté (§C).
+   * `term` est **optionnel** : omis, le back renvoie l'année complète (ANNUAL).
+   */
   previewBulletin(params: {
     studentId: string;
     classId: string;
     schoolYear: string;
-    term: string;
+    term?: string;
+    application?: string;
+    conduite?: string;
   }): Observable<BulletinPreview> {
     return this.http
       .get<unknown>(`${this.base}/bulletins/preview`, { params: toHttpParams(params) })

@@ -1,20 +1,52 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { MinisterialSnapshot, SnapshotLine } from '../models/admin.models';
+import type {
+  MinisterialSnapshot,
+  PeriodicDomainSubTotal,
+  PeriodicEntry,
+  SnapshotLine,
+} from '../models/admin.models';
 
-interface TermCol {
+/** Une colonne « terme » + ses entrées de synthèse (P impaire/paire, examen, trimestre). */
+interface SynthCol {
   term: string;
   label: string;
+  p1Label: string;
+  p2Label: string;
+  p1: PeriodicEntry | null;
+  p2: PeriodicEntry | null;
+  exam: PeriodicEntry | null;
+  trim: PeriodicEntry | null;
 }
-interface Cell {
+/** Points + plafonds d'une matière pour un terme (lus tels quels). */
+interface LineCell {
   p1: number | null;
   p2: number | null;
   exam: number | null;
   trim: number | null;
-  percent: number | null;
+  maxExam: number | null;
+  maxTrim: number | null;
 }
-interface GridRow {
+interface LineRow {
   line: SnapshotLine;
-  cells: (Cell | null)[];
+  cells: (LineCell | null)[];
+}
+/** Sous-total d'un domaine pour un terme (issu de `sousTotauxDomaines`). */
+interface SubCell {
+  p1: PeriodicDomainSubTotal | null;
+  p2: PeriodicDomainSubTotal | null;
+  exam: PeriodicDomainSubTotal | null;
+  trim: PeriodicDomainSubTotal | null;
+  maxExam: number | null;
+  maxTrim: number | null;
+}
+interface DomainVM {
+  code: string;
+  label: string;
+  rows: LineRow[];
+  maxPerPeriod: number | null;
+  maxYear: number | null;
+  sub: SubCell[];
+  year: PeriodicDomainSubTotal | null;
 }
 
 const TERM_ORDER = ['TERM1', 'TERM2', 'TERM3', 'SEMESTER1', 'SEMESTER2'];
@@ -26,11 +58,15 @@ const TERM_LABEL: Record<string, string> = {
   SEMESTER2: 'Deuxième semestre',
 };
 
+/** Notes obtenues : ≥ moitié du max → bleu, < moitié → rouge. */
+const BLUE = '#3b82f6';
+
 /**
- * Rendu du bulletin officiel RDC à partir du `ministerialSnapshot`.
- * Points bruts par période/examen/trimestre (primaire), maxima et synthèse
- * (pourcentage, place, effectif, décision). La structure back est **plate**
- * (un seul domaine `PROGRAMME_NATIONAL`) : pas de regroupement par domaine.
+ * Bulletin officiel RDC rendu **uniquement** à partir du `ministerialSnapshot` :
+ * aucune valeur n'est recalculée côté front. Les points viennent des `lines`,
+ * les sous-totaux de `domains[].subTotal` + `sousTotauxDomaines`, et les
+ * pourcentages/place/effectif de `pourcentagesPeriodiques` (gatés par `disponible`).
+ * `null` s'affiche « — » (jamais 0).
  */
 @Component({
   selector: 'panga-bulletin-official',
@@ -55,34 +91,34 @@ const TERM_LABEL: Record<string, string> = {
             </p>
           </div>
           <div class="text-right">
-            <p class="text-2xl font-semibold" [style.color]="pctColor(generalPercent())">
-              {{ pctText(generalPercent()) }}
+            <p class="text-2xl font-semibold text-(--text)">
+              {{ fmtPct(av(scope(), 'pourcentage')) }}
             </p>
             <p class="text-xs text-(--text-muted)">
-              Place {{ s.synthese?.place ?? '—' }} / {{ s.synthese?.nombreEleves ?? '—' }}
+              Place {{ fmt(av(scope(), 'place')) }} / {{ fmt(av(scope(), 'nombreEleves')) }}
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Tableau des branches (structure officielle : 6 colonnes/trimestre) -->
+      <!-- Tableau officiel : domaines → branches → lignes + sous-totaux -->
       <div class="overflow-x-auto">
         <table class="min-w-full border-collapse text-sm">
           <thead>
             <tr class="text-xs text-(--text-muted)">
               <th class="border border-(--border) px-2 py-1 text-left" rowspan="2">Branches</th>
               <th class="border border-(--border) px-2 py-1 text-right" rowspan="2">Max/pér.</th>
-              @for (tc of termCols(); track tc.term) {
+              @for (c of cols(); track c.term) {
                 <th class="border border-(--border) px-2 py-1 text-center" colspan="6">
-                  {{ tc.label }}
+                  {{ c.label }}
                 </th>
               }
               <th class="border border-(--border) px-2 py-1 text-center" colspan="2">Total</th>
             </tr>
             <tr class="text-[11px] text-(--text-muted)">
-              @for (tc of termCols(); track tc.term; let i = $index) {
-                <th class="border border-(--border) px-2 py-1 text-right">{{ p1Label(i) }}</th>
-                <th class="border border-(--border) px-2 py-1 text-right">{{ p2Label(i) }}</th>
+              @for (c of cols(); track c.term) {
+                <th class="border border-(--border) px-2 py-1 text-right">{{ c.p1Label }}</th>
+                <th class="border border-(--border) px-2 py-1 text-right">{{ c.p2Label }}</th>
                 <th class="border border-(--border) px-2 py-1 text-right">Max ex.</th>
                 <th class="border border-(--border) px-2 py-1 text-right">Pts obt.</th>
                 <th class="border border-(--border) px-2 py-1 text-right">Max trim.</th>
@@ -93,115 +129,190 @@ const TERM_LABEL: Record<string, string> = {
             </tr>
           </thead>
           <tbody>
-            @for (row of grid(); track row.line.programCode || $index) {
-              <tr>
-                <td class="border border-(--border) px-2 py-1 whitespace-nowrap text-(--text)">
-                  {{ row.line.labelFr }}
+            @for (d of domainsVM(); track d.code) {
+              <tr class="bg-[color-mix(in_srgb,var(--text-muted)_8%,transparent)]">
+                <td
+                  class="border border-(--border) px-2 py-1 font-semibold text-(--text) uppercase text-[11px]"
+                  [attr.colspan]="totalCols()"
+                >
+                  {{ d.label }}
                 </td>
-                <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                  {{ n(row.line.maxPerPeriod) }}
-                </td>
-                @for (c of row.cells; track $index) {
-                  <td class="border border-(--border) px-2 py-1 text-right">{{ n(c?.p1) }}</td>
-                  <td class="border border-(--border) px-2 py-1 text-right">{{ n(c?.p2) }}</td>
-                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                    {{ n(lineMaxExam(row.line)) }}
+              </tr>
+              @for (row of d.rows; track row.line.programCode) {
+                <tr>
+                  <td class="border border-(--border) px-2 py-1 whitespace-nowrap text-(--text)">
+                    {{ row.line.labelFr }}
                   </td>
-                  <td class="border border-(--border) px-2 py-1 text-right">{{ n(c?.exam) }}</td>
                   <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                    {{ n(lineMaxTrim(row.line)) }}
+                    {{ fmt(row.line.maxPerPeriod) }}
+                  </td>
+                  @for (c of row.cells; track $index) {
+                    <td
+                      class="border border-(--border) px-2 py-1 text-right"
+                      [style.color]="noteColor(c?.p1, row.line.maxPerPeriod)"
+                    >
+                      {{ fmt(c?.p1) }}
+                    </td>
+                    <td
+                      class="border border-(--border) px-2 py-1 text-right"
+                      [style.color]="noteColor(c?.p2, row.line.maxPerPeriod)"
+                    >
+                      {{ fmt(c?.p2) }}
+                    </td>
+                    <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                      {{ fmt(c?.maxExam) }}
+                    </td>
+                    <td
+                      class="border border-(--border) px-2 py-1 text-right"
+                      [style.color]="noteColor(c?.exam, c?.maxExam)"
+                    >
+                      {{ fmt(c?.exam) }}
+                    </td>
+                    <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                      {{ fmt(c?.maxTrim) }}
+                    </td>
+                    <td
+                      class="border border-(--border) px-2 py-1 text-right font-semibold"
+                      [style.color]="noteColor(c?.trim, c?.maxTrim)"
+                    >
+                      {{ fmt(c?.trim) }}
+                    </td>
+                  }
+                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                    —
+                  </td>
+                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                    —
+                  </td>
+                </tr>
+              }
+              <!-- Sous-total du domaine (issu de sousTotauxDomaines) -->
+              <tr
+                class="text-xs font-medium bg-[color-mix(in_srgb,var(--text-muted)_8%,transparent)]"
+              >
+                <td class="border border-(--border) px-2 py-1">Sous-total</td>
+                <td class="border border-(--border) px-2 py-1 text-right">
+                  {{ fmt(d.maxPerPeriod) }}
+                </td>
+                @for (sc of d.sub; track $index) {
+                  <td
+                    class="border border-(--border) px-2 py-1 text-right"
+                    [style.color]="noteColor(sc.p1?.pointsObtenus, sc.p1?.pointsMax)"
+                  >
+                    {{ fmt(sc.p1?.pointsObtenus) }}
                   </td>
                   <td
-                    class="border border-(--border) px-2 py-1 text-right font-semibold text-(--text)"
+                    class="border border-(--border) px-2 py-1 text-right"
+                    [style.color]="noteColor(sc.p2?.pointsObtenus, sc.p2?.pointsMax)"
                   >
-                    {{ n(c?.trim) }}
+                    {{ fmt(sc.p2?.pointsObtenus) }}
+                  </td>
+                  <td class="border border-(--border) px-2 py-1 text-right">
+                    {{ fmt(sc.maxExam) }}
+                  </td>
+                  <td
+                    class="border border-(--border) px-2 py-1 text-right"
+                    [style.color]="noteColor(sc.exam?.pointsObtenus, sc.exam?.pointsMax)"
+                  >
+                    {{ fmt(sc.exam?.pointsObtenus) }}
+                  </td>
+                  <td class="border border-(--border) px-2 py-1 text-right">
+                    {{ fmt(sc.maxTrim) }}
+                  </td>
+                  <td
+                    class="border border-(--border) px-2 py-1 text-right"
+                    [style.color]="noteColor(sc.trim?.pointsObtenus, sc.trim?.pointsMax)"
+                  >
+                    {{ fmt(sc.trim?.pointsObtenus) }}
                   </td>
                 }
-                <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                  {{ n(lineMaxYear(row.line)) }}
-                </td>
+                <td class="border border-(--border) px-2 py-1 text-right">{{ fmt(d.maxYear) }}</td>
                 <td
-                  class="border border-(--border) px-2 py-1 text-right font-semibold text-(--text)"
+                  class="border border-(--border) px-2 py-1 text-right"
+                  [style.color]="noteColor(d.year?.pointsObtenus, d.year?.pointsMax)"
                 >
-                  {{ n(rowYearTotal(row)) }}
+                  {{ fmt(d.year?.pointsObtenus) }}
                 </td>
               </tr>
             }
           </tbody>
           <tfoot>
-            <tr class="text-xs font-medium text-(--text-muted)">
-              <td class="border border-(--border) px-2 py-1" colspan="2">Maxima généraux</td>
-              @for (tc of termCols(); track tc.term) {
-                <td class="border border-(--border) px-2 py-1"></td>
-                <td class="border border-(--border) px-2 py-1"></td>
-                <td class="border border-(--border) px-2 py-1 text-right">
-                  {{ n(s.maximaGeneraux?.sumMaxExam ?? s.maximaGeneraux?.sumMaxExamPerSemester) }}
-                </td>
-                <td class="border border-(--border) px-2 py-1"></td>
-                <td class="border border-(--border) px-2 py-1 text-right">
-                  {{ n(s.maximaGeneraux?.sumMaxTrimester ?? s.maximaGeneraux?.sumMaxSemester) }}
-                </td>
-                <td class="border border-(--border) px-2 py-1"></td>
-              }
-              <td class="border border-(--border) px-2 py-1 text-right">
-                {{ n(s.maximaGeneraux?.sumMaxYear) }}
-              </td>
-              <td class="border border-(--border) px-2 py-1"></td>
-            </tr>
-
-            <!-- POURCENTAGE par période / examen / trimestre -->
+            <!-- Maxima généraux + points obtenus -->
             <tr class="text-xs font-semibold text-(--text)">
-              <td class="border border-(--border) px-2 py-1" colspan="2">Pourcentage</td>
-              @for (tc of termCols(); track tc.term; let i = $index) {
-                <td class="border border-(--border) px-2 py-1 text-right">
-                  {{ pctText(footerPct()[i]?.p1) }}
-                </td>
-                <td class="border border-(--border) px-2 py-1 text-right">
-                  {{ pctText(footerPct()[i]?.p2) }}
-                </td>
-                <td class="border border-(--border) px-2 py-1"></td>
-                <td class="border border-(--border) px-2 py-1 text-right">
-                  {{ pctText(footerPct()[i]?.exam) }}
-                </td>
-                <td class="border border-(--border) px-2 py-1"></td>
+              <td class="border border-(--border) px-2 py-1">Maxima généraux</td>
+              <td class="border border-(--border) px-2 py-1 text-right">
+                {{ fmt(s.maximaGeneraux?.sumMaxPerPeriod) }}
+              </td>
+              @for (c of cols(); track c.term) {
                 <td
                   class="border border-(--border) px-2 py-1 text-right"
-                  [style.color]="pctColor(footerPct()[i]?.trim)"
+                  [style.color]="noteColor(av(c.p1, 'pointsObtenus'), av(c.p1, 'pointsMax'))"
                 >
-                  {{ pctText(footerPct()[i]?.trim) }}
+                  {{ fmt(av(c.p1, 'pointsObtenus')) }}
+                </td>
+                <td
+                  class="border border-(--border) px-2 py-1 text-right"
+                  [style.color]="noteColor(av(c.p2, 'pointsObtenus'), av(c.p2, 'pointsMax'))"
+                >
+                  {{ fmt(av(c.p2, 'pointsObtenus')) }}
+                </td>
+                <td class="border border-(--border) px-2 py-1 text-right">
+                  {{ fmt(s.maximaGeneraux?.sumMaxExam) }}
+                </td>
+                <td
+                  class="border border-(--border) px-2 py-1 text-right"
+                  [style.color]="noteColor(av(c.exam, 'pointsObtenus'), av(c.exam, 'pointsMax'))"
+                >
+                  {{ fmt(av(c.exam, 'pointsObtenus')) }}
+                </td>
+                <td class="border border-(--border) px-2 py-1 text-right">
+                  {{ fmt(s.maximaGeneraux?.sumMaxTrimester) }}
+                </td>
+                <td
+                  class="border border-(--border) px-2 py-1 text-right"
+                  [style.color]="noteColor(av(c.trim, 'pointsObtenus'), av(c.trim, 'pointsMax'))"
+                >
+                  {{ fmt(av(c.trim, 'pointsObtenus')) }}
                 </td>
               }
-              <td class="border border-(--border) px-2 py-1"></td>
+              <td class="border border-(--border) px-2 py-1 text-right">
+                {{ fmt(s.maximaGeneraux?.sumMaxYear) }}
+              </td>
               <td
                 class="border border-(--border) px-2 py-1 text-right"
-                [style.color]="pctColor(generalPercent())"
+                [style.color]="noteColor(av(annuel(), 'pointsObtenus'), av(annuel(), 'pointsMax'))"
               >
-                {{ pctText(generalPercent()) }}
+                {{ fmt(av(annuel(), 'pointsObtenus')) }}
               </td>
             </tr>
 
-            @for (r of syntheseRows(); track r.label) {
-              <tr class="text-xs text-(--text-muted)">
-                <td class="border border-(--border) px-2 py-1" colspan="2">{{ r.label }}</td>
-                @for (tc of termCols(); track tc.term) {
-                  @let v = isCurrentTerm(tc.term) ? r.value : '';
+            <!-- Synthèse par colonne : Pourcentage / Place / Nbre d'élèves / Application / Conduite -->
+            @for (r of synthRows(); track r.key) {
+              <tr class="text-xs" [class.font-semibold]="r.kind === 'pct'">
+                <td class="border border-(--border) px-2 py-1 text-(--text-muted)">
+                  {{ r.label }}
+                </td>
+                <td class="border border-(--border) px-2 py-1"></td>
+                @for (c of cols(); track c.term) {
                   <td class="border border-(--border) px-2 py-1 text-right text-(--text)">
-                    {{ v }}
+                    {{ cellText(c.p1, r.key, r.kind) }}
                   </td>
                   <td class="border border-(--border) px-2 py-1 text-right text-(--text)">
-                    {{ v }}
+                    {{ cellText(c.p2, r.key, r.kind) }}
                   </td>
                   <td class="border border-(--border) px-2 py-1"></td>
                   <td class="border border-(--border) px-2 py-1 text-right text-(--text)">
-                    {{ v }}
+                    {{ cellText(c.exam, r.key, r.kind) }}
                   </td>
                   <td class="border border-(--border) px-2 py-1"></td>
                   <td class="border border-(--border) px-2 py-1 text-right text-(--text)">
-                    {{ v }}
+                    {{ cellText(c.trim, r.key, r.kind) }}
                   </td>
                 }
                 <td class="border border-(--border) px-2 py-1"></td>
-                <td class="border border-(--border) px-2 py-1"></td>
+                <td class="border border-(--border) px-2 py-1 text-right text-(--text)">
+                  {{ cellText(annuel(), r.key, r.kind) }}
+                </td>
               </tr>
             }
           </tfoot>
@@ -211,13 +322,6 @@ const TERM_LABEL: Record<string, string> = {
       <p class="mt-3 text-sm text-(--text)">
         <span class="text-(--text-muted)">Décision :</span> {{ decisionLabel() }}
       </p>
-
-      @if (isSecondaryBareOnly()) {
-        <p class="mt-3 text-xs text-(--warning)">
-          Niveau secondaire : les points par branche ne sont pas encore fournis par le back (seul le
-          pourcentage général est disponible).
-        </p>
-      }
     </div>
   `,
 })
@@ -227,7 +331,8 @@ export class BulletinOfficial {
   readonly className = input('');
   readonly schoolYear = input('');
 
-  private readonly lines = computed<SnapshotLine[]>(() => {
+  /** Toutes les lignes, tous domaines confondus (pour déduire les colonnes). */
+  private readonly allLines = computed<SnapshotLine[]>(() => {
     const out: SnapshotLine[] = [];
     for (const d of this.snapshot().domains ?? []) {
       for (const b of d.branches ?? []) {
@@ -236,94 +341,129 @@ export class BulletinOfficial {
         }
       }
     }
-    return out.sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+    return out;
   });
 
-  protected readonly termCols = computed<TermCol[]>(() => {
+  protected readonly annuel = computed<PeriodicEntry | null>(
+    () => this.snapshot().pourcentagesPeriodiques?.annuel ?? null,
+  );
+
+  /** Entrée de synthèse correspondant à la portée du bulletin (annuel ou trimestre). */
+  protected readonly scope = computed<PeriodicEntry | null>(() => {
+    const pp = this.snapshot().pourcentagesPeriodiques;
+    const t = this.snapshot().term;
+    if (!pp) {
+      return null;
+    }
+    if (!t || t === 'ANNUAL') {
+      return pp.annuel ?? null;
+    }
+    return pp.trimestres?.find((x) => x.term === t) ?? pp.annuel ?? null;
+  });
+
+  /** Colonnes de terme + leurs entrées de synthèse (périodes, examen, trimestre). */
+  protected readonly cols = computed<SynthCol[]>(() => {
+    const pp = this.snapshot().pourcentagesPeriodiques;
     const keys = new Set<string>();
-    for (const l of this.lines()) {
+    for (const l of this.allLines()) {
       Object.keys(l.terms ?? {}).forEach((k) => keys.add(k));
       Object.keys(l.semestres ?? {}).forEach((k) => keys.add(k));
     }
     const cur = this.snapshot().term;
-    if (keys.size === 0 && cur) {
+    if (keys.size === 0 && cur && cur !== 'ANNUAL') {
       keys.add(cur);
     }
     return [...keys]
       .sort((a, b) => TERM_ORDER.indexOf(a) - TERM_ORDER.indexOf(b))
-      .map((t) => ({ term: t, label: TERM_LABEL[t] ?? t }));
+      .map((term) => {
+        const per = (pp?.periodes ?? []).filter((p) => p.term === term);
+        return {
+          term,
+          label: TERM_LABEL[term] ?? term,
+          p1: per[0] ?? null,
+          p2: per[1] ?? null,
+          p1Label: this.periodLabel(per[0]?.code, 0),
+          p2Label: this.periodLabel(per[1]?.code, 1),
+          exam: (pp?.examens ?? []).find((e) => e.term === term) ?? null,
+          trim: (pp?.trimestres ?? []).find((t) => t.term === term) ?? null,
+        };
+      });
   });
 
-  protected readonly grid = computed<GridRow[]>(() => {
-    const cols = this.termCols();
-    return this.lines().map((line) => ({
-      line,
-      cells: cols.map((c) => this.cellOf(line, c.term)),
-    }));
-  });
+  protected readonly totalCols = computed(() => 4 + 6 * this.cols().length);
 
-  protected readonly generalPercent = computed<number | null>(() => {
-    const sy = this.snapshot().synthese;
-    return sy?.pourcentageTrimestreCourant ?? sy?.pourcentageSemestreCourant ?? null;
-  });
-
-  /** Pourcentage agrégé par colonne (P1/P2/Examen/Trimestre) pour chaque trimestre. */
-  protected readonly footerPct = computed(() => {
-    const rows = this.grid();
-    return this.termCols().map((_, i) => {
-      let p1o = 0,
-        p1m = 0,
-        p2o = 0,
-        p2m = 0,
-        exo = 0,
-        exm = 0,
-        tro = 0,
-        trm = 0;
-      for (const r of rows) {
-        const c = r.cells[i];
-        const mp = r.line.maxPerPeriod ?? null;
-        if (c?.p1 != null && mp != null) {
-          p1o += c.p1;
-          p1m += mp;
-        }
-        if (c?.p2 != null && mp != null) {
-          p2o += c.p2;
-          p2m += mp;
-        }
-        const me = this.lineMaxExam(r.line);
-        if (c?.exam != null && me != null) {
-          exo += c.exam;
-          exm += me;
-        }
-        const mt = this.lineMaxTrim(r.line);
-        if (c?.trim != null && mt != null) {
-          tro += c.trim;
-          trm += mt;
+  /** Domaines → branches → lignes (triées par displayOrder) + sous-totaux. */
+  protected readonly domainsVM = computed<DomainVM[]>(() => {
+    const cols = this.cols();
+    return (this.snapshot().domains ?? []).map((d) => {
+      const rows: LineRow[] = [];
+      for (const b of d.branches ?? []) {
+        for (const line of b.lines ?? []) {
+          rows.push({ line, cells: cols.map((c) => this.cellOf(line, c.term)) });
         }
       }
-      const pct = (o: number, m: number) => (m > 0 ? (o / m) * 100 : null);
-      return { p1: pct(p1o, p1m), p2: pct(p2o, p2m), exam: pct(exo, exm), trim: pct(tro, trm) };
+      rows.sort((a, b) => (a.line.displayOrder ?? 0) - (b.line.displayOrder ?? 0));
+      const code = d.code ?? '';
+      const st = d.subTotal;
+      return {
+        code,
+        label: d.labelFr ?? code,
+        rows,
+        maxPerPeriod: st?.maxPerPeriod ?? null,
+        maxYear: st?.maxYear ?? null,
+        sub: cols.map<SubCell>((c) => ({
+          p1: this.sd(c.p1, code),
+          p2: this.sd(c.p2, code),
+          exam: this.sd(c.exam, code),
+          trim: this.sd(c.trim, code),
+          maxExam: st?.maxExam ?? null,
+          maxTrim: st?.terms?.[c.term]?.maxTrimester ?? st?.maxTrimester ?? null,
+        })),
+        year: this.sd(this.annuel(), code),
+      };
     });
   });
 
-  /** Lignes de synthèse (une valeur, placée sous le trimestre courant). */
-  protected readonly syntheseRows = computed(() => {
-    const sy = this.snapshot().synthese;
-    const q = this.snapshot().champsQualitatifs;
-    return [
-      { label: 'Place', value: sy?.place != null ? `${sy.place}` : '—' },
-      { label: "Nbre d'élèves", value: sy?.nombreEleves != null ? `${sy.nombreEleves}` : '—' },
-      { label: 'Application', value: q?.application || '—' },
-      { label: 'Conduite', value: q?.conduite || '—' },
-    ];
-  });
+  /** Lignes de synthèse rendues sous chaque colonne (période/examen/trimestre/annuel). */
+  protected readonly synthRows = computed(() => [
+    { key: 'pourcentage', label: 'Pourcentage', kind: 'pct' },
+    { key: 'place', label: 'Place', kind: 'num' },
+    { key: 'nombreEleves', label: "Nbre d'élèves", kind: 'num' },
+    { key: 'application', label: 'Application', kind: 'text' },
+    { key: 'conduite', label: 'Conduite', kind: 'text' },
+  ]);
 
-  protected isCurrentTerm(term: string): boolean {
-    return term === this.snapshot().term;
+  /**
+   * Valeur affichée d'une cellule de synthèse. « — » si l'entrée n'est pas
+   * disponible ou si la donnée est absente. Les appréciations retombent sur
+   * `champsQualitatifs` quand l'entrée ne les porte pas.
+   */
+  protected cellText(entry: PeriodicEntry | null | undefined, key: string, kind: string): string {
+    if (!entry || entry.disponible !== true) {
+      return '—';
+    }
+    let v = entry[key];
+    if (
+      (v === null || v === undefined || v === '') &&
+      (key === 'application' || key === 'conduite')
+    ) {
+      const q = this.snapshot().champsQualitatifs;
+      v = key === 'application' ? q?.application : q?.conduite;
+    }
+    if (v === null || v === undefined || v === '') {
+      return '—';
+    }
+    if (kind === 'pct') {
+      return this.fmtPct(Number(v));
+    }
+    if (kind === 'num') {
+      return this.fmt(Number(v));
+    }
+    return String(v);
   }
 
   protected readonly decisionLabel = computed(() => {
-    const d = this.snapshot().synthese?.decision;
+    const d = this.annuel()?.decision ?? this.snapshot().synthese?.decision;
     return d === 'PROMOTED'
       ? 'Passe dans la classe supérieure'
       : d === 'REPEAT'
@@ -331,97 +471,62 @@ export class BulletinOfficial {
         : '—';
   });
 
-  /** Secondaire sans aucun point de ligne (barème seul). */
-  protected readonly isSecondaryBareOnly = computed(() => {
-    if (!this.snapshot().payloadKind) {
-      return false;
+  /** Valeur d'une entrée de synthèse — `null` si l'entrée n'est pas disponible. */
+  protected av(entry: PeriodicEntry | null | undefined, key: string): number | null {
+    if (!entry || entry.disponible !== true) {
+      return null;
     }
-    return this.grid().every((r) => r.cells.every((c) => c === null));
-  });
+    const v = entry[key];
+    return v === null || v === undefined ? null : Number(v);
+  }
 
-  private cellOf(line: SnapshotLine, term: string): Cell | null {
-    const raw = (line.terms?.[term] ?? line.semestres?.[term]) as Record<string, unknown> | null;
-    if (raw) {
-      const pick = (a: string, b: string) => {
-        const v = raw[a] ?? raw[b];
-        return v == null ? null : Number(v);
-      };
-      return {
-        p1: pick('period1', 'period1Obtained'),
-        p2: pick('period2', 'period2Obtained'),
-        exam: pick('exam', 'examObtained'),
-        trim: pick('trimester', 'trimesterObtained') ?? pick('semester', 'semesterObtained'),
-        percent:
-          raw['trimesterPercent'] != null
-            ? Number(raw['trimesterPercent'])
-            : raw['semesterPercent'] != null
-              ? Number(raw['semesterPercent'])
-              : null,
-      };
+  /** Sous-total d'un domaine porté par une entrée de synthèse. */
+  private sd(entry: PeriodicEntry | null, code: string): PeriodicDomainSubTotal | null {
+    if (!entry || entry.disponible !== true) {
+      return null;
     }
-    // Repli sur le « terme courant » bien spécifié du primaire.
-    if (term === this.snapshot().term && line.trimestreCourant) {
-      const c = line.trimestreCourant;
-      return {
-        p1: c.period1Obtained ?? null,
-        p2: c.period2Obtained ?? null,
-        exam: c.examObtained ?? null,
-        trim: c.trimesterObtained ?? null,
-        percent: c.trimesterPercent ?? null,
-      };
+    return entry.sousTotauxDomaines?.find((x) => x.code === code) ?? null;
+  }
+
+  /** Points d'une matière pour un terme — lus tels quels, sans calcul. */
+  private cellOf(line: SnapshotLine, term: string): LineCell | null {
+    const raw = line.terms?.[term] ?? line.semestres?.[term];
+    if (!raw) {
+      return null;
     }
-    return null;
+    const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+    return {
+      p1: num(raw.period1Obtained),
+      p2: num(raw.period2Obtained),
+      exam: num(raw.examObtained),
+      trim: num(raw.trimesterObtained),
+      maxExam: num(raw.maxExam),
+      maxTrim: num(raw.maxTrimester),
+    };
   }
 
-  /** Libellé de période gauche du bloc trimestre `i` (1ʳᵉ, 3ᵉ, 5ᵉ P.). */
-  protected p1Label(i: number): string {
-    return `${this.ordinal(2 * i + 1)} P.`;
-  }
-  /** Libellé de période droite du bloc trimestre `i` (2ᵉ, 4ᵉ, 6ᵉ P.). */
-  protected p2Label(i: number): string {
-    return `${this.ordinal(2 * i + 2)} P.`;
-  }
-  private ordinal(n: number): string {
-    return n === 1 ? '1ʳᵉ' : `${n}ᵉ`;
+  /** « 1ʳᵉ P. » / « 3ᵉ P. »… d'après le code P1..P6 (repli sur la position). */
+  private periodLabel(code: string | undefined, fallbackIndex: number): string {
+    const n = code ? Number(code.replace(/\D/g, '')) : NaN;
+    const num = Number.isFinite(n) && n > 0 ? n : fallbackIndex + 1;
+    return `${num === 1 ? '1ʳᵉ' : `${num}ᵉ`} P.`;
   }
 
-  /** Max annuel d'une branche (3 × max trimestre, sinon 12 × max/période). */
-  protected lineMaxYear(line: SnapshotLine): number | null {
-    const trim = this.lineMaxTrim(line);
-    return trim != null ? trim * 3 : line.maxPerPeriod != null ? line.maxPerPeriod * 12 : null;
-  }
-
-  /** Max examen d'une branche (snapshot, sinon 2×max/période). */
-  protected lineMaxExam(line: SnapshotLine): number | null {
-    return (
-      line.trimestreCourant?.maxExam ?? (line.maxPerPeriod != null ? line.maxPerPeriod * 2 : null)
-    );
-  }
-  /** Max trimestre d'une branche (snapshot, sinon 4×max/période). */
-  protected lineMaxTrim(line: SnapshotLine): number | null {
-    return (
-      line.trimestreCourant?.maxTrimester ??
-      (line.maxPerPeriod != null ? line.maxPerPeriod * 4 : null)
-    );
-  }
-
-  /** Total année = somme des points de trimestre disponibles pour la ligne. */
-  protected rowYearTotal(row: GridRow): number | null {
-    const vals = row.cells.map((c) => c?.trim).filter((v): v is number => v != null);
-    return vals.length ? vals.reduce((a, b) => a + b, 0) : null;
-  }
-
-  protected n(v: number | null | undefined): string {
-    return v === null || v === undefined ? '—' : `${Math.round(Number(v) * 100) / 100}`;
-  }
-  protected pctText(v: number | null | undefined): string {
-    return v === null || v === undefined ? '—' : `${Math.round(Number(v))}%`;
-  }
-  protected pctColor(v: number | null | undefined): string {
+  protected fmt(v: number | null | undefined): string {
     if (v === null || v === undefined) {
+      return '—';
+    }
+    const n = Number(v);
+    return Number.isInteger(n) ? `${n}` : `${Math.round(n * 100) / 100}`;
+  }
+  protected fmtPct(v: number | null | undefined): string {
+    return v === null || v === undefined ? '—' : `${this.fmt(v)}%`;
+  }
+  /** Note obtenue : ≥ moitié du max → bleu, < moitié → rouge, sinon noir. */
+  protected noteColor(v: number | null | undefined, max: number | null | undefined): string {
+    if (v === null || v === undefined || max === null || max === undefined || Number(max) <= 0) {
       return 'var(--text)';
     }
-    const p = Math.round(Number(v));
-    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-700)' : 'var(--danger)';
+    return Number(v) >= Number(max) / 2 ? BLUE : 'var(--danger)';
   }
 }

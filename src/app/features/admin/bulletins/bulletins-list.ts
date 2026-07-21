@@ -37,7 +37,13 @@ import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 import { BulletinOfficial } from './bulletin-official';
-const TERMS = ['TERM1', 'TERM2', 'TERM3'];
+/** `ANNUAL` = toute l'année : le back reçoit alors **aucun** `term`. */
+const TERMS = [
+  { value: 'ANNUAL', label: "Annuel (toute l'année)" },
+  { value: 'TERM1', label: '1er trimestre' },
+  { value: 'TERM2', label: '2e trimestre' },
+  { value: 'TERM3', label: '3e trimestre' },
+];
 
 function isPublished(b: Bulletin): boolean {
   return b.published === true || b.status === 'published';
@@ -74,11 +80,11 @@ function isPublished(b: Bulletin): boolean {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-35">
-        <mat-label>Trimestre</mat-label>
+      <mat-form-field appearance="outline" class="min-w-45">
+        <mat-label>Période</mat-label>
         <mat-select [value]="term()" (selectionChange)="selectTerm($event.value)">
-          @for (t of terms; track t) {
-            <mat-option [value]="t">{{ t }}</mat-option>
+          @for (t of terms; track t.value) {
+            <mat-option [value]="t.value">{{ t.label }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -336,7 +342,11 @@ export class BulletinsList {
   protected readonly terms = TERMS;
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
-  protected readonly term = signal('TERM1');
+  protected readonly term = signal('ANNUAL');
+  /** Paramètre `term` envoyé au back : omis quand « Annuel » (= toute l'année). */
+  private termParam(): string | undefined {
+    return this.term() === 'ANNUAL' ? undefined : this.term();
+  }
   protected readonly bulletins = signal<Bulletin[]>([]);
   /** Pagination + recherche client de la liste des bulletins de la classe. */
   protected readonly page = signal(1);
@@ -432,7 +442,7 @@ export class BulletinsList {
 
   private load(): void {
     this.loading.set(true);
-    this.academics.classBulletins(this.classId(), this.sy.filter(), this.term()).subscribe({
+    this.academics.classBulletins(this.classId(), this.sy.filter(), this.termParam()).subscribe({
       next: (r) => {
         this.bulletins.set(r.items);
         this.page.set(1);
@@ -455,7 +465,8 @@ export class BulletinsList {
         studentId,
         classId: this.classId(),
         schoolYear: this.sy.filter(),
-        term: this.term(),
+        // Omis quand « Annuel » → le back renvoie toute l'année.
+        term: this.termParam(),
       })
       .subscribe({
         next: (p) => {

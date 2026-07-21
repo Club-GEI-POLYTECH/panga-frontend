@@ -265,6 +265,8 @@ export interface BulletinSubjectGrade {
 
 /** Points d'une ligne pour un terme (trimestre) ou semestre. Champs tolérants. */
 export interface SnapshotTermCell {
+  maxExam?: number | null;
+  maxTrimester?: number | null;
   period1?: number | null;
   period2?: number | null;
   exam?: number | null;
@@ -312,15 +314,101 @@ export interface SnapshotBranch {
   [key: string]: unknown;
 }
 
+/** Agrégat d'un domaine pour un terme (points obtenus / max). */
+export interface SnapshotSubTotalTerm {
+  pointsObtained?: number | null;
+  maxTrimester?: number | null;
+  maxSemester?: number | null;
+  [key: string]: unknown;
+}
+
+/** Sous-total d'un domaine (maxima + points par terme + annuel). */
+export interface SnapshotDomainSubTotal {
+  maxPerPeriod?: number;
+  maxExam?: number;
+  maxTrimester?: number;
+  maxYear?: number;
+  maxExamPerSemester?: number;
+  maxSemester?: number;
+  terms?: Record<string, SnapshotSubTotalTerm | null>;
+  yearPointsObtained?: number | null;
+  [key: string]: unknown;
+}
+
 export interface SnapshotDomain {
   code?: string;
   labelFr?: string;
   branches?: SnapshotBranch[];
+  subTotal?: SnapshotDomainSubTotal | null;
+  [key: string]: unknown;
+}
+
+/* ---- pourcentagesPeriodiques : colonnes de synthèse (P1..P6, E1..E3, T1..T3, annuel) ---- */
+
+export interface PeriodicStats {
+  totalAverage?: number | null;
+  weightedAverage?: number | null;
+  gpa?: number | null;
+  rank?: number | null;
+  rankOutOf?: number | null;
+  percentile?: number | null;
+  totalSubjects?: number | null;
+  passedSubjects?: number | null;
+  failedSubjects?: number | null;
+  [key: string]: unknown;
+}
+
+export interface PeriodicPresence {
+  presentDays?: number | null;
+  absentDays?: number | null;
+  lateDays?: number | null;
+  attendancePercentage?: number | null;
+  [key: string]: unknown;
+}
+
+/** Sous-total d'un domaine porté par une entrée de `pourcentagesPeriodiques`. */
+export interface PeriodicDomainSubTotal {
+  code?: string;
+  labelFr?: string;
+  pointsObtenus?: number | null;
+  pointsMax?: number | null;
+  [key: string]: unknown;
+}
+
+/** Une colonne de synthèse (période, examen, trimestre ou annuel). */
+export interface PeriodicEntry {
+  /** P1..P6 · E1..E3 · T1..T3 */
+  code?: string;
+  term?: string;
+  pourcentage?: number | null;
+  /** Clé : n'afficher la valeur que si `true`. */
+  disponible?: boolean;
+  place?: number | null;
+  nombreEleves?: number | null;
+  statistiques?: PeriodicStats;
+  presence?: PeriodicPresence;
+  pointsMax?: number | null;
+  pointsObtenus?: number | null;
+  sousTotauxDomaines?: PeriodicDomainSubTotal[];
+  /** Appréciations, par période/examen/trimestre/annuel. */
+  application?: string | null;
+  conduite?: string | null;
+  /** Uniquement sur `annuel`. */
+  decision?: string | null;
+  [key: string]: unknown;
+}
+
+export interface PourcentagesPeriodiques {
+  periodes?: PeriodicEntry[];
+  examens?: PeriodicEntry[];
+  trimestres?: PeriodicEntry[];
+  annuel?: PeriodicEntry | null;
   [key: string]: unknown;
 }
 
 /** Snapshot officiel (primaire = pas de `payloadKind` ; secondaire = `rdc_secondary_official`). */
 export interface MinisterialSnapshot {
+  pourcentagesPeriodiques?: PourcentagesPeriodiques | null;
   payloadKind?: string;
   band?: string;
   track?: string;
