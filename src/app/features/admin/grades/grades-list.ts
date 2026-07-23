@@ -53,6 +53,7 @@ import {
 } from '../../../core/models/grade.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+import { AuthStore } from '../../../core/auth/auth.store';
 
 interface CourseRef {
   slotId: string;
@@ -160,9 +161,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       <!-- Périodes -->
       <section class="panga-card p-5 mb-6">
         <panga-section-header icon="event" title="Périodes" [count]="periods().length">
-          <button mat-stroked-button class="rounded-xl!" (click)="seedPeriods()">
-            <mat-icon fontSet="material-symbols-outlined">event_repeat</mat-icon> Générer
-          </button>
+          @if (isClassTutor()) {
+            <button mat-stroked-button class="rounded-xl!" (click)="seedPeriods()">
+              <mat-icon fontSet="material-symbols-outlined">event_repeat</mat-icon> Générer
+            </button>
+          }
         </panga-section-header>
         @if (periods().length === 0) {
           <p class="text-sm text-(--text-muted)">
@@ -185,16 +188,18 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                     {{ p.term }} · n°{{ p.periodNumber }}
                   </p>
                 </div>
-                <button
-                  mat-icon-button
-                  class="h-8! w-8!"
-                  [matTooltip]="p.isLocked ? 'Déverrouiller' : 'Verrouiller'"
-                  (click)="toggleLock(p)"
-                >
-                  <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!">
-                    {{ p.isLocked ? 'lock' : 'lock_open' }}
-                  </mat-icon>
-                </button>
+                @if (isClassTutor()) {
+                  <button
+                    mat-icon-button
+                    class="h-8! w-8!"
+                    [matTooltip]="p.isLocked ? 'Déverrouiller' : 'Verrouiller'"
+                    (click)="toggleLock(p)"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!">
+                      {{ p.isLocked ? 'lock' : 'lock_open' }}
+                    </mat-icon>
+                  </button>
+                }
               </div>
             }
           </div>
@@ -686,6 +691,21 @@ export class GradesList {
   private readonly subjectsApi = inject(SubjectsService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly auth = inject(AuthStore);
+
+  /**
+   * Gestion du calendrier des périodes (générer / verrouiller) réservée au
+   * **titulaire** de la classe. Admin : toujours ; enseignant : seulement titulaire.
+   * La saisie des notes reste ouverte (scopée à ses matières par le back).
+   */
+  protected readonly isClassTutor = computed(() => {
+    if (this.auth.role() !== 'teacher') {
+      return true;
+    }
+    const uid = this.auth.user()?.id;
+    const cls = this.classes().find((c) => c.id === this.classId());
+    return !!uid && !!cls?.classTeacherId && cls.classTeacherId === uid;
+  });
 
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
   protected readonly tabs = [

@@ -36,6 +36,7 @@ import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { BulletinOfficial } from './bulletin-official';
 /** `ANNUAL` = toute l'année : le back reçoit alors **aucun** `term`. */
 const TERMS = [
@@ -89,21 +90,23 @@ function isPublished(b: Bulletin): boolean {
         </mat-select>
       </mat-form-field>
       @if (classId()) {
-        <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
-          <mat-icon fontSet="material-symbols-outlined">{{
-            showForm() ? 'close' : 'note_add'
-          }}</mat-icon>
-          {{ showForm() ? 'Annuler' : 'Générer un bulletin' }}
-        </button>
-        <button
-          mat-stroked-button
-          class="rounded-xl!"
-          [disabled]="generatingClass()"
-          (click)="generateAll()"
-        >
-          <mat-icon fontSet="material-symbols-outlined">groups</mat-icon>
-          {{ generatingClass() ? 'Génération…' : 'Générer la classe' }}
-        </button>
+        @if (isClassTutor()) {
+          <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
+            <mat-icon fontSet="material-symbols-outlined">{{
+              showForm() ? 'close' : 'note_add'
+            }}</mat-icon>
+            {{ showForm() ? 'Annuler' : 'Générer un bulletin' }}
+          </button>
+          <button
+            mat-stroked-button
+            class="rounded-xl!"
+            [disabled]="generatingClass()"
+            (click)="generateAll()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">groups</mat-icon>
+            {{ generatingClass() ? 'Génération…' : 'Générer la classe' }}
+          </button>
+        }
         <button mat-stroked-button class="rounded-xl!" (click)="printClass()">
           <mat-icon fontSet="material-symbols-outlined">print</mat-icon>
           Imprimer la classe
@@ -316,7 +319,7 @@ function isPublished(b: Bulletin): boolean {
                 >
                   <mat-icon fontSet="material-symbols-outlined">picture_as_pdf</mat-icon>
                 </button>
-                @if (!published(b)) {
+                @if (!published(b) && isClassTutor()) {
                   <button mat-stroked-button class="rounded-xl!" (click)="publish(b)">
                     Publier
                   </button>
@@ -337,6 +340,21 @@ export class BulletinsList {
   private readonly fb = inject(FormBuilder);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly auth = inject(AuthStore);
+
+  /**
+   * Gestion des bulletins (générer / publier) réservée au **titulaire** de la
+   * classe côté back. Admin : toujours autorisé ; enseignant : seulement s'il est
+   * titulaire. L'aperçu, la lecture et les PDF restent ouverts (cf. RBAC).
+   */
+  protected readonly isClassTutor = computed(() => {
+    if (this.auth.role() !== 'teacher') {
+      return true;
+    }
+    const uid = this.auth.user()?.id;
+    const cls = this.classes().find((c) => c.id === this.classId());
+    return !!uid && !!cls?.classTeacherId && cls.classTeacherId === uid;
+  });
 
   protected readonly schoolYear = this.sy.selected();
   protected readonly terms = TERMS;
