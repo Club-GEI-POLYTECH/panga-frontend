@@ -9,6 +9,7 @@ import {
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { MAT_DATE_LOCALE, provideNativeDateAdapter } from '@angular/material/core';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTransloco } from '@jsverse/transloco';
 import { provideEchartsCore } from 'ngx-echarts';
@@ -43,6 +44,10 @@ export const appConfig: ApplicationConfig = {
     ),
 
     provideAnimationsAsync(),
+
+    // Calendrier Material (panga-date-field) — affichage/saisie au format FR.
+    provideNativeDateAdapter(),
+    { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
 
     // Graphiques ECharts (chargés à la demande).
     provideEchartsCore({ echarts: () => import('echarts') }),

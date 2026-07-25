@@ -23,14 +23,18 @@ import {
   TRANSPORT_TYPE_OPTIONS,
 } from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { CredentialReveal } from '../../../shared/ui/credential-reveal';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select' | 'phone' | 'province';
 interface Field {
   key: string;
   label: string;
@@ -82,14 +86,14 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone' },
       { key: 'email', label: 'E-mail', type: 'email' },
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
+      { key: 'province', label: 'Province', type: 'province' },
       { key: 'postalCode', label: 'Code postal' },
-      { key: 'country', label: 'Pays' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
     ],
   },
   {
@@ -97,11 +101,11 @@ const GROUPS: Group[] = [
     icon: 'family_restroom',
     fields: [
       { key: 'guardianName', label: 'Tuteur — nom' },
-      { key: 'guardianPhone', label: 'Tuteur — téléphone', type: 'tel' },
+      { key: 'guardianPhone', label: 'Tuteur — téléphone', type: 'phone' },
       { key: 'guardianRelation', label: 'Tuteur — relation' },
       { key: 'guardianAddress', label: 'Tuteur — adresse' },
       { key: 'emergencyContactName', label: 'Urgence — nom' },
-      { key: 'emergencyContactPhone', label: 'Urgence — téléphone', type: 'tel' },
+      { key: 'emergencyContactPhone', label: 'Urgence — téléphone', type: 'phone' },
       { key: 'emergencyContactRelation', label: 'Urgence — relation' },
     ],
   },
@@ -136,6 +140,9 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatSelectModule,
     Avatar,
     CredentialReveal,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
     StatusBadge,
   ],
@@ -207,40 +214,56 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               @for (f of group.fields; track f.key) {
                 <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          <mat-option [value]="''">—</mat-option>
-                          @if (f.fromClasses) {
-                            @for (c of classes(); track c.id) {
-                              <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+                  @if (f.type === 'date') {
+                    <panga-date-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'phone') {
+                    <panga-phone-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'province') {
+                    <panga-province-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else {
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            <mat-option [value]="''">—</mat-option>
+                            @if (f.fromClasses) {
+                              @for (c of classes(); track c.id) {
+                                <mat-option [value]="c.id">{{
+                                  c.template?.name || c.id
+                                }}</mat-option>
+                              }
+                            } @else {
+                              @for (o of f.options ?? []; track o.value) {
+                                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                              }
                             }
-                          } @else {
-                            @for (o of f.options ?? []; track o.value) {
-                              <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                            }
-                          }
-                        </mat-select>
+                          </mat-select>
+                        }
+                        @default {
+                          <input
+                            matInput
+                            [type]="
+                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                            "
+                            [formControlName]="f.key"
+                          />
+                        }
                       }
-                      @default {
-                        <input
-                          matInput
-                          [type]="
-                            f.type === 'date'
-                              ? 'date'
-                              : f.type === 'email'
-                                ? 'email'
-                                : f.type === 'tel'
-                                  ? 'tel'
-                                  : 'text'
-                          "
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
+                    </mat-form-field>
+                  }
                 </div>
               }
             </div>
@@ -271,19 +294,19 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <div class="flex flex-wrap gap-2 mb-4">
             @for (p of linkedParents(); track p.id) {
               <span
-                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1 py-1"
+                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1.5 py-1"
               >
                 <panga-avatar [name]="label(p)" [size]="24" />
                 <span class="text-sm text-(--text)">{{ label(p) }}</span>
                 <button
                   type="button"
-                  class="grid h-6 w-6 place-items-center rounded-full hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+                  class="ml-0.5 shrink-0 leading-none text-(--text-muted) outline-none transition-colors hover:text-(--danger)"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
-                  <mat-icon fontSet="material-symbols-outlined" class="text-base! text-(--danger)">
-                    close
-                  </mat-icon>
+                  <span class="material-symbols-outlined align-middle text-[18px] leading-none"
+                    >close</span
+                  >
                 </button>
               </span>
             }

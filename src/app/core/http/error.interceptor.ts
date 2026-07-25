@@ -45,6 +45,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
+      // 403 = authentifié mais permission RBAC manquante. Le gating UI (guards/nav)
+      // masque déjà l'action ; ce toast couvre les accès forcés (URL directe, etc.).
+      if (err.status === 403) {
+        notify.error(apiError?.message ?? 'Accès refusé.');
+        return throwError(() => err);
+      }
+
       // Les messages backend sont déjà traduits (FR/EN) — on les affiche.
       if (apiError) {
         notify.error(apiError.message);

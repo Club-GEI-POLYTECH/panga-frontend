@@ -4,29 +4,49 @@
  */
 import type { BadgeTone } from '../../shared/ui/status-badge';
 
+/**
+ * Enums backend stricts. Les `value` DOIVENT correspondre exactement au contrat
+ * (module attendance) — toute valeur hors union est rejetée en 400 par le backend
+ * (ValidationPipe whitelist).
+ */
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused' | 'sick';
+export type AttendanceType = 'daily' | 'period' | 'subject' | 'event' | 'exam';
+
 export interface StatusOption {
-  value: string;
+  value: AttendanceStatus;
   label: string;
   tone: BadgeTone;
 }
 
-/** Attendance.status — `AttendanceStatus`. */
+/** Attendance.status — `AttendanceStatus` (les 5 valeurs du contrat, pas plus). */
 export const ATTENDANCE_STATUS_OPTIONS: StatusOption[] = [
   { value: 'present', label: 'Présent', tone: 'success' },
   { value: 'absent', label: 'Absent', tone: 'danger' },
   { value: 'late', label: 'En retard', tone: 'warning' },
   { value: 'excused', label: 'Excusé', tone: 'brand' },
   { value: 'sick', label: 'Malade', tone: 'info' },
-  { value: 'leave', label: 'Congé', tone: 'neutral' },
-  { value: 'suspended', label: 'Suspendu', tone: 'danger' },
-  { value: 'other', label: 'Autre', tone: 'neutral' },
 ];
 
-/** Statuts considérés comme une absence (au sens rapport/justification). */
-export const ABSENCE_STATUSES = new Set(['absent', 'suspended', 'sick', 'leave', 'excused']);
+/**
+ * Statuts considérés comme une absence (au sens rapport/justification).
+ * Littéraux vérifiés contre `AttendanceStatus`, exposés en `ReadonlySet<string>`
+ * pour tester des `status` bruts venant de l'API.
+ */
+export const ABSENCE_STATUSES: ReadonlySet<string> = new Set<AttendanceStatus>([
+  'absent',
+  'sick',
+  'excused',
+]);
 
-/** Attendance.attendanceType — modes de pointage exposés à l'UI. */
-export const ATTENDANCE_TYPE_OPTIONS: { value: 'daily' | 'period'; label: string }[] = [
+/**
+ * Modes de pointage exposés par la feuille du jour. Le contrat `AttendanceType`
+ * accepte aussi `subject·event·exam`, réservés à d'autres flux (examens, événements)
+ * non couverts par cet écran — d'où la restriction volontaire à `daily·period`.
+ */
+export const ATTENDANCE_TYPE_OPTIONS: {
+  value: Extract<AttendanceType, 'daily' | 'period'>;
+  label: string;
+}[] = [
   { value: 'daily', label: 'Journée' },
   { value: 'period', label: 'Par cours' },
 ];

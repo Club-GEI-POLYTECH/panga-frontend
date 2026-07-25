@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,10 +21,14 @@ import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
 import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import {
   PARENT_STATUS_OPTIONS,
@@ -31,7 +37,7 @@ import {
   parentStatusTone,
 } from '../../../core/models/parent.enums';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select' | 'phone' | 'province';
 interface Field {
   key: string;
   label: string;
@@ -75,13 +81,13 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone' },
       { key: 'email', label: 'E-mail', type: 'email' },
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
-      { key: 'country', label: 'Pays' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
+      { key: 'province', label: 'Province', type: 'province' },
     ],
   },
   {
@@ -91,7 +97,7 @@ const GROUPS: Group[] = [
       { key: 'occupation', label: 'Profession' },
       { key: 'jobTitle', label: 'Poste' },
       { key: 'employerName', label: 'Employeur' },
-      { key: 'employerPhone', label: 'Téléphone employeur', type: 'tel' },
+      { key: 'employerPhone', label: 'Téléphone employeur', type: 'phone' },
       { key: 'educationLevel', label: "Niveau d'études" },
     ],
   },
@@ -127,6 +133,9 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     KpiCard,
     PageHeader,
     Paginator,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -187,33 +196,45 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @for (f of group.fields; track f.key) {
               <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                <mat-form-field appearance="outline" class="w-full">
-                  <mat-label>{{ f.label }}</mat-label>
-                  @switch (f.type) {
-                    @case ('select') {
-                      <mat-select [formControlName]="f.key">
-                        @for (o of f.options ?? []; track o.value) {
-                          <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                        }
-                      </mat-select>
+                @if (f.type === 'date') {
+                  <panga-date-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else if (f.type === 'phone') {
+                  <panga-phone-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else if (f.type === 'province') {
+                  <panga-province-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else {
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>{{ f.label }}</mat-label>
+                    @switch (f.type) {
+                      @case ('select') {
+                        <mat-select [formControlName]="f.key">
+                          @for (o of f.options ?? []; track o.value) {
+                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                          }
+                        </mat-select>
+                      }
+                      @default {
+                        <input
+                          matInput
+                          [type]="f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'"
+                          [formControlName]="f.key"
+                        />
+                      }
                     }
-                    @default {
-                      <input
-                        matInput
-                        [type]="
-                          f.type === 'date'
-                            ? 'date'
-                            : f.type === 'email'
-                              ? 'email'
-                              : f.type === 'tel'
-                                ? 'tel'
-                                : 'text'
-                        "
-                        [formControlName]="f.key"
-                      />
-                    }
-                  }
-                </mat-form-field>
+                  </mat-form-field>
+                }
               </div>
             }
           </div>
@@ -238,6 +259,14 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </div>
       </form>
     }
+
+    <div class="panga-card p-4 mb-4">
+      <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+        <mat-label>Rechercher</mat-label>
+        <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
+        <input matInput [formControl]="searchCtrl" placeholder="Nom, e-mail, téléphone…" />
+      </mat-form-field>
+    </div>
 
     @if (loading()) {
       <panga-skeleton-table />
@@ -345,10 +374,21 @@ export class ParentsList {
   protected readonly statusOptions = PARENT_STATUS_OPTIONS;
 
   protected readonly parents = signal<Parent[]>([]);
-  /** Pagination client (l'endpoint /parents renvoie tout le lot). */
+  /** Pagination + recherche côté client (l'endpoint /parents renvoie tout le lot). */
   protected readonly page = signal(1);
-  protected readonly pageMeta = computed(() => clientMeta(this.parents().length, this.page()));
-  protected readonly visibleParents = computed(() => pageSlice(this.parents(), this.page()));
+  protected readonly searchCtrl = new FormControl('', { nonNullable: true });
+  protected readonly search = signal('');
+  protected readonly filtered = computed(() => {
+    const q = this.search().toLowerCase();
+    if (!q) {
+      return this.parents();
+    }
+    return this.parents().filter((p) =>
+      `${this.fullName(p)} ${p.email ?? ''} ${p.phone ?? ''}`.toLowerCase().includes(q),
+    );
+  });
+  protected readonly pageMeta = computed(() => clientMeta(this.filtered().length, this.page()));
+  protected readonly visibleParents = computed(() => pageSlice(this.filtered(), this.page()));
   protected readonly loading = signal(true);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
@@ -390,6 +430,10 @@ export class ParentsList {
 
   constructor() {
     this.load();
+    this.searchCtrl.valueChanges.pipe(debounceTime(250), takeUntilDestroyed()).subscribe((v) => {
+      this.search.set(v.trim());
+      this.page.set(1);
+    });
   }
 
   protected fullName(p: Parent): string {

@@ -35,6 +35,14 @@ export interface User {
   lastLoginAt?: string | null;
 }
 
+/** Réponse de `GET /auth/permissions` (RBAC dynamique). */
+export interface PermissionsResponse {
+  role: Role;
+  schoolId?: string | null;
+  /** Permissions au format `resource.action` (ex. `students.create`). */
+  permissions: string[];
+}
+
 export interface LoginRequest {
   /** email, username ou numéro d'élève accepté par le backend. */
   identifier: string;

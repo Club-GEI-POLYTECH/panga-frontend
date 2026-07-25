@@ -4,6 +4,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthStore } from '../core/auth/auth.store';
 import { AdminDashboard } from '../features/admin/admin-dashboard/admin-dashboard';
 import { StudentDashboard } from '../features/student/student-dashboard/student-dashboard';
+import { TeacherDashboard } from '../features/teacher/teacher-dashboard/teacher-dashboard';
 import { KpiCard } from '../shared/ui/kpi-card';
 import type { Role } from '../core/models/auth.models';
 
@@ -52,7 +53,7 @@ const KPIS: Record<Role, Kpi[]> = {
 @Component({
   selector: 'panga-dashboard',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatProgressSpinnerModule, AdminDashboard, StudentDashboard, KpiCard],
+  imports: [MatProgressSpinnerModule, AdminDashboard, StudentDashboard, TeacherDashboard, KpiCard],
   template: `
     @if (store.role() === 'admin') {
       @defer {
@@ -63,6 +64,12 @@ const KPIS: Record<Role, Kpi[]> = {
     } @else if (store.role() === 'student') {
       @defer {
         <panga-student-dashboard />
+      } @placeholder {
+        <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      }
+    } @else if (store.role() === 'teacher') {
+      @defer {
+        <panga-teacher-dashboard />
       } @placeholder {
         <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
       }

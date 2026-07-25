@@ -32,6 +32,14 @@ export class AuthService {
       })
       .pipe(
         map((res) => this.applyLogin(unwrap(res))),
+        // Charge les permissions RBAC dans la foulée. Non bloquant : un échec ne
+        // doit pas empêcher la connexion (le back impose de toute façon les 403).
+        switchMap((user) =>
+          this.loadPermissions().pipe(
+            map(() => user),
+            catchError(() => of(user)),
+          ),
+        ),
         catchError((err) => {
           this.store.setStatus('error');
           return throwError(() => err);
@@ -99,6 +107,24 @@ export class AuthService {
     return this.http.get<unknown>(`${this.base}/profile`).pipe(
       map((res) => mapUser(unwrap(res))),
       tap((user) => this.store.setSession(user, this.pickDefaultSchool(user))),
+      // Permissions RBAC chargées avec le profil (bootstrap/refresh). Non bloquant.
+      switchMap((user) =>
+        this.loadPermissions().pipe(
+          map(() => user),
+          catchError(() => of(user)),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Récupère les permissions RBAC de l'utilisateur (`GET /auth/permissions`) et
+   * les stocke. Appelée après login et au chargement du profil (bootstrap/refresh).
+   */
+  loadPermissions(): Observable<string[]> {
+    return this.http.get<unknown>(`${this.base}/permissions`).pipe(
+      map((res) => pickPermissions(unwrap(res))),
+      tap((perms) => this.store.setPermissions(perms)),
     );
   }
 
@@ -284,6 +310,15 @@ function pickRefresh(d: unknown): string | undefined {
     str(d, 'refreshToken', 'refresh_token') ??
     str(prop(d, 'tokens'), 'refreshToken', 'refresh_token')
   );
+}
+
+/** Extrait la liste de permissions `resource.action`, tolérant à la forme brute. */
+function pickPermissions(d: unknown): string[] {
+  const raw = Array.isArray(d) ? d : prop(d, 'permissions');
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((p): p is string => typeof p === 'string');
 }
 
 function mapUser(u: unknown): User {

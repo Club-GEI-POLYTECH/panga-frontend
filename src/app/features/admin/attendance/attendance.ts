@@ -24,6 +24,7 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
+import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { ClassInstance, ClassScheduleSlot, Student } from '../models/admin.models';
@@ -33,6 +34,7 @@ import {
   ATTENDANCE_STATUS_OPTIONS,
   ATTENDANCE_TYPE_OPTIONS,
   statusColor,
+  type AttendanceStatus,
 } from '../../../core/models/attendance.enums';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
@@ -55,6 +57,7 @@ function today(): string {
     Avatar,
     EmptyState,
     PageHeader,
+    DateField,
     SectionHeader,
     StatusBadge,
   ],
@@ -75,10 +78,12 @@ function today(): string {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-40">
-        <mat-label>Date</mat-label>
-        <input matInput type="date" [formControl]="dateCtrl" (change)="reload()" />
-      </mat-form-field>
+      <panga-date-field
+        class="min-w-40"
+        label="Date"
+        [formControl]="dateCtrl"
+        (changed)="reload()"
+      />
       <mat-form-field appearance="outline" class="min-w-37.5">
         <mat-label>Mode</mat-label>
         <mat-select [value]="mode()" (selectionChange)="setMode($event.value)">
@@ -143,14 +148,25 @@ function today(): string {
           } @else {
             <section class="panga-card p-5">
               <panga-section-header icon="fact_check" title="Appel" [count]="roster().length">
-                <button
-                  mat-stroked-button
-                  class="rounded-xl!"
-                  (click)="markAllPresent()"
-                  [disabled]="saving()"
-                >
-                  <mat-icon fontSet="material-symbols-outlined">done_all</mat-icon> Tous présents
-                </button>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    mat-stroked-button
+                    class="rounded-xl!"
+                    (click)="markAllPresent()"
+                    [disabled]="saving()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">done_all</mat-icon> Tous présents
+                  </button>
+                  <button
+                    mat-flat-button
+                    class="rounded-xl!"
+                    (click)="saveAll()"
+                    [disabled]="saving()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+                    {{ saving() ? 'Enregistrement…' : 'Enregistrer les présences' }}
+                  </button>
+                </div>
               </panga-section-header>
 
               <div class="divide-y divide-(--border) -mx-5">
@@ -288,14 +304,18 @@ function today(): string {
               title="Rapport d'absences"
               [count]="report().length"
             >
-              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
-                <mat-label>Du</mat-label>
-                <input matInput type="date" [formControl]="fromCtrl" />
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
-                <mat-label>Au</mat-label>
-                <input matInput type="date" [formControl]="toCtrl" />
-              </mat-form-field>
+              <panga-date-field
+                class="w-37.5 -mb-5!"
+                label="Du"
+                subscriptSizing="dynamic"
+                [formControl]="fromCtrl"
+              />
+              <panga-date-field
+                class="w-37.5 -mb-5!"
+                label="Au"
+                subscriptSizing="dynamic"
+                [formControl]="toCtrl"
+              />
               <button
                 mat-flat-button
                 class="rounded-xl!"
@@ -405,13 +425,15 @@ export class Attendance {
   protected readonly slots = signal<ClassScheduleSlot[]>([]);
   protected readonly slotId = signal('');
   protected readonly entries = signal<AttendanceLine[]>([]);
-  private readonly allStudents = signal<Student[]>([]);
   protected readonly saving = signal(false);
 
-  protected readonly roster = computed(() => {
-    const id = this.classId();
-    return this.allStudents().filter((s) => s.classInstanceId === id);
-  });
+  /**
+   * Roster de la classe, chargé côté serveur via le filtre `classId` de
+   * `GET /students`. On ne peut pas filtrer côté client sur `classInstanceId` :
+   * l'entité élève renvoie la classe sous `classId` (non normalisé), le filtre
+   * client renvoyait donc systématiquement une liste vide.
+   */
+  protected readonly roster = signal<Student[]>([]);
 
   /* ----------------------------- Justification ----------------------------- */
   protected readonly justifyId = signal<string | null>(null);
@@ -428,16 +450,16 @@ export class Attendance {
   protected readonly loadingReport = signal(false);
 
   constructor() {
-    // Recharge classes & élèves à chaque changement d'année (sélecteur global).
+    // Recharge les classes à chaque changement d'année (sélecteur global).
+    // Le roster, lui, est chargé par classe (cf. selectClass).
     effect(() => {
       this.sy.selected();
       untracked(() => {
         this.classesApi
           .list(this.sy.filter())
           .subscribe({ next: (r) => this.classes.set(r.items) });
-        this.studentsApi
-          .list({ page: 1, limit: 300, schoolYear: this.sy.filter() })
-          .subscribe({ next: (r) => this.allStudents.set(r.items) });
+        this.roster.set([]);
+        this.classId.set('');
       });
     });
   }
@@ -447,6 +469,13 @@ export class Attendance {
   selectClass(id: string): void {
     this.classId.set(id);
     this.report.set([]);
+    // Roster côté serveur : filtre `classId` = id de l'instance de classe.
+    this.studentsApi
+      .list({ page: 1, limit: 500, classId: id, schoolYear: this.sy.filter() })
+      .subscribe({
+        next: (r) => this.roster.set(r.items),
+        error: () => this.roster.set([]),
+      });
     this.reload();
   }
 
@@ -493,7 +522,7 @@ export class Attendance {
     return this.entryFor(studentId)?.status ?? 'present';
   }
 
-  setStatus(studentId: string, status: string): void {
+  setStatus(studentId: string, status: AttendanceStatus): void {
     this.saving.set(true);
     this.persist(studentId, status).subscribe({
       next: () => {
@@ -523,7 +552,30 @@ export class Attendance {
     });
   }
 
-  private persist(studentId: string, status: string) {
+  /**
+   * Enregistre l'appel complet : chaque élève avec le statut actuellement affiché
+   * (les « présent » par défaut inclus, qui autrement ne seraient jamais persistés
+   * puisque la sauvegarde ligne-par-ligne ne se déclenche qu'au changement).
+   */
+  saveAll(): void {
+    const targets = this.roster();
+    if (!targets.length || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    forkJoin(
+      targets.map((s) => this.persist(s.id, this.statusOf(s.id) as AttendanceStatus)),
+    ).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.notify.success('Présences enregistrées.');
+        this.reload();
+      },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  private persist(studentId: string, status: AttendanceStatus) {
     return this.attendanceApi.upsert({
       studentId,
       classInstanceId: this.classId(),

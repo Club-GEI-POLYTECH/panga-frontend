@@ -22,6 +22,7 @@ import { ClassesService } from '../services/classes.service';
 import type { ClassInstance, Teacher } from '../models/admin.models';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import {
   EMPLOYMENT_TYPE_OPTIONS,
@@ -36,12 +37,25 @@ import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'csv' | 'classes';
+type FieldType =
+  | 'text'
+  | 'email'
+  | 'tel'
+  | 'date'
+  | 'number'
+  | 'select'
+  | 'csv'
+  | 'classes'
+  | 'phone'
+  | 'province';
 interface Field {
   key: string;
   label: string;
@@ -73,11 +87,11 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
       { key: 'email', label: 'E-mail', type: 'email' },
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'country', label: 'Pays' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
     ],
   },
   {
@@ -107,7 +121,7 @@ const GROUPS: Group[] = [
       { key: 'salary', label: 'Salaire', type: 'number' },
       { key: 'previousEmployer', label: 'Employeur précédent' },
       { key: 'office', label: 'Bureau' },
-      { key: 'officePhone', label: 'Téléphone bureau', type: 'tel' },
+      { key: 'officePhone', label: 'Téléphone bureau', type: 'phone' },
     ],
   },
   {
@@ -150,6 +164,9 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     KpiCard,
     PageHeader,
     Paginator,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
     StatusBadge,
     SkeletonTable,
@@ -201,43 +218,55 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @for (f of group.fields; track f.key) {
               <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                <mat-form-field appearance="outline" class="w-full">
-                  <mat-label>{{ f.label }}</mat-label>
-                  @switch (f.type) {
-                    @case ('select') {
-                      <mat-select [formControlName]="f.key">
-                        @for (o of f.options ?? []; track o.value) {
-                          <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                        }
-                      </mat-select>
+                @if (f.type === 'date') {
+                  <panga-date-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else if (f.type === 'phone') {
+                  <panga-phone-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else if (f.type === 'province') {
+                  <panga-province-field
+                    class="block w-full"
+                    [label]="f.label"
+                    [formControlName]="f.key"
+                  />
+                } @else {
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>{{ f.label }}</mat-label>
+                    @switch (f.type) {
+                      @case ('select') {
+                        <mat-select [formControlName]="f.key">
+                          @for (o of f.options ?? []; track o.value) {
+                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                          }
+                        </mat-select>
+                      }
+                      @case ('classes') {
+                        <mat-select [formControlName]="f.key" multiple>
+                          @for (c of classes(); track c.id) {
+                            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                          }
+                        </mat-select>
+                      }
+                      @case ('number') {
+                        <input matInput type="number" [formControlName]="f.key" />
+                      }
+                      @default {
+                        <input
+                          matInput
+                          [type]="f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'"
+                          [formControlName]="f.key"
+                        />
+                      }
                     }
-                    @case ('classes') {
-                      <mat-select [formControlName]="f.key" multiple>
-                        @for (c of classes(); track c.id) {
-                          <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
-                        }
-                      </mat-select>
-                    }
-                    @case ('number') {
-                      <input matInput type="number" [formControlName]="f.key" />
-                    }
-                    @default {
-                      <input
-                        matInput
-                        [type]="
-                          f.type === 'date'
-                            ? 'date'
-                            : f.type === 'email'
-                              ? 'email'
-                              : f.type === 'tel'
-                                ? 'tel'
-                                : 'text'
-                        "
-                        [formControlName]="f.key"
-                      />
-                    }
-                  }
-                </mat-form-field>
+                  </mat-form-field>
+                }
               </div>
             }
           </div>

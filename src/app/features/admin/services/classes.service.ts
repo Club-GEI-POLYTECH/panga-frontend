@@ -155,7 +155,10 @@ export class ClassesService {
   /* ------------------------------ Promotions -------------------------------- */
 
   promote(instanceId: string, dto: PromoteStudentsDto): Observable<unknown> {
-    return this.http.post<unknown>(`${this.base}/${instanceId}/promote`, dto);
+    // Le backend écrase `fromClassInstanceId` avec le `:id` de l'URL, mais sa
+    // validation l'exige dans le body : on le renseigne = instanceId.
+    const body: PromoteStudentsDto = { ...dto, fromClassInstanceId: instanceId };
+    return this.http.post<unknown>(`${this.base}/${instanceId}/promote`, body);
   }
 
   promotionHistory(instanceId: string): Observable<unknown> {

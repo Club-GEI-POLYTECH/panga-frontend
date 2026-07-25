@@ -5,8 +5,11 @@ import { environment } from '../../../../environments/environment';
 import { ListResult, toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
 import type {
   Bulletin,
+  BulletinPreview,
   CreateGradeDto,
   GenerateBulletinDto,
+  GenerateClassDto,
+  GenerateClassResult,
   Grade,
   Period,
 } from '../models/admin.models';
@@ -69,7 +72,7 @@ export class AcademicsService {
   classBulletins(
     classId: string,
     schoolYear: string,
-    term: string,
+    term?: string,
   ): Observable<ListResult<Bulletin>> {
     return this.http
       .get<unknown>(`${this.base}/bulletins/classes/${classId}`, {
@@ -80,5 +83,42 @@ export class AcademicsService {
 
   publishBulletin(id: string): Observable<unknown> {
     return this.http.post<unknown>(`${this.base}/bulletins/${id}/publish`, {});
+  }
+
+  /**
+   * Aperçu (dry-run) d'un bulletin — rien n'est persisté (§C).
+   * `term` est **optionnel** : omis, le back renvoie l'année complète (ANNUAL).
+   */
+  previewBulletin(params: {
+    studentId: string;
+    classId: string;
+    schoolYear: string;
+    term?: string;
+    application?: string;
+    conduite?: string;
+  }): Observable<BulletinPreview> {
+    return this.http
+      .get<unknown>(`${this.base}/bulletins/preview`, { params: toHttpParams(params) })
+      .pipe(map((r) => unwrapEnvelope<BulletinPreview>(r)));
+  }
+
+  /** Génère (ou rafraîchit) tous les bulletins d'une classe (§D). */
+  generateClass(dto: GenerateClassDto): Observable<GenerateClassResult> {
+    return this.http
+      .post<unknown>(`${this.base}/bulletins/generate-class`, dto)
+      .pipe(map((r) => unwrapEnvelope<GenerateClassResult>(r)));
+  }
+
+  /** PDF de toute la classe (1 bulletin/page) — nécessite generate-class d'abord. */
+  classPdf(classId: string, schoolYear: string, term: string): Observable<Blob> {
+    return this.http.get(`${this.base}/bulletins/classes/${classId}/pdf`, {
+      params: toHttpParams({ schoolYear, term }),
+      responseType: 'blob',
+    });
+  }
+
+  /** PDF d'un bulletin. */
+  bulletinPdf(id: string): Observable<Blob> {
+    return this.http.get(`${this.base}/bulletins/${id}/pdf`, { responseType: 'blob' });
   }
 }

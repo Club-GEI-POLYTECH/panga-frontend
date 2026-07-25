@@ -26,6 +26,11 @@ export class TeachersService {
       .pipe(map((r) => unwrapEnvelope<Teacher>(r)));
   }
 
+  /** Profil de l'enseignant connecté (ownership, pour son propre emploi du temps). */
+  me(): Observable<Teacher> {
+    return this.http.get<unknown>(`${this.base}/me`).pipe(map((r) => unwrapEnvelope<Teacher>(r)));
+  }
+
   create(dto: CreateTeacherDto | Record<string, unknown>): Observable<Teacher> {
     return this.http.post<unknown>(this.base, dto).pipe(map((r) => unwrapEnvelope<Teacher>(r)));
   }

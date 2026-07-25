@@ -9,9 +9,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ParentsService } from '../services/parents.service';
+import { StudentsService } from '../services/students.service';
 import { UsersService } from '../services/users.service';
-import type { Parent } from '../models/admin.models';
+import type { Parent, Student } from '../models/admin.models';
+import { personLabel } from '../shared/labels';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import {
   PARENT_STATUS_OPTIONS,
@@ -22,10 +25,13 @@ import {
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { CredentialReveal } from '../../../shared/ui/credential-reveal';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select';
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select' | 'phone' | 'province';
 interface Field {
   key: string;
   label: string;
@@ -68,13 +74,13 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel' },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel' },
+      { key: 'phone', label: 'Téléphone', type: 'phone' },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone' },
       { key: 'email', label: 'E-mail', type: 'email' },
       { key: 'address', label: 'Adresse', wide: true },
       { key: 'city', label: 'Ville' },
-      { key: 'province', label: 'Province' },
-      { key: 'country', label: 'Pays' },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS },
+      { key: 'province', label: 'Province', type: 'province' },
     ],
   },
   {
@@ -84,7 +90,7 @@ const GROUPS: Group[] = [
       { key: 'occupation', label: 'Profession' },
       { key: 'jobTitle', label: 'Poste' },
       { key: 'employerName', label: 'Employeur' },
-      { key: 'employerPhone', label: 'Téléphone employeur', type: 'tel' },
+      { key: 'employerPhone', label: 'Téléphone employeur', type: 'phone' },
       { key: 'educationLevel', label: "Niveau d'études" },
     ],
   },
@@ -93,7 +99,7 @@ const GROUPS: Group[] = [
     icon: 'favorite',
     fields: [
       { key: 'spouseName', label: 'Nom du conjoint' },
-      { key: 'spousePhone', label: 'Téléphone du conjoint', type: 'tel' },
+      { key: 'spousePhone', label: 'Téléphone du conjoint', type: 'phone' },
       { key: 'spouseEmail', label: 'E-mail du conjoint', type: 'email' },
       { key: 'spouseOccupation', label: 'Profession du conjoint' },
     ],
@@ -125,6 +131,9 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatSlideToggleModule,
     Avatar,
     CredentialReveal,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
     StatusBadge,
   ],
@@ -196,34 +205,48 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               @for (f of group.fields; track f.key) {
                 <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          <mat-option [value]="''">—</mat-option>
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        </mat-select>
+                  @if (f.type === 'date') {
+                    <panga-date-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'phone') {
+                    <panga-phone-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'province') {
+                    <panga-province-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else {
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            <mat-option [value]="''">—</mat-option>
+                            @for (o of f.options ?? []; track o.value) {
+                              <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                            }
+                          </mat-select>
+                        }
+                        @default {
+                          <input
+                            matInput
+                            [type]="
+                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                            "
+                            [formControlName]="f.key"
+                          />
+                        }
                       }
-                      @default {
-                        <input
-                          matInput
-                          [type]="
-                            f.type === 'date'
-                              ? 'date'
-                              : f.type === 'email'
-                                ? 'email'
-                                : f.type === 'tel'
-                                  ? 'tel'
-                                  : 'text'
-                          "
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
+                    </mat-form-field>
+                  }
                 </div>
               }
             </div>
@@ -255,6 +278,32 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       <!-- Enfants liés -->
       <section class="panga-card p-5">
         <panga-section-header icon="school" title="Enfants liés" [count]="children().length" />
+
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-55">
+            <mat-label>Lier un enfant</mat-label>
+            <mat-select [formControl]="childCtrl">
+              @for (s of linkableStudents(); track s.id) {
+                <mat-option [value]="s.id">
+                  {{ studentLabel(s) }}
+                  @if (s.studentNumber || s.matricule) {
+                    · {{ s.studentNumber || s.matricule }}
+                  }
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button
+            mat-flat-button
+            class="rounded-xl!"
+            [disabled]="!childCtrl.value || linking()"
+            (click)="linkChild()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">link</mat-icon>
+            Lier
+          </button>
+        </div>
+
         @if (children().length === 0) {
           <p class="text-sm text-(--text-muted)">Aucun enfant lié.</p>
         } @else {
@@ -283,6 +332,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
 export class ParentDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly parentsApi = inject(ParentsService);
+  private readonly studentsApi = inject(StudentsService);
   private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
@@ -320,6 +370,17 @@ export class ParentDetail {
     () => (this.parent()?.students ?? []) as Record<string, unknown>[],
   );
 
+  /* ------------------------------ Lier un enfant --------------------------- */
+  protected readonly allStudents = signal<Student[]>([]);
+  protected readonly childCtrl = new FormControl('', { nonNullable: true });
+  protected readonly linking = signal(false);
+  protected readonly studentLabel = personLabel;
+  /** Élèves sélectionnables = ceux pas déjà rattachés à ce parent. */
+  protected readonly linkableStudents = computed(() => {
+    const linked = new Set(this.children().map((c) => this.childId(c)));
+    return this.allStudents().filter((s) => !linked.has(s.id));
+  });
+
   protected readonly form = new FormGroup({
     ...Object.fromEntries(TEXT_KEYS.map((k) => [k, new FormControl('', { nonNullable: true })])),
     ...Object.fromEntries(
@@ -328,6 +389,13 @@ export class ParentDetail {
   });
 
   constructor() {
+    this.reload();
+    this.studentsApi
+      .list({ page: 1, limit: 500 })
+      .subscribe({ next: (r) => this.allStudents.set(r.items) });
+  }
+
+  private reload(): void {
     this.parentsApi.get(this.id).subscribe({
       next: (p) => {
         this.parent.set(p);
@@ -335,6 +403,24 @@ export class ParentDetail {
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
+    });
+  }
+
+  /** Rattache l'élève choisi à ce parent (POST /students/:id/parents). */
+  linkChild(): void {
+    const studentId = this.childCtrl.value;
+    if (!studentId || this.linking()) {
+      return;
+    }
+    this.linking.set(true);
+    this.studentsApi.linkParent(studentId, this.id).subscribe({
+      next: () => {
+        this.linking.set(false);
+        this.childCtrl.reset('');
+        this.notify.success('Enfant rattaché.');
+        this.reload();
+      },
+      error: () => this.linking.set(false),
     });
   }
 

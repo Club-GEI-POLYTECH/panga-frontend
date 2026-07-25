@@ -9,9 +9,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TeachersService } from '../services/teachers.service';
+import { UsersService } from '../services/users.service';
 import type { Teacher } from '../models/admin.models';
 import { GENDER_OPTIONS } from '../../../core/models/student.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { COUNTRY_OPTIONS } from '../../../core/models/geo.reference';
 import {
   EMPLOYMENT_TYPE_OPTIONS,
   QUALIFICATION_LEVEL_OPTIONS,
@@ -21,9 +23,13 @@ import { personLabel } from '../shared/labels';
 import { employmentLabel } from '../shared/teacher-labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { DateField } from '../../../shared/ui/date-field';
+import { PhoneField } from '../../../shared/ui/phone-field';
+import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
+import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 
-type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select';
+type FieldType = 'text' | 'email' | 'tel' | 'date' | 'number' | 'select' | 'phone' | 'province';
 interface Field {
   key: string;
   label: string;
@@ -56,13 +62,13 @@ const GROUPS: Group[] = [
     title: 'Contact',
     icon: 'contacts',
     fields: [
-      { key: 'phone', label: 'Téléphone', type: 'tel', fromUser: true },
-      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'tel', fromUser: true },
+      { key: 'phone', label: 'Téléphone', type: 'phone', fromUser: true },
+      { key: 'secondaryPhone', label: 'Téléphone secondaire', type: 'phone', fromUser: true },
       { key: 'email', label: 'E-mail', type: 'email', fromUser: true },
       { key: 'address', label: 'Adresse', wide: true, fromUser: true },
       { key: 'city', label: 'Ville', fromUser: true },
-      { key: 'province', label: 'Province', fromUser: true },
-      { key: 'country', label: 'Pays', fromUser: true },
+      { key: 'country', label: 'Pays', type: 'select', options: COUNTRY_OPTIONS, fromUser: true },
+      { key: 'province', label: 'Province', type: 'province', fromUser: true },
     ],
   },
   {
@@ -95,7 +101,7 @@ const GROUPS: Group[] = [
       { key: 'previousPosition', label: 'Poste précédent' },
       { key: 'office', label: 'Bureau' },
       { key: 'officeNumber', label: 'N° de bureau' },
-      { key: 'officePhone', label: 'Téléphone bureau', type: 'tel' },
+      { key: 'officePhone', label: 'Téléphone bureau', type: 'phone' },
       { key: 'officeHours', label: 'Heures de bureau' },
     ],
   },
@@ -121,7 +127,11 @@ const FROM_USER = new Set(
     MatSelectModule,
     MatTooltipModule,
     Avatar,
+    DateField,
+    PhoneField,
+    ProvinceField,
     SectionHeader,
+    CredentialReveal,
   ],
   template: `
     <a
@@ -133,6 +143,15 @@ const FROM_USER = new Set(
       >
       Enseignants
     </a>
+
+    @if (credential(); as c) {
+      <panga-credential-reveal
+        title="Nouveau mot de passe — accès enseignant"
+        [identifier]="identifier()"
+        [password]="c"
+        (dismiss)="credential.set(null)"
+      />
+    }
 
     @if (loading()) {
       <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
@@ -170,6 +189,15 @@ const FROM_USER = new Set(
               }}</span>
             }
             <button
+              mat-stroked-button
+              class="rounded-xl! text-white! border-white/40!"
+              [disabled]="resetting() || !userId()"
+              (click)="resetPassword()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+              Réinitialiser le mot de passe
+            </button>
+            <button
               mat-icon-button
               class="text-white!"
               (click)="remove()"
@@ -189,37 +217,51 @@ const FROM_USER = new Set(
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               @for (f of group.fields; track f.key) {
                 <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          <mat-option [value]="''">—</mat-option>
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        </mat-select>
+                  @if (f.type === 'date') {
+                    <panga-date-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'phone') {
+                    <panga-phone-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'province') {
+                    <panga-province-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else {
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            <mat-option [value]="''">—</mat-option>
+                            @for (o of f.options ?? []; track o.value) {
+                              <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                            }
+                          </mat-select>
+                        }
+                        @case ('number') {
+                          <input matInput type="number" [formControlName]="f.key" />
+                        }
+                        @default {
+                          <input
+                            matInput
+                            [type]="
+                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                            "
+                            [formControlName]="f.key"
+                          />
+                        }
                       }
-                      @case ('number') {
-                        <input matInput type="number" [formControlName]="f.key" />
-                      }
-                      @default {
-                        <input
-                          matInput
-                          [type]="
-                            f.type === 'date'
-                              ? 'date'
-                              : f.type === 'email'
-                                ? 'email'
-                                : f.type === 'tel'
-                                  ? 'tel'
-                                  : 'text'
-                          "
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
+                    </mat-form-field>
+                  }
                 </div>
               }
             </div>
@@ -314,6 +356,7 @@ export class TeacherDetail {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly teachersApi = inject(TeachersService);
+  private readonly usersApi = inject(UsersService);
   private readonly notify = inject(NotificationService);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
@@ -323,6 +366,15 @@ export class TeacherDetail {
   protected readonly teacher = signal<Teacher | null>(null);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  protected readonly resetting = signal(false);
+  /** Mot de passe temporaire renvoyé une seule fois par la réinitialisation. */
+  protected readonly credential = signal<string | null>(null);
+  /** Id du compte utilisateur (nécessaire au reset) : `userId` ou `user.id`. */
+  protected readonly userId = computed(() => {
+    const t = this.teacher() as Record<string, unknown> | null;
+    const user = (t?.['user'] ?? {}) as Record<string, unknown>;
+    return (t?.['userId'] ?? user['id']) as string | undefined;
+  });
 
   protected readonly homerooms = computed(() => this.teacher()?.classInstancesAsTeacher ?? []);
   protected readonly courses = computed(() => this.teacher()?.classSubjects ?? []);
@@ -349,8 +401,35 @@ export class TeacherDetail {
     const t = this.teacher();
     return t ? personLabel((t.user ?? t) as Record<string, unknown>) : '';
   }
+  /** Identifiant de connexion affiché avec le mot de passe temporaire. */
+  protected identifier(): string {
+    const user = (this.teacher()?.user ?? {}) as Record<string, unknown>;
+    return (
+      this.str(user['email']) ||
+      this.str(user['username']) ||
+      this.str(this.teacher()?.employeeNumber)
+    );
+  }
   protected str(v: unknown): string {
     return v === null || v === undefined ? '' : String(v);
+  }
+
+  resetPassword(): void {
+    const uid = this.userId();
+    if (!uid || this.resetting()) {
+      return;
+    }
+    this.resetting.set(true);
+    this.usersApi.resetPassword(uid).subscribe({
+      next: (r) => {
+        this.resetting.set(false);
+        if (r.temporaryPassword) {
+          this.credential.set(r.temporaryPassword);
+        }
+        this.notify.success('Mot de passe réinitialisé.');
+      },
+      error: () => this.resetting.set(false),
+    });
   }
 
   remove(): void {

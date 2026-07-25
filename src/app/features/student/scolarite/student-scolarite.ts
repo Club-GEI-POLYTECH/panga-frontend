@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,16 +13,8 @@ import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
-
-interface ScheduleSlot {
-  day: number;
-  start: string;
-  end: string;
-  label: string;
-  room?: string;
-}
-
-const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+import { ScheduleGrid } from '../../../shared/ui/schedule-grid';
+import { normalizeSchedule, type ScheduleSlot } from '../../../shared/schedule';
 
 @Component({
   selector: 'panga-student-scolarite',
@@ -36,6 +28,7 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
     PageHeader,
     SectionHeader,
     StatusBadge,
+    ScheduleGrid,
   ],
   template: `
     <panga-page-header
@@ -192,30 +185,7 @@ const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', '
                 description="Aucun créneau n'est configuré pour votre classe."
               />
             } @else {
-              <div class="space-y-5">
-                @for (d of scheduleDays(); track d) {
-                  <div>
-                    <p class="text-sm font-semibold text-(--text) mb-2">{{ dayName(d) }}</p>
-                    <div class="space-y-2">
-                      @for (s of slotsOfDay(d); track $index) {
-                        <div
-                          class="flex items-center gap-3 rounded-xl border border-(--border) px-3 py-2"
-                        >
-                          <span
-                            class="text-xs font-medium tabular-nums text-(--brand-700) w-24 shrink-0"
-                          >
-                            {{ s.start }}–{{ s.end }}
-                          </span>
-                          <span class="text-sm text-(--text) truncate flex-1">{{ s.label }}</span>
-                          @if (s.room) {
-                            <span class="text-xs text-(--text-muted)">{{ s.room }}</span>
-                          }
-                        </div>
-                      }
-                    </div>
-                  </div>
-                }
-              </div>
+              <panga-schedule-grid [slots]="scheduleSlots()" />
             }
           </section>
         }
@@ -291,10 +261,6 @@ export class StudentScolarite {
   protected readonly bulletins = signal<Bulletin[]>([]);
   protected readonly attendance = signal<Record<string, unknown>[]>([]);
   protected readonly scheduleSlots = signal<ScheduleSlot[]>([]);
-
-  protected readonly scheduleDays = computed(() =>
-    [...new Set(this.scheduleSlots().map((s) => s.day))].sort((a, b) => a - b),
-  );
 
   constructor() {
     this.api.me().subscribe({
@@ -377,14 +343,6 @@ export class StudentScolarite {
       'Cours'
     );
   }
-  protected dayName(d: number): string {
-    return DAYS[d] ?? `Jour ${d}`;
-  }
-  protected slotsOfDay(d: number): ScheduleSlot[] {
-    return this.scheduleSlots()
-      .filter((s) => s.day === d)
-      .sort((a, b) => a.start.localeCompare(b.start));
-  }
   protected countStatus(status: string): number {
     return this.attendance().filter((a) => a['status'] === status).length;
   }
@@ -397,80 +355,4 @@ export class StudentScolarite {
   protected asDate(v: unknown): string | null {
     return v ? String(v) : null;
   }
-}
-
-/* -------------------------------------------------------------------------- */
-
-const DAY_KEYS: Record<string, number> = {
-  monday: 1,
-  lundi: 1,
-  tuesday: 2,
-  mardi: 2,
-  wednesday: 3,
-  mercredi: 3,
-  thursday: 4,
-  jeudi: 4,
-  friday: 5,
-  vendredi: 5,
-  saturday: 6,
-  samedi: 6,
-  sunday: 7,
-  dimanche: 7,
-};
-
-/** Normalise l'emploi du temps quelle que soit sa forme (objet par jour ou liste). */
-function normalizeSchedule(data: unknown): ScheduleSlot[] {
-  const out: ScheduleSlot[] = [];
-  const push = (raw: unknown, dayHint?: number) => {
-    const o = (raw ?? {}) as Record<string, unknown>;
-    const day = dayHint ?? toDay(o['weekdayIso'] ?? o['weekday'] ?? o['day']);
-    if (!day) {
-      return;
-    }
-    out.push({
-      day,
-      start: String(o['startTime'] ?? o['start'] ?? '').slice(0, 5),
-      end: String(o['endTime'] ?? o['end'] ?? '').slice(0, 5),
-      label: String(
-        o['label'] ??
-          o['subject'] ??
-          o['courseName'] ??
-          o['subjectLabel'] ??
-          o['nationalProgramSlot'] ??
-          'Cours',
-      ),
-      room: (o['room'] ?? o['roomNumber']) as string | undefined,
-    });
-  };
-
-  if (Array.isArray(data)) {
-    data.forEach((s) => push(s));
-    return out;
-  }
-  const obj = (data ?? {}) as Record<string, unknown>;
-  const slots = obj['slots'] ?? obj['scheduleSlots'] ?? obj['schedule'];
-  if (Array.isArray(slots)) {
-    slots.forEach((s) => push(s));
-    return out;
-  }
-  // Forme objet par jour : { monday: [...], ... }.
-  for (const [key, value] of Object.entries(obj)) {
-    const day = DAY_KEYS[key.toLowerCase()];
-    if (day && Array.isArray(value)) {
-      value.forEach((s) => push(s, day));
-    }
-  }
-  return out;
-}
-
-function toDay(v: unknown): number {
-  if (typeof v === 'number') {
-    return v;
-  }
-  const s = String(v ?? '').toLowerCase();
-  if (DAY_KEYS[s]) {
-    return DAY_KEYS[s];
-  }
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
 }

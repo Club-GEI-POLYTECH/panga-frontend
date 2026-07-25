@@ -10,12 +10,16 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ClassesService } from '../services/classes.service';
 import { TeachersService } from '../services/teachers.service';
+import { SubjectsService } from '../services/subjects.service';
+import { StudentsService } from '../services/students.service';
 import type {
   ClassInstance,
   ClassScheduleSlot,
   SchoolSubOption,
+  Student,
   Teacher,
 } from '../models/admin.models';
+import type { ClassSubject } from '../models/course.models';
 import {
   CLASS_EDUCATION_LEVEL_OPTIONS,
   CLASS_SCHEDULE_OPTIONS,
@@ -242,7 +246,7 @@ const PHYS_KEYS = [
           <p class="text-xs text-(--text-muted)">Capacité</p>
         </div>
         <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-(--text)">{{ subjects().length }}</p>
+          <p class="text-2xl font-semibold text-(--text)">{{ courses().length }}</p>
           <p class="text-xs text-(--text-muted)">Cours</p>
         </div>
         <div class="panga-card p-4 text-center">
@@ -256,6 +260,27 @@ const PHYS_KEYS = [
         @for (group of groups; track group.title) {
           <div class="panga-card p-5 mb-4">
             <panga-section-header [icon]="group.icon" [title]="group.title" />
+            @if (sharedGroup(group)) {
+              <div
+                class="flex items-start gap-2 mb-4 rounded-xl px-3 py-2 text-xs"
+                style="
+                  background: color-mix(in srgb, var(--warning) 12%, transparent);
+                  color: var(--text);
+                "
+              >
+                <mat-icon
+                  fontSet="material-symbols-outlined"
+                  class="text-base! shrink-0"
+                  style="color: var(--warning)"
+                  >info</mat-icon
+                >
+                <span>
+                  Ces champs appartiennent au <strong>modèle de classe</strong>, partagé par toutes
+                  ses années scolaires. Les modifier (nom, niveau, cycle…) affecte aussi les autres
+                  années qui utilisent ce modèle.
+                </span>
+              </div>
+            }
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               @for (f of group.fields; track f.key) {
                 <mat-form-field appearance="outline">
@@ -326,6 +351,12 @@ const PHYS_KEYS = [
             </button>
           </div>
         </div>
+        @if (!courses().length) {
+          <p class="text-xs text-(--warning) mb-3">
+            Aucun cours ouvert sur cette classe — ouvrez d'abord les cours (Journal de cours) pour
+            pouvoir les rattacher aux créneaux.
+          </p>
+        }
         @if (slots().length === 0) {
           <p class="text-sm text-(--text-muted) py-4 text-center">
             Aucun créneau. Ajoutez-en pour bâtir la grille.
@@ -366,12 +397,16 @@ const PHYS_KEYS = [
                   />
                 </mat-form-field>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Libellé / matière</mat-label>
-                  <input
-                    matInput
-                    [value]="slot.label || ''"
-                    (change)="patchSlot($index, 'label', $any($event.target).value)"
-                  />
+                  <mat-label>Cours</mat-label>
+                  <mat-select
+                    [value]="slot.classSubjectId || ''"
+                    (selectionChange)="patchSlotCourse($index, $event.value)"
+                  >
+                    <mat-option [value]="''">— (aucun)</mat-option>
+                    @for (c of courses(); track c.id) {
+                      <mat-option [value]="c.id">{{ courseLabel(c) }}</mat-option>
+                    }
+                  </mat-select>
                 </mat-form-field>
                 <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Salle</mat-label>
@@ -515,16 +550,21 @@ const PHYS_KEYS = [
       <!-- Cours & élèves -->
       <section class="grid gap-4 lg:grid-cols-2 mb-4">
         <div class="panga-card p-5">
-          <panga-section-header icon="menu_book" title="Cours" [count]="subjects().length" />
-          @for (s of subjects(); track $index) {
+          <panga-section-header icon="menu_book" title="Cours" [count]="courses().length" />
+          @for (c of courses(); track c.id) {
             <div
               class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
             >
-              <span class="text-sm text-(--text)">{{ str(s['hoursPerWeek']) || '—' }} h/sem</span>
-              <span class="text-xs text-(--text-muted)">{{ str(s['roomNumber']) }}</span>
+              <span class="text-sm text-(--text) truncate">{{ courseLabel(c) }}</span>
+              <span class="text-xs text-(--text-muted) shrink-0">
+                {{ c.hoursPerWeek ?? '—' }} h/sem
+                @if (str(c['roomNumber'])) {
+                  · {{ str(c['roomNumber']) }}
+                }
+              </span>
             </div>
           } @empty {
-            <p class="text-sm text-(--text-muted)">Aucun cours.</p>
+            <p class="text-sm text-(--text-muted)">Aucun cours ouvert.</p>
           }
         </div>
         <div class="panga-card p-5">
@@ -554,12 +594,18 @@ export class ClassDetail {
   private readonly router = inject(Router);
   private readonly classesApi = inject(ClassesService);
   private readonly teachersApi = inject(TeachersService);
+  private readonly subjectsApi = inject(SubjectsService);
+  private readonly studentsApi = inject(StudentsService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
   protected readonly groups = GROUPS;
+  /** Un groupe édite-t-il des champs du template (partagés entre toutes les années) ? */
+  protected sharedGroup(group: Group): boolean {
+    return group.fields.some((f) => f.fromTemplate);
+  }
   protected readonly weekdays = WEEKDAY_OPTIONS;
   protected readonly promotionActions = PROMOTION_ACTION_OPTIONS;
   protected readonly tone = statusTone;
@@ -568,6 +614,10 @@ export class ClassDetail {
 
   protected readonly cls = signal<ClassInstance | null>(null);
   protected readonly teachers = signal<Teacher[]>([]);
+  /** Cours ouverts de l'instance — pour relier un créneau à un cours réel. */
+  protected readonly courses = signal<ClassSubject[]>([]);
+  /** Élèves de l'école (aplatis, avec noms) — filtrés par classe pour le roster. */
+  protected readonly allStudents = signal<Student[]>([]);
   protected readonly subOptions = signal<SchoolSubOption[]>([]);
   protected readonly slots = signal<ClassScheduleSlot[]>([]);
   protected readonly stats = signal<Record<string, unknown> | null>(null);
@@ -578,7 +628,9 @@ export class ClassDetail {
   protected readonly savingSlots = signal(false);
   protected readonly promoting = signal(false);
 
-  protected readonly subjects = computed(() => this.cls()?.subjects ?? []);
+  // Le roster vient de la relation embarquée (source d'appartenance fiable) ;
+  // les noms, absents de cette relation (identité sous `user` non incluse), sont
+  // enrichis en croisant avec la liste d'élèves aplatie (cf. studentName).
   protected readonly students = computed(() => this.cls()?.students ?? []);
   protected readonly otherClasses = computed(() =>
     this.allClasses().filter((c) => c.id !== this.id),
@@ -609,6 +661,12 @@ export class ClassDetail {
       .subscribe({ next: (r) => this.teachers.set(r.items) });
     this.reload();
     this.classesApi.scheduleSlots(this.id).subscribe({ next: (s) => this.slots.set(s) });
+    this.subjectsApi
+      .classSubjects({ classId: this.id })
+      .subscribe({ next: (r) => this.courses.set(r.items), error: () => undefined });
+    this.studentsApi
+      .list({ page: 1, limit: 300, schoolYear: this.sy.filter() })
+      .subscribe({ next: (r) => this.allStudents.set(r.items), error: () => undefined });
     this.classesApi
       .statistics(this.id)
       .subscribe({ next: (s) => this.stats.set(s), error: () => undefined });
@@ -666,7 +724,28 @@ export class ClassDetail {
     return personLabel((obj['user'] ?? obj) as Record<string, unknown>);
   }
   protected studentName(s: Record<string, unknown>): string {
-    return personLabel(s);
+    // La relation embarquée ne porte pas le nom (identité sous `user` non incluse).
+    // On croise avec la liste aplitie (par id, puis matricule/numéro) pour obtenir
+    // un vrai nom ; à défaut on affiche le matricule plutôt que le fallback « Parent ».
+    const full = this.resolveStudent(s);
+    const label = personLabel(full);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return this.str(full['studentNumber']) || this.str(full['matricule']) || 'Élève';
+  }
+
+  /** Retrouve la fiche élève complète (avec nom) à partir de la relation embarquée. */
+  private resolveStudent(s: Record<string, unknown>): Record<string, unknown> {
+    const id = this.str(s['id']) || this.str(s['studentId']);
+    const num = this.str(s['studentNumber']) || this.str(s['matricule']);
+    const found = this.allStudents().find(
+      (x) =>
+        (!!id && x.id === id) ||
+        (!!num && (this.str(x['studentNumber']) === num || this.str(x['matricule']) === num)),
+    );
+    // La relation embarquée peut aussi nicher l'identité sous `student`.
+    return found ?? (s['student'] as Record<string, unknown>) ?? s;
   }
   protected str(v: unknown): string {
     return v === null || v === undefined ? '' : String(v);
@@ -806,6 +885,27 @@ export class ClassDetail {
   }
   patchSlot(index: number, key: keyof ClassScheduleSlot, value: unknown): void {
     this.slots.update((list) => list.map((s, i) => (i === index ? { ...s, [key]: value } : s)));
+  }
+
+  /** Libellé lisible d'un cours (matière du programme national). */
+  protected courseLabel(cs: ClassSubject): string {
+    return cs.nationalProgramSlot?.labelFr ?? cs.nationalProgramSlot?.programCode ?? 'Cours';
+  }
+
+  /** Relie un créneau à un cours : fixe `classSubjectId` et dérive le `label`. */
+  patchSlotCourse(index: number, classSubjectId: string): void {
+    const course = this.courses().find((c) => c.id === classSubjectId);
+    this.slots.update((list) =>
+      list.map((s, i) =>
+        i === index
+          ? {
+              ...s,
+              classSubjectId: classSubjectId || undefined,
+              label: course ? this.courseLabel(course) : '',
+            }
+          : s,
+      ),
+    );
   }
 
   saveSlots(): void {
