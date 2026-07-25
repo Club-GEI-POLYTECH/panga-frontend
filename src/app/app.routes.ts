@@ -62,8 +62,10 @@ const moduleRoutes: Routes = NAV_ITEMS.filter(
 /** Vraies pages admin (chargées à la demande). */
 const adminRoutes: Routes = [
   {
+    // `/schools/my-school` est ouverte à tout authentifié ; l'enseignant y accède
+    // en lecture seule (l'édition est gatée dans le composant via `schools.update`).
     path: 'my-school',
-    canActivate: [permissionGuard('schools.read')],
+    canActivate: [roleGuard('admin', 'teacher')],
     loadComponent: () => import('./features/admin/school/my-school').then((m) => m.MySchool),
   },
   {

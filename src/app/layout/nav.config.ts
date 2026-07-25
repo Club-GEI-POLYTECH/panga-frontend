@@ -53,11 +53,11 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'main',
   },
   {
+    // Enseignant : accès en lecture seule (pas de `schools.read`) → filtrage par rôle.
     labelKey: 'nav.school',
     icon: 'apartment',
     path: 'my-school',
-    roles: ['admin'],
-    permission: 'schools.read',
+    roles: ['admin', 'teacher'],
     group: 'main',
   },
   {

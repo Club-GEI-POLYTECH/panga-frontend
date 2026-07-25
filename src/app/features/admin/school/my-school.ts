@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -11,6 +11,7 @@ import {
   patchSchoolForm,
   schoolUpdatePayload,
 } from '../../../core/models/school-fields';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { SchoolFieldsForm } from '../../../shared/ui/school-fields-form';
@@ -66,20 +67,26 @@ import { AuthoritiesManager } from './authorities-manager';
         </div>
       </div>
 
-      <!-- Formulaire éditable (sections partagées) -->
+      <!-- Formulaire (éditable pour l'admin, désactivé/lecture seule sinon) -->
       <panga-school-fields [form]="form" />
 
-      <div class="sticky bottom-4 z-10 flex justify-end mb-6">
-        <button
-          mat-flat-button
-          class="rounded-xl! shadow-lg"
-          (click)="save()"
-          [disabled]="saving() || form.pristine"
-        >
-          <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
-          {{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}
-        </button>
-      </div>
+      @if (canEdit()) {
+        <div class="sticky bottom-4 z-10 flex justify-end mb-6">
+          <button
+            mat-flat-button
+            class="rounded-xl! shadow-lg"
+            (click)="save()"
+            [disabled]="saving() || form.pristine"
+          >
+            <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+            {{ saving() ? 'Enregistrement…' : 'Enregistrer les modifications' }}
+          </button>
+        </div>
+      } @else {
+        <p class="mb-6 text-xs text-(--text-muted)">
+          Consultation seule — modification réservée à l'administration.
+        </p>
+      }
 
       <!-- Lecture seule -->
       <section class="grid gap-4 lg:grid-cols-2 mb-4">
@@ -100,8 +107,10 @@ import { AuthoritiesManager } from './authorities-manager';
         }
       </section>
 
-      <!-- Autorités (préfet, directeur…) -->
-      <panga-authorities-manager [schoolId]="schoolId()" />
+      <!-- Autorités (préfet, directeur…) — édition réservée à l'administration. -->
+      @if (canEdit()) {
+        <panga-authorities-manager [schoolId]="schoolId()" />
+      }
     }
   `,
 })
@@ -109,6 +118,10 @@ export class MySchool {
   private readonly schoolApi = inject(SchoolService);
   private readonly notify = inject(NotificationService);
   private readonly datePipe = inject(DatePipe);
+  private readonly auth = inject(AuthStore);
+
+  /** Édition réservée à qui possède `schools.update` (admin) ; sinon lecture seule. */
+  protected readonly canEdit = computed(() => this.auth.can('schools.update'));
 
   protected readonly readonly = SCHOOL_READONLY_GROUPS;
 
@@ -123,6 +136,10 @@ export class MySchool {
       next: (s) => {
         this.school.set(s);
         patchSchoolForm(this.form, s as Record<string, unknown>);
+        // Lecture seule pour les rôles sans `schools.update` (ex. enseignant).
+        if (!this.canEdit()) {
+          this.form.disable({ emitEvent: false });
+        }
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
