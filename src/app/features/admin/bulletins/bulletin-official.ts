@@ -30,6 +30,11 @@ interface LineRow {
   line: SnapshotLine;
   cells: (LineCell | null)[];
 }
+/** Sous-domaine (branche) : libellé + ses lignes de matières. */
+interface BranchVM {
+  label: string;
+  rows: LineRow[];
+}
 /** Sous-total d'un domaine pour un terme (issu de `sousTotauxDomaines`). */
 interface SubCell {
   p1: PeriodicDomainSubTotal | null;
@@ -42,7 +47,7 @@ interface SubCell {
 interface DomainVM {
   code: string;
   label: string;
-  rows: LineRow[];
+  branches: BranchVM[];
   maxPerPeriod: number | null;
   maxYear: number | null;
   sub: SubCell[];
@@ -138,53 +143,67 @@ const BLUE = '#3b82f6';
                   {{ d.label }}
                 </td>
               </tr>
-              @for (row of d.rows; track row.line.programCode) {
-                <tr>
-                  <td class="border border-(--border) px-2 py-1 whitespace-nowrap text-(--text)">
-                    {{ row.line.labelFr }}
-                  </td>
-                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                    {{ fmt(row.line.maxPerPeriod) }}
-                  </td>
-                  @for (c of row.cells; track $index) {
+              @for (branch of d.branches; track branch.label || $index) {
+                @if (branch.label) {
+                  <tr>
                     <td
-                      class="border border-(--border) px-2 py-1 text-right"
-                      [style.color]="noteColor(c?.p1, row.line.maxPerPeriod)"
+                      class="border border-(--border) px-2 py-0.5 pl-4 text-[11px] italic text-(--text-muted)"
+                      [attr.colspan]="totalCols()"
                     >
-                      {{ fmt(c?.p1) }}
+                      {{ branch.label }}
                     </td>
+                  </tr>
+                }
+                @for (row of branch.rows; track row.line.programCode) {
+                  <tr>
                     <td
-                      class="border border-(--border) px-2 py-1 text-right"
-                      [style.color]="noteColor(c?.p2, row.line.maxPerPeriod)"
+                      class="border border-(--border) px-2 py-1 pl-4 whitespace-nowrap text-(--text)"
                     >
-                      {{ fmt(c?.p2) }}
+                      {{ row.line.labelFr }}
                     </td>
                     <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                      {{ fmt(c?.maxExam) }}
+                      {{ fmt(row.line.maxPerPeriod) }}
                     </td>
-                    <td
-                      class="border border-(--border) px-2 py-1 text-right"
-                      [style.color]="noteColor(c?.exam, c?.maxExam)"
-                    >
-                      {{ fmt(c?.exam) }}
+                    @for (c of row.cells; track $index) {
+                      <td
+                        class="border border-(--border) px-2 py-1 text-right"
+                        [style.color]="noteColor(c?.p1, row.line.maxPerPeriod)"
+                      >
+                        {{ fmt(c?.p1) }}
+                      </td>
+                      <td
+                        class="border border-(--border) px-2 py-1 text-right"
+                        [style.color]="noteColor(c?.p2, row.line.maxPerPeriod)"
+                      >
+                        {{ fmt(c?.p2) }}
+                      </td>
+                      <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                        {{ fmt(c?.maxExam) }}
+                      </td>
+                      <td
+                        class="border border-(--border) px-2 py-1 text-right"
+                        [style.color]="noteColor(c?.exam, c?.maxExam)"
+                      >
+                        {{ fmt(c?.exam) }}
+                      </td>
+                      <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                        {{ fmt(c?.maxTrim) }}
+                      </td>
+                      <td
+                        class="border border-(--border) px-2 py-1 text-right font-semibold"
+                        [style.color]="noteColor(c?.trim, c?.maxTrim)"
+                      >
+                        {{ fmt(c?.trim) }}
+                      </td>
+                    }
+                    <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
+                      —
                     </td>
                     <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                      {{ fmt(c?.maxTrim) }}
+                      —
                     </td>
-                    <td
-                      class="border border-(--border) px-2 py-1 text-right font-semibold"
-                      [style.color]="noteColor(c?.trim, c?.maxTrim)"
-                    >
-                      {{ fmt(c?.trim) }}
-                    </td>
-                  }
-                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                    —
-                  </td>
-                  <td class="border border-(--border) px-2 py-1 text-right text-(--text-muted)">
-                    —
-                  </td>
-                </tr>
+                  </tr>
+                }
               }
               <!-- Sous-total du domaine (issu de sousTotauxDomaines) -->
               <tr
@@ -396,19 +415,18 @@ export class BulletinOfficial {
   protected readonly domainsVM = computed<DomainVM[]>(() => {
     const cols = this.cols();
     return (this.snapshot().domains ?? []).map((d) => {
-      const rows: LineRow[] = [];
-      for (const b of d.branches ?? []) {
-        for (const line of b.lines ?? []) {
-          rows.push({ line, cells: cols.map((c) => this.cellOf(line, c.term)) });
-        }
-      }
-      rows.sort((a, b) => (a.line.displayOrder ?? 0) - (b.line.displayOrder ?? 0));
+      const branches: BranchVM[] = (d.branches ?? []).map((b) => ({
+        label: b.labelFr ?? '',
+        rows: (b.lines ?? [])
+          .map((line) => ({ line, cells: cols.map((c) => this.cellOf(line, c.term)) }))
+          .sort((a, b2) => (a.line.displayOrder ?? 0) - (b2.line.displayOrder ?? 0)),
+      }));
       const code = d.code ?? '';
       const st = d.subTotal;
       return {
         code,
         label: d.labelFr ?? code,
-        rows,
+        branches,
         maxPerPeriod: st?.maxPerPeriod ?? null,
         maxYear: st?.maxYear ?? null,
         sub: cols.map<SubCell>((c) => ({

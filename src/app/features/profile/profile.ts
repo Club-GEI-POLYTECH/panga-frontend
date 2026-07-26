@@ -53,7 +53,7 @@ const PROFILE_GROUPS: SchoolFieldGroup[] = [
           { value: 'F', label: 'Féminin' },
         ],
       },
-      { key: 'dateOfBirth', label: 'Date de naissance (AAAA-MM-JJ)' },
+      { key: 'dateOfBirth', label: 'Date de naissance', type: 'date' },
       { key: 'placeOfBirth', label: 'Lieu de naissance' },
       { key: 'nationality', label: 'Nationalité' },
       { key: 'maritalStatus', label: 'État civil' },

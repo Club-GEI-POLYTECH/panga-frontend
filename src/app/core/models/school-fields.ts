@@ -19,6 +19,7 @@ export type SchoolFieldType =
   | 'text'
   | 'email'
   | 'tel'
+  | 'date'
   | 'textarea'
   | 'select'
   | 'multiselect'

@@ -8,6 +8,7 @@ import { PhoneField } from './phone-field';
 import { ProvinceField } from './province-field';
 import { GpsField } from './gps-field';
 import { CurrencySymbolField } from './currency-symbol-field';
+import { DateField } from './date-field';
 import { SCHOOL_EDITABLE_GROUPS, type SchoolFieldGroup } from '../../core/models/school-fields';
 
 /**
@@ -28,6 +29,7 @@ import { SCHOOL_EDITABLE_GROUPS, type SchoolFieldGroup } from '../../core/models
     ProvinceField,
     GpsField,
     CurrencySymbolField,
+    DateField,
   ],
   template: `
     @for (group of groups(); track group.title) {
@@ -52,6 +54,12 @@ import { SCHOOL_EDITABLE_GROUPS, type SchoolFieldGroup } from '../../core/models
                 <panga-gps-field class="block w-full" [label]="f.label" [formControlName]="f.key" />
               } @else if (f.type === 'currency-symbol') {
                 <panga-currency-symbol-field
+                  class="block w-full"
+                  [label]="f.label"
+                  [formControlName]="f.key"
+                />
+              } @else if (f.type === 'date') {
+                <panga-date-field
                   class="block w-full"
                   [label]="f.label"
                   [formControlName]="f.key"

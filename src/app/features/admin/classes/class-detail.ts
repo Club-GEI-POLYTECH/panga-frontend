@@ -875,10 +875,34 @@ export class ClassDetail {
   /* ----------------------------- Emploi du temps ---------------------------- */
 
   addSlot(): void {
-    this.slots.update((list) => [
-      ...list,
-      { weekdayIso: 1, startTime: '08:00', endTime: '09:00', label: '', room: '' },
-    ]);
+    this.slots.update((list) => {
+      // Enchaîne sur le dernier créneau : même jour, début = fin précédente,
+      // même durée (ex. 07h30–08h15 → 08h15–09h00).
+      const last = list[list.length - 1];
+      if (last?.startTime && last?.endTime) {
+        const dur = this.minutes(last.endTime) - this.minutes(last.startTime);
+        const start = last.endTime;
+        const end = this.hhmm(this.minutes(start) + (dur > 0 ? dur : 45));
+        return [
+          ...list,
+          { weekdayIso: last.weekdayIso ?? 1, startTime: start, endTime: end, label: '', room: '' },
+        ];
+      }
+      return [
+        ...list,
+        { weekdayIso: 1, startTime: '08:00', endTime: '09:00', label: '', room: '' },
+      ];
+    });
+  }
+  /** « HH:MM » → minutes depuis minuit. */
+  private minutes(hhmm: string): number {
+    const [h, m] = (hhmm || '').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+  /** minutes → « HH:MM » (borné sur 24h). */
+  private hhmm(min: number): string {
+    const t = ((min % 1440) + 1440) % 1440;
+    return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
   }
   removeSlot(index: number): void {
     this.slots.update((list) => list.filter((_, i) => i !== index));

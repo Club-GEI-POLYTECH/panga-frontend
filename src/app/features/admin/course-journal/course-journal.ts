@@ -379,55 +379,67 @@ interface SlotRow {
             title="Cours ouverts"
             [count]="subjects().length"
           />
-          <form
-            [formGroup]="courseForm"
-            (ngSubmit)="saveCourse()"
-            class="flex flex-wrap items-end gap-3 mb-4"
-          >
+          <!-- Attribution en masse : tous les cours à un enseignant -->
+          <div class="flex flex-wrap items-end gap-3 mb-4">
             <mat-form-field appearance="outline" class="flex-1 min-w-55">
-              <mat-label>Cours</mat-label>
-              <mat-select
-                formControlName="classSubjectId"
-                (selectionChange)="onCoursePick($event.value)"
-              >
-                @for (cs of subjects(); track cs.id) {
-                  <mat-option [value]="cs.id">{{ subjectLabel(cs) }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="flex-1 min-w-45">
-              <mat-label>Enseignant</mat-label>
-              <mat-select formControlName="teacherId">
+              <mat-label>Attribuer tous les cours à…</mat-label>
+              <mat-select [value]="bulkTeacher()" (selectionChange)="bulkTeacher.set($event.value)">
                 <mat-option [value]="''">—</mat-option>
                 @for (t of teachers(); track t.id) {
                   <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="w-32">
-              <mat-label>H / semaine</mat-label>
-              <input matInput type="number" formControlName="hoursPerWeek" min="0" />
-            </mat-form-field>
             <button
               mat-flat-button
               class="rounded-xl!"
-              type="submit"
-              [disabled]="courseForm.invalid || savingCourse()"
+              type="button"
+              [disabled]="!bulkTeacher() || bulkAssigning()"
+              (click)="assignAll()"
             >
-              {{ savingCourse() ? '…' : 'Enregistrer' }}
+              <mat-icon fontSet="material-symbols-outlined">groups</mat-icon>
+              {{ bulkAssigning() ? '…' : 'Tout attribuer' }}
             </button>
-          </form>
+          </div>
 
+          <!-- Liste éditable en ligne (enseignant + volume par cours) -->
           <div class="rounded-xl border border-(--border) divide-y divide-(--border)">
             @for (cs of subjects(); track cs.id) {
-              <div class="flex items-center justify-between gap-3 px-3 py-2">
-                <div class="min-w-0">
-                  <p class="text-sm text-(--text) truncate">{{ subjectLabel(cs) }}</p>
-                  <p class="text-xs text-(--text-muted) truncate">
-                    {{ courseTeacherName(cs) || 'Sans enseignant' }} ·
-                    {{ cs.hoursPerWeek ?? '—' }} h/sem
-                  </p>
-                </div>
+              <div class="flex flex-wrap items-center gap-3 px-3 py-2">
+                <p class="text-sm text-(--text) flex-1 min-w-40 truncate">{{ subjectLabel(cs) }}</p>
+                <mat-form-field appearance="outline" class="w-48 -mb-5!" subscriptSizing="dynamic">
+                  <mat-label>Enseignant</mat-label>
+                  <mat-select
+                    [value]="edit(cs.id).teacherId"
+                    (selectionChange)="patchEdit(cs.id, 'teacherId', $event.value)"
+                  >
+                    <mat-option [value]="''">—</mat-option>
+                    @for (t of teachers(); track t.id) {
+                      <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline" class="w-24 -mb-5!" subscriptSizing="dynamic">
+                  <mat-label>H/sem</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    [value]="edit(cs.id).hoursPerWeek ?? ''"
+                    (input)="patchEdit(cs.id, 'hoursPerWeek', $any($event.target).value)"
+                  />
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Enregistrer"
+                  [disabled]="savingRowId() === cs.id"
+                  (click)="saveRow(cs.id)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined" style="color: var(--success)"
+                    >check</mat-icon
+                  >
+                </button>
                 <button
                   mat-icon-button
                   type="button"
@@ -449,6 +461,9 @@ interface SlotRow {
       @if (isAdmin() && classInstanceId()) {
         <section class="panga-card p-5 mb-6">
           <panga-section-header icon="schedule" title="Définir les heures prévues" />
+          <p class="text-xs text-(--text-muted) -mt-2 mb-3">
+            La valeur est appliquée à chaque période de contrôle (les examens sont exclus).
+          </p>
           <form
             [formGroup]="targetForm"
             (ngSubmit)="saveTarget()"
@@ -462,16 +477,8 @@ interface SlotRow {
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="min-w-45">
-              <mat-label>Période</mat-label>
-              <mat-select formControlName="periodId">
-                @for (p of periods(); track p.id) {
-                  <mat-option [value]="p.id">{{ periodLabel(p) }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
             <mat-form-field appearance="outline" class="w-35">
-              <mat-label>Heures prévues</mat-label>
+              <mat-label>Heures / période</mat-label>
               <input
                 matInput
                 type="number"
@@ -699,8 +706,15 @@ export class CourseJournal {
 
   /* --- Gestion des cours ouverts (admin) : enseignant / volume / suppression --- */
   protected readonly teachers = signal<Teacher[]>([]);
-  protected readonly savingCourse = signal(false);
   protected readonly deletingCourseId = signal<string | null>(null);
+  /* --- Cours ouverts : édition inline (#6) + attribution en masse (#4) --- */
+  protected readonly bulkTeacher = signal('');
+  protected readonly bulkAssigning = signal(false);
+  protected readonly savingRowId = signal<string | null>(null);
+  /** État d'édition par cours (id → { enseignant, heures/sem }). */
+  private readonly courseEdits = signal<
+    Record<string, { teacherId: string; hoursPerWeek: number | null }>
+  >({});
 
   /* --- Ouverture des cours depuis le programme lié --- */
   protected readonly showOpenPanel = signal(false);
@@ -734,19 +748,16 @@ export class CourseJournal {
 
   protected readonly targetForm = new FormGroup({
     classSubjectId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    periodId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     plannedHours: new FormControl(0, {
       nonNullable: true,
       validators: [Validators.required, Validators.min(0), Validators.max(99999.99)],
     }),
   });
 
-  /** Édition d'un cours ouvert : enseignant + volume hebdomadaire. */
-  protected readonly courseForm = new FormGroup({
-    classSubjectId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
-    teacherId: new FormControl('', { nonNullable: true }),
-    hoursPerWeek: new FormControl<number | null>(null),
-  });
+  /** Périodes de contrôle (les examens sont exclus de la prévision d'heures). */
+  protected readonly controlPeriods = computed(() =>
+    this.periods().filter((p) => p.periodType !== 'exam'),
+  );
 
   protected readonly entryForm = new FormGroup({
     classSubjectId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -1068,22 +1079,31 @@ export class CourseJournal {
       this.targetForm.markAllAsTouched();
       return;
     }
+    const periods = this.controlPeriods();
+    if (periods.length === 0) {
+      this.notify.error('Aucune période de contrôle disponible pour cette classe.');
+      return;
+    }
     const v = this.targetForm.getRawValue();
+    const plannedHours = Number(v.plannedHours);
     this.savingTarget.set(true);
-    this.journal
-      .upsertPeriodTarget({
-        classSubjectId: v.classSubjectId,
-        periodId: v.periodId,
-        plannedHours: Number(v.plannedHours),
-      })
-      .subscribe({
-        next: () => {
-          this.savingTarget.set(false);
-          this.notify.success('Heures prévues enregistrées.');
-          this.loadOverview();
-        },
-        error: () => this.savingTarget.set(false),
-      });
+    // Même volume horaire appliqué à chaque période de contrôle.
+    forkJoin(
+      periods.map((p) =>
+        this.journal.upsertPeriodTarget({
+          classSubjectId: v.classSubjectId,
+          periodId: p.id,
+          plannedHours,
+        }),
+      ),
+    ).subscribe({
+      next: () => {
+        this.savingTarget.set(false);
+        this.notify.success('Heures prévues enregistrées sur chaque période.');
+        this.loadOverview();
+      },
+      error: () => this.savingTarget.set(false),
+    });
   }
 
   /* --------------------------- Cours ouverts (admin) ----------------------- */
@@ -1096,41 +1116,75 @@ export class CourseJournal {
     return full || (user['name'] as string) || (t.employeeNumber ?? '—');
   }
 
-  /** Nom de l'enseignant affecté à un cours, pour la ligne récapitulative. */
-  protected courseTeacherName(cs: ClassSubject): string {
-    const t = this.teachers().find((x) => x.id === cs.teacherId);
-    return t ? this.teacherLabel(t) : '';
+  /* ------------------------- Cours ouverts (inline) ------------------------- */
+
+  /** État d'édition d'un cours (édité ou dérivé du cours courant). */
+  protected edit(id: string): { teacherId: string; hoursPerWeek: number | null } {
+    const e = this.courseEdits()[id];
+    if (e) {
+      return e;
+    }
+    const cs = this.subjects().find((x) => x.id === id);
+    return { teacherId: cs?.teacherId ?? '', hoursPerWeek: cs?.hoursPerWeek ?? null };
   }
 
-  /** Pré-remplit le formulaire d'édition avec l'enseignant/volume du cours choisi. */
-  onCoursePick(id: string): void {
-    const cs = this.subjects().find((s) => s.id === id);
-    this.courseForm.patchValue(
-      { teacherId: cs?.teacherId ?? '', hoursPerWeek: cs?.hoursPerWeek ?? null },
-      { emitEvent: false },
-    );
+  patchEdit(id: string, key: 'teacherId' | 'hoursPerWeek', value: unknown): void {
+    const cur = this.edit(id);
+    const next =
+      key === 'hoursPerWeek'
+        ? { ...cur, hoursPerWeek: value === '' || value == null ? null : Number(value) }
+        : { ...cur, teacherId: String(value ?? '') };
+    this.courseEdits.update((m) => ({ ...m, [id]: next }));
   }
 
-  saveCourse(): void {
-    if (this.courseForm.invalid || this.savingCourse()) {
-      this.courseForm.markAllAsTouched();
+  /** Enregistre l'enseignant/volume d'un cours (édition inline). */
+  saveRow(id: string): void {
+    if (this.savingRowId()) {
       return;
     }
-    const v = this.courseForm.getRawValue();
-    this.savingCourse.set(true);
+    const e = this.edit(id);
+    this.savingRowId.set(id);
     this.subjectsApi
-      .updateClassSubject(v.classSubjectId, {
-        teacherId: v.teacherId || undefined,
-        hoursPerWeek: v.hoursPerWeek === null ? undefined : Number(v.hoursPerWeek),
+      .updateClassSubject(id, {
+        teacherId: e.teacherId || undefined,
+        hoursPerWeek: e.hoursPerWeek === null ? undefined : Number(e.hoursPerWeek),
       })
       .subscribe({
         next: () => {
-          this.savingCourse.set(false);
+          this.savingRowId.set(null);
           this.notify.success('Cours mis à jour.');
           this.refreshSubjects();
         },
-        error: () => this.savingCourse.set(false),
+        error: () => this.savingRowId.set(null),
       });
+  }
+
+  /** Attribue TOUS les cours de la classe à un même enseignant. */
+  assignAll(): void {
+    const teacherId = this.bulkTeacher();
+    const subs = this.subjects();
+    if (!teacherId || this.bulkAssigning() || !subs.length) {
+      return;
+    }
+    if (
+      !confirm(
+        'Attribuer tous les cours de la classe à cet enseignant ? Les affectations actuelles seront écrasées.',
+      )
+    ) {
+      return;
+    }
+    this.bulkAssigning.set(true);
+    forkJoin(subs.map((cs) => this.subjectsApi.updateClassSubject(cs.id, { teacherId }))).subscribe(
+      {
+        next: () => {
+          this.bulkAssigning.set(false);
+          this.bulkTeacher.set('');
+          this.notify.success('Tous les cours ont été attribués.');
+          this.refreshSubjects();
+        },
+        error: () => this.bulkAssigning.set(false),
+      },
+    );
   }
 
   deleteCourse(cs: ClassSubject): void {
@@ -1145,9 +1199,6 @@ export class CourseJournal {
       next: () => {
         this.deletingCourseId.set(null);
         this.notify.success('Cours fermé.');
-        if (this.courseForm.getRawValue().classSubjectId === cs.id) {
-          this.courseForm.reset({ teacherId: '', hoursPerWeek: null });
-        }
         this.refreshSubjects();
       },
       error: () => this.deletingCourseId.set(null),
@@ -1165,6 +1216,7 @@ export class CourseJournal {
       .pipe(catchError(() => of({ items: [] as ClassSubject[] })))
       .subscribe((r) => {
         this.subjects.set(r.items);
+        this.courseEdits.set({}); // re-dérive l'édition inline depuis les valeurs serveur
         this.loadOverview();
       });
   }

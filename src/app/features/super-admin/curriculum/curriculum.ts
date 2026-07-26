@@ -172,7 +172,38 @@ const BULLETIN_TEMPLATE = `{
                   @if (loadingDetail()) {
                     <p class="text-xs text-(--text-muted) mt-3">Chargement du barème…</p>
                   } @else if (slots().length) {
-                    <div class="mt-3 overflow-x-auto">
+                    <div class="mt-3 flex justify-end gap-2">
+                      @if (editingSlots()) {
+                        <button
+                          mat-stroked-button
+                          class="rounded-lg!"
+                          type="button"
+                          (click)="editingSlots.set(false)"
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          mat-flat-button
+                          class="rounded-lg!"
+                          type="button"
+                          [disabled]="savingSlots()"
+                          (click)="saveSlots()"
+                        >
+                          {{ savingSlots() ? '…' : 'Enregistrer' }}
+                        </button>
+                      } @else {
+                        <button
+                          mat-stroked-button
+                          class="rounded-lg!"
+                          type="button"
+                          (click)="editingSlots.set(true)"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">edit</mat-icon> Éditer le
+                          barème
+                        </button>
+                      }
+                    </div>
+                    <div class="mt-2 overflow-x-auto">
                       <table class="w-full text-xs">
                         <thead class="text-(--text-muted) text-left">
                           <tr>
@@ -186,12 +217,36 @@ const BULLETIN_TEMPLATE = `{
                           @for (s of slots(); track $index) {
                             <tr class="border-t border-(--border)">
                               <td class="py-1 pr-2 text-(--text)">
-                                {{ s['labelFr'] || s['programCode'] }}
+                                @if (editingSlots()) {
+                                  <input
+                                    class="w-full rounded border border-(--border) bg-(--surface) px-2 py-1"
+                                    [value]="$any(s['labelFr']) || ''"
+                                    (input)="
+                                      patchSlot($index, 'labelFr', $any($event.target).value)
+                                    "
+                                  />
+                                } @else {
+                                  {{ s['labelFr'] || s['programCode'] }}
+                                }
                               </td>
                               <td class="py-1 px-2 text-(--text-muted)">
                                 {{ s['programCode'] }}
                               </td>
-                              <td class="py-1 px-2 text-(--text)">{{ s['maxPerPeriod'] }}</td>
+                              <td class="py-1 px-2 text-(--text)">
+                                @if (editingSlots()) {
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    class="w-20 rounded border border-(--border) bg-(--surface) px-2 py-1 text-right"
+                                    [value]="$any(s['maxPerPeriod'])"
+                                    (input)="
+                                      patchSlot($index, 'maxPerPeriod', $any($event.target).value)
+                                    "
+                                  />
+                                } @else {
+                                  {{ s['maxPerPeriod'] }}
+                                }
+                              </td>
                               <td class="py-1 px-2 text-(--text-muted)">
                                 {{ scoringLabel(s['scoringMode']) }}
                               </td>
@@ -344,6 +399,9 @@ export class Curriculum {
   protected readonly selectedId = signal<string | null>(null);
   protected readonly slots = signal<Record<string, unknown>[]>([]);
   protected readonly loadingDetail = signal(false);
+  /** Édition inline du barème (slots) du programme déplié. */
+  protected readonly editingSlots = signal(false);
+  protected readonly savingSlots = signal(false);
 
   constructor() {
     this.load();
@@ -351,6 +409,7 @@ export class Curriculum {
 
   /** Charge le barème (slots) d'un programme national, ou replie s'il est déjà ouvert. */
   openProgram(p: NationalProgram): void {
+    this.editingSlots.set(false);
     if (this.selectedId() === p.id) {
       this.selectedId.set(null);
       return;
@@ -370,6 +429,30 @@ export class Curriculum {
         this.loadingDetail.set(false);
       },
       error: () => this.loadingDetail.set(false),
+    });
+  }
+
+  /** Met à jour un champ d'un slot en cours d'édition. */
+  patchSlot(index: number, key: string, value: unknown): void {
+    const v = key === 'maxPerPeriod' || key === 'displayOrder' ? Number(value) : value;
+    this.slots.update((list) => list.map((s, i) => (i === index ? { ...s, [key]: v } : s)));
+  }
+
+  /** Enregistre le barème édité — `PATCH /national-programs/:id`. */
+  saveSlots(): void {
+    const id = this.selectedId();
+    if (!id || this.savingSlots()) {
+      return;
+    }
+    this.savingSlots.set(true);
+    this.curriculum.updateProgram(id, { slots: this.slots() }).subscribe({
+      next: (full) => {
+        this.savingSlots.set(false);
+        this.editingSlots.set(false);
+        this.slots.set((full.slots ?? []) as Record<string, unknown>[]);
+        this.notify.success('Programme mis à jour.');
+      },
+      error: () => this.savingSlots.set(false),
     });
   }
 

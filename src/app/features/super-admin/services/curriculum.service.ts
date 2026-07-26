@@ -63,6 +63,13 @@ export class CurriculumService {
       .pipe(map((r) => unwrapEnvelope<NationalProgram>(r)));
   }
 
+  /** Édite un programme national (ses slots) — `PATCH /national-programs/:id`. */
+  updateProgram(id: string, dto: Record<string, unknown>): Observable<NationalProgram> {
+    return this.http
+      .patch<unknown>(`${this.base}/national-programs/${id}`, dto)
+      .pipe(map((r) => unwrapEnvelope<NationalProgram>(r)));
+  }
+
   /** Activer / désactiver un programme national pour l'école du token (admin). */
   setActivation(id: string, active: boolean): Observable<unknown> {
     return this.http
