@@ -160,8 +160,8 @@ export class ScheduleView {
           return;
         }
         this.subjectsApi
-          .teacherSchedule(t.id, this.year())
-          .pipe(catchError(() => of({})))
+          .teacherScheduleSlots(t.id, this.year())
+          .pipe(catchError(() => of([])))
           .subscribe((data) => {
             this.slots.set(normalizeSchedule(data));
             this.loading.set(false);

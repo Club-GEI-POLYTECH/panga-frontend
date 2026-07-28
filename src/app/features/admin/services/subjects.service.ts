@@ -78,6 +78,18 @@ export class SubjectsService {
       .pipe(map((r) => unwrapEnvelope<unknown>(r)));
   }
 
+  /**
+   * Créneaux horaires d'un enseignant (grille réelle : jour, horaires, matière,
+   * classe). Renvoie un tableau de `ClassScheduleSlot` enrichis.
+   */
+  teacherScheduleSlots(teacherId: string, schoolYear: string): Observable<unknown> {
+    return this.http
+      .get<unknown>(`${this.base}/teachers/${teacherId}/schedule-slots`, {
+        params: toHttpParams({ schoolYear }),
+      })
+      .pipe(map((r) => unwrapEnvelope<unknown>(r)));
+  }
+
   /* --------------------- Cycle de vie d'un cours unitaire ------------------- */
 
   getClassSubject(id: string): Observable<ClassSubject> {
