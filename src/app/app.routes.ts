@@ -38,6 +38,8 @@ const IMPLEMENTED = new Set([
   'course-journal',
   'promotions',
   'exams',
+  'discipline',
+  'reports',
   'settings',
   'ma-scolarite',
   'mes-paiements',
@@ -161,6 +163,16 @@ const adminRoutes: Routes = [
     path: 'promotions',
     canActivate: [permissionGuard('promotions.read')],
     loadComponent: () => import('./features/admin/promotions/promotions').then((m) => m.Promotions),
+  },
+  {
+    path: 'discipline',
+    canActivate: [permissionGuard('discipline.read')],
+    loadComponent: () => import('./features/admin/discipline/discipline').then((m) => m.Discipline),
+  },
+  {
+    path: 'reports',
+    canActivate: [permissionGuard('reports.read')],
+    loadComponent: () => import('./features/admin/reports/reports').then((m) => m.Reports),
   },
   {
     path: 'settings',
