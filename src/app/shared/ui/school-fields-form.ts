@@ -37,7 +37,8 @@ import { SCHOOL_EDITABLE_GROUPS, type SchoolFieldGroup } from '../../core/models
         <panga-section-header [icon]="group.icon" [title]="group.title" />
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           @for (f of group.fields; track f.key) {
-            <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
+            <!-- min-w-0 : autorise l'item de grille à rétrécir (évite le débordement mobile). -->
+            <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
               @if (f.type === 'phone') {
                 <panga-phone-field
                   class="block w-full"

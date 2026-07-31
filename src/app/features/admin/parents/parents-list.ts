@@ -176,7 +176,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       />
     }
 
-    <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+    <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Parents" [value]="parents().length" icon="family_restroom" />
       <panga-kpi-card label="Principaux" [value]="primaryCount()" icon="star" />
       <panga-kpi-card label="Contacts d'urgence" [value]="emergencyCount()" icon="emergency" />
@@ -195,7 +195,7 @@ const TEXT_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </p>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @for (f of group.fields; track f.key) {
-              <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
+              <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
                 @if (f.type === 'date') {
                   <panga-date-field
                     class="block w-full"

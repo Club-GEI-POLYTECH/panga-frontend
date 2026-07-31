@@ -74,7 +74,7 @@ function statusTone(status?: string): BadgeTone {
       </button>
     </panga-page-header>
 
-    <section class="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-6">
+    <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-4 mb-6">
       <panga-kpi-card label="Classes" [value]="classes().length" icon="meeting_room" />
       <panga-kpi-card label="Élèves" [value]="totalStudents()" icon="school" />
       <panga-kpi-card label="Capacité" [value]="totalCapacity()" icon="groups" />

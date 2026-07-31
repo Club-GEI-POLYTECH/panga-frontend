@@ -60,7 +60,7 @@ function isPaid(inv: SaasInvoice): boolean {
       subtitle="Abonnements et factures plateforme"
     />
 
-    <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+    <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Factures" [value]="invoices().length" icon="receipt_long" />
       <panga-kpi-card label="Payées" [value]="paidCount()" icon="task_alt" />
       <panga-kpi-card label="En attente" [value]="pendingCount()" icon="hourglass_top" />

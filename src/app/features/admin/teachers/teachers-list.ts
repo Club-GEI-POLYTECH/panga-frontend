@@ -198,7 +198,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </button>
     </panga-page-header>
 
-    <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+    <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Enseignants" [value]="total()" icon="badge" />
       <panga-kpi-card label="Temps plein" [value]="fullTime()" icon="schedule" />
       <panga-kpi-card label="Spécialités" [value]="specialties()" icon="menu_book" />
@@ -217,7 +217,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </p>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @for (f of group.fields; track f.key) {
-              <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
+              <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
                 @if (f.type === 'date') {
                   <panga-date-field
                     class="block w-full"

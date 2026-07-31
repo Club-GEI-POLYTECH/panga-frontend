@@ -201,7 +201,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
       />
     }
 
-    <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+    <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
       <panga-kpi-card label="Élèves" [value]="total()" icon="school" />
       <panga-kpi-card label="Affichés" [value]="students().length" icon="visibility" />
       <panga-kpi-card label="Garçons" [value]="boys()" icon="man" />
@@ -220,7 +220,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
           </p>
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             @for (f of group.fields; track f.key) {
-              <div [class]="f.wide ? 'sm:col-span-2 lg:col-span-3' : ''">
+              <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
                 @if (f.type === 'date') {
                   <panga-date-field
                     class="block w-full"
@@ -285,12 +285,12 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     }
 
     <div class="panga-card p-4 mb-4 flex flex-wrap items-center gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-50" subscriptSizing="dynamic">
+      <mat-form-field appearance="outline" class="flex-1 min-w-45" subscriptSizing="dynamic">
         <mat-label>Rechercher</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
         <input matInput [formControl]="searchCtrl" placeholder="Nom, matricule…" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-44" subscriptSizing="dynamic">
+      <mat-form-field appearance="outline" class="flex-1 min-w-36" subscriptSizing="dynamic">
         <mat-label>Statut</mat-label>
         <mat-select [value]="activeStatus()" (selectionChange)="filterByStatus($event.value)">
           <mat-option value="">Tous</mat-option>
@@ -299,7 +299,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-32" subscriptSizing="dynamic">
+      <mat-form-field appearance="outline" class="flex-1 min-w-28" subscriptSizing="dynamic">
         <mat-label>Par page</mat-label>
         <mat-select [value]="limit()" (selectionChange)="changeLimit($event.value)">
           @for (n of pageSizes; track n) {

@@ -232,7 +232,7 @@ const PHYS_KEYS = [
       </div>
 
       <!-- KPIs -->
-      <section class="grid gap-4 grid-cols-2 sm:grid-cols-4 mb-5">
+      <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-4 mb-5">
         <div class="panga-card p-4 text-center">
           <p class="text-2xl font-semibold text-(--text)">
             {{ cls()?.currentEnrollment ?? 0 }}
@@ -331,13 +331,13 @@ const PHYS_KEYS = [
 
       <!-- Emploi du temps -->
       <section class="panga-card p-5 mb-4">
-        <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <panga-section-header
             icon="calendar_month"
             title="Emploi du temps"
             [count]="slots().length"
           />
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button mat-stroked-button class="rounded-xl!" (click)="addSlot()">
               <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créneau
             </button>
@@ -429,7 +429,7 @@ const PHYS_KEYS = [
 
       <!-- Aspects physiques -->
       <section class="panga-card p-5 mb-4">
-        <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
           <panga-section-header icon="chair" title="Aspects physiques" />
           <button
             mat-flat-button

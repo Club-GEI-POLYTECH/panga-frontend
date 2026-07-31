@@ -93,7 +93,7 @@ function isActive(u: PlatformUser): boolean {
     </panga-page-header>
 
     @if (statTiles().length) {
-      <section class="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+      <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
         @for (tile of statTiles(); track tile.label) {
           <panga-kpi-card [label]="tile.label" [value]="tile.value" [icon]="statIcon(tile.label)" />
         }

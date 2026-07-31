@@ -250,6 +250,13 @@ html.dark {
   height: auto;
   min-height: 44px;
 }
+
+/* Les champs de formulaire ne doivent pas forcer un débordement horizontal
+   dans une grille/flex : `min-width: auto` (défaut des items) les empêche de
+   rétrécir sous leur contenu → débordement en mobile. On autorise le rétrécissement. */
+.mat-mdc-form-field {
+  min-width: 0;
+}
 .opt-name {
   display: block;
   font-weight: 500;
