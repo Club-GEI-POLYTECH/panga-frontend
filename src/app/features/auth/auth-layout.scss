@@ -110,6 +110,24 @@
   }
 }
 
+/* Illustration éducation : dessin plat (SVG) évoquant la gestion scolaire. */
+.illus {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 12%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 20px 44px -26px rgb(0 0 0 / 55%);
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 300px;
+  }
+}
+
 .feats {
   list-style: none;
   margin: 0;
