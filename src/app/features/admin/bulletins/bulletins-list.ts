@@ -72,8 +72,12 @@ function isPublished(b: Bulletin): boolean {
   template: `
     <panga-page-header icon="description" title="Bulletins" [subtitle]="'Année ' + schoolYear" />
 
-    <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-50">
+    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-50"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -81,7 +85,11 @@ function isPublished(b: Bulletin): boolean {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="min-w-45">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:w-auto sm:min-w-45"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Période</mat-label>
         <mat-select [value]="term()" (selectionChange)="selectTerm($event.value)">
           @for (t of terms; track t.value) {
@@ -147,8 +155,12 @@ function isPublished(b: Bulletin): boolean {
       <!-- Émulateur : aperçu d'un bulletin avant impression (dry-run, non persisté). -->
       <section class="panga-card p-5 mb-6">
         <panga-section-header icon="preview" title="Aperçu de bulletin (avant impression)" />
-        <div class="flex flex-wrap items-end gap-3">
-          <mat-form-field appearance="outline" class="flex-1 min-w-55">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+          <mat-form-field
+            appearance="outline"
+            class="w-full sm:flex-1 sm:min-w-55"
+            subscriptSizing="dynamic"
+          >
             <mat-label>Élève à prévisualiser</mat-label>
             <mat-select
               [formControl]="previewStudent"
@@ -160,7 +172,11 @@ function isPublished(b: Bulletin): boolean {
             </mat-select>
           </mat-form-field>
           @if (preview()) {
-            <button mat-stroked-button class="rounded-xl!" (click)="closePreview()">
+            <button
+              mat-stroked-button
+              class="rounded-xl! w-full sm:w-auto"
+              (click)="closePreview()"
+            >
               <mat-icon fontSet="material-symbols-outlined">close</mat-icon> Fermer
             </button>
           }
@@ -291,39 +307,54 @@ function isPublished(b: Bulletin): boolean {
         } @else {
           <div class="divide-y divide-(--border) -mx-5">
             @for (b of visibleBulletins(); track b.id) {
-              <div class="flex items-center gap-4 px-5 py-3">
-                <panga-avatar [name]="bulletinName(b)" [size]="38" />
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-(--text) truncate">
+              <div class="flex flex-col gap-1.5 px-5 py-3">
+                <div class="flex items-center gap-3">
+                  <panga-avatar [name]="bulletinName(b)" [size]="38" />
+                  <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
                     {{ bulletinName(b) }}
                   </p>
-                  <p class="text-xs text-(--text-muted)">
-                    {{ b.term || term() }}
-                    @if (b.average !== undefined && b.average !== null) {
-                      · Moyenne {{ b.average }}
-                    }
-                    @if (b.rank) {
-                      · Rang {{ b.rank }}
-                    }
-                  </p>
                 </div>
-                <panga-status-badge
-                  [label]="published(b) ? 'Publié' : 'Brouillon'"
-                  [tone]="statusTone(b)"
-                />
-                <button
-                  mat-icon-button
-                  aria-label="Télécharger le PDF"
-                  matTooltip="Télécharger le PDF"
-                  (click)="printOne(b)"
-                >
-                  <mat-icon fontSet="material-symbols-outlined">picture_as_pdf</mat-icon>
-                </button>
-                @if (!published(b) && isClassTutor()) {
-                  <button mat-stroked-button class="rounded-xl!" (click)="publish(b)">
-                    Publier
-                  </button>
-                }
+                <div class="flex items-center justify-between gap-2">
+                  <div class="flex min-w-0 items-center gap-1.5 pl-12.5">
+                    <panga-status-badge
+                      [label]="published(b) ? 'Publié' : 'Brouillon'"
+                      [tone]="statusTone(b)"
+                      [dot]="false"
+                      class="shrink-0"
+                    />
+                    <span class="text-xs text-(--text-muted) truncate">
+                      {{ b.term || term() }}
+                      @if (b.average !== undefined && b.average !== null) {
+                        · Moyenne {{ b.average }}
+                      }
+                      @if (b.rank) {
+                        · Rang {{ b.rank }}
+                      }
+                    </span>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <button
+                      mat-icon-button
+                      aria-label="Télécharger le PDF"
+                      matTooltip="Télécharger le PDF"
+                      (click)="printOne(b)"
+                    >
+                      <mat-icon fontSet="material-symbols-outlined">picture_as_pdf</mat-icon>
+                    </button>
+                    @if (!published(b) && isClassTutor()) {
+                      <button
+                        mat-icon-button
+                        aria-label="Publier"
+                        matTooltip="Publier"
+                        (click)="publish(b)"
+                      >
+                        <mat-icon fontSet="material-symbols-outlined" style="color: var(--success)">
+                          send
+                        </mat-icon>
+                      </button>
+                    }
+                  </div>
+                </div>
               </div>
             }
           </div>

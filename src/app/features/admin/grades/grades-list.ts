@@ -1,15 +1,17 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
   signal,
   untracked,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +20,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { GradesService } from '../services/grades.service';
 import { ClassesService } from '../services/classes.service';
 import { StudentsService } from '../services/students.service';
@@ -35,14 +38,10 @@ import type { ClassInstance, Student } from '../models/admin.models';
 import type { ClassSubject } from '../models/course.models';
 import type {
   BulkCreateGradesDto,
-  ClassTermAverages,
   Grade,
   Period,
   ProclamationRankRow,
   ScopedProclamation,
-  StudentSubjectAverage,
-  StudentTermAverages,
-  SubjectClassAverage,
 } from '../models/grade.models';
 import {
   EXAM_TYPE_OPTIONS,
@@ -64,12 +63,6 @@ interface CourseRef {
   maxExam?: number;
 }
 
-/** Ligne de la grille de moyennes (élève + cellules alignées sur les matières). */
-interface AvgRow {
-  student: StudentTermAverages;
-  cells: (StudentSubjectAverage | undefined)[];
-}
-
 const STATUS_TONE: Record<string, BadgeTone> = {
   draft: 'neutral',
   published: 'success',
@@ -82,7 +75,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   selector: 'panga-grades-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -92,6 +84,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
+    NgTemplateOutlet,
     Avatar,
     EmptyState,
     PageHeader,
@@ -129,8 +122,8 @@ const STATUS_TONE: Record<string, BadgeTone> = {
     </panga-page-header>
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-55">
+    <div class="panga-card p-5 mb-6 flex items-center gap-3">
+      <mat-form-field appearance="outline" class="flex-1 min-w-0" subscriptSizing="dynamic">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -138,7 +131,22 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-37.5">
+      <button
+        mat-icon-button
+        class="sm:hidden shrink-0"
+        (click)="openFilters(schoolYearTpl)"
+        matTooltip="Année scolaire"
+        aria-label="Année scolaire"
+      >
+        <mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
+      </button>
+      <div class="hidden sm:block w-37.5 shrink-0">
+        <ng-container [ngTemplateOutlet]="schoolYearTpl" />
+      </div>
+    </div>
+
+    <ng-template #schoolYearTpl>
+      <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
         <mat-label>Année scolaire</mat-label>
         <input
           matInput
@@ -147,7 +155,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           (blur)="reloadAll()"
         />
       </mat-form-field>
-    </div>
+    </ng-template>
 
     @if (!classId()) {
       <div class="panga-card">
@@ -172,10 +180,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             Aucune période. Cliquez sur « Générer » pour créer les périodes de l'année.
           </p>
         } @else {
-          <div class="flex flex-wrap gap-2">
+          <div
+            class="flex flex-nowrap overflow-x-auto -mx-5 px-5 gap-2 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0"
+          >
             @for (p of periods(); track p.id) {
               <div
-                class="flex items-center gap-2 rounded-xl border px-3 py-2"
+                class="flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2"
                 [class.opacity-60]="p.isLocked"
                 [style.border-color]="p.isLocked ? 'var(--warning)' : 'var(--border)'"
               >
@@ -226,7 +236,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           <!-- Saisie en lot -->
           <section class="panga-card p-5">
             <panga-section-header icon="playlist_add" title="Saisie des notes par cours" />
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+            <div class="flex flex-col gap-4 mb-4">
               <mat-form-field appearance="outline">
                 <mat-label>Cours</mat-label>
                 <mat-select [formControl]="bulkSlot">
@@ -243,16 +253,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Note maximale</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  [formControl]="bulkMaxScore"
-                  min="1"
-                  placeholder="auto (barème)"
-                />
-              </mat-form-field>
               @if (selectedBulkPeriod()?.periodType === 'exam') {
                 <mat-form-field appearance="outline">
                   <mat-label>Type d'examen</mat-label>
@@ -263,10 +263,6 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   </mat-select>
                 </mat-form-field>
               }
-              <mat-form-field appearance="outline">
-                <mat-label>Intitulé de l'évaluation</mat-label>
-                <input matInput [formControl]="bulkExamName" placeholder="ex. Interrogation 1" />
-              </mat-form-field>
               <panga-date-field
                 class="w-full"
                 label="Date de l'évaluation"
@@ -338,7 +334,25 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   : (gradesMeta()?.total ?? displayedGrades().length)
               "
             >
-              <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
+              <button
+                mat-stroked-button
+                class="rounded-xl! sm:hidden"
+                (click)="openFilters(gradeFiltersTpl)"
+              >
+                <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+                Filtrer
+              </button>
+              <div class="hidden sm:flex sm:flex-wrap items-center gap-2">
+                <ng-container [ngTemplateOutlet]="gradeFiltersTpl" />
+              </div>
+            </panga-section-header>
+
+            <ng-template #gradeFiltersTpl>
+              <mat-form-field
+                appearance="outline"
+                class="w-full sm:w-45 sm:-mb-5!"
+                subscriptSizing="dynamic"
+              >
                 <mat-label>Cours</mat-label>
                 <mat-select [formControl]="filterSlot" (selectionChange)="reloadGrades()">
                   <mat-option [value]="''">Tous</mat-option>
@@ -347,7 +361,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="w-37.5 -mb-5!" subscriptSizing="dynamic">
+              <mat-form-field
+                appearance="outline"
+                class="w-full sm:w-37.5 sm:-mb-5!"
+                subscriptSizing="dynamic"
+              >
                 <mat-label>Trimestre</mat-label>
                 <mat-select [value]="filterTerm()" (selectionChange)="setTerm($event.value)">
                   <mat-option [value]="''">Tous</mat-option>
@@ -356,7 +374,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="w-45 -mb-5!" subscriptSizing="dynamic">
+              <mat-form-field
+                appearance="outline"
+                class="w-full sm:w-45 sm:-mb-5!"
+                subscriptSizing="dynamic"
+              >
                 <mat-label>Période</mat-label>
                 <mat-select
                   [value]="clientPeriod()"
@@ -369,7 +391,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   }
                 </mat-select>
               </mat-form-field>
-            </panga-section-header>
+            </ng-template>
 
             @if (editing(); as g) {
               <div class="rounded-2xl border border-(--brand-300) bg-(--brand-50) p-4 mb-4">
@@ -411,35 +433,41 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (g of displayedGrades(); track g.id) {
-                  <div class="flex items-center gap-4 px-5 py-3">
+                  <div
+                    class="flex items-center gap-3 px-5 py-3 cursor-pointer active:bg-(--background)"
+                    role="button"
+                    tabindex="0"
+                    (click)="openGradeDetails(g, gradeDetailsTpl)"
+                    (keydown.enter)="openGradeDetails(g, gradeDetailsTpl)"
+                  >
                     <panga-avatar [name]="gradeStudent(g)" [size]="36" />
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">
                         {{ gradeStudent(g) }}
                       </p>
-                      <p class="text-xs text-(--text-muted) truncate">
+                      <p class="text-xs text-(--text-muted) truncate hidden sm:block">
                         {{ courseLabel(g) }}
                         @if (gradePeriodLabel(g); as pl) {
                           · {{ pl }}
                         }
-                        @if (g.examName) {
-                          · {{ g.examName }}
-                        }
                       </p>
                     </div>
-                    <div class="text-right shrink-0">
-                      <span class="text-base font-semibold text-(--text)">{{ num(g.score) }}</span>
-                      <span class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</span>
-                    </div>
-                    @if (g.isExamGrade) {
-                      <panga-status-badge label="Examen" tone="warning" [dot]="false" />
-                    }
                     <panga-status-badge
                       [label]="statusLabel(g.status)"
                       [tone]="statusTone(g.status)"
                       [dot]="false"
+                      class="hidden sm:inline-flex shrink-0"
                     />
-                    <button mat-icon-button [matMenuTriggerFor]="rowMenu" aria-label="Actions">
+                    <div class="text-right shrink-0">
+                      <span class="text-base font-semibold text-(--text)">{{ num(g.score) }}</span>
+                      <span class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</span>
+                    </div>
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="rowMenu"
+                      (click)="$event.stopPropagation()"
+                      aria-label="Actions"
+                    >
                       <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
                     </button>
                     <mat-menu #rowMenu="matMenu" class="panga-menu">
@@ -455,6 +483,52 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   </div>
                 }
               </div>
+
+              <ng-template #gradeDetailsTpl>
+                @if (detailsGrade(); as g) {
+                  <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-3">
+                      <panga-avatar [name]="gradeStudent(g)" [size]="44" />
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold text-(--text) truncate">
+                          {{ gradeStudent(g) }}
+                        </p>
+                        <p class="text-xs text-(--text-muted) truncate">
+                          {{ selectedClassLabel() }} · {{ g.schoolYear || schoolYear.value }}
+                        </p>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+                      <span class="text-(--text-muted)">Cours</span>
+                      <span class="text-(--text) text-right">{{ courseLabel(g) }}</span>
+                      <span class="text-(--text-muted)">Période</span>
+                      <span class="text-(--text) text-right">{{ gradePeriodLabel(g) || '—' }}</span>
+                      @if (g.examName) {
+                        <span class="text-(--text-muted)">Évaluation</span>
+                        <span class="text-(--text) text-right">{{ g.examName }}</span>
+                      }
+                      <span class="text-(--text-muted)">Note</span>
+                      <span class="text-(--text) text-right font-semibold">
+                        {{ num(g.score) }} / {{ num(g.maxScore) || 20 }}
+                      </span>
+                      <span class="text-(--text-muted)">Statut</span>
+                      <span class="text-right">
+                        <panga-status-badge
+                          [label]="statusLabel(g.status)"
+                          [tone]="statusTone(g.status)"
+                          [dot]="false"
+                        />
+                      </span>
+                      <span class="text-(--text-muted)">Saisie par</span>
+                      <span class="text-(--text) text-right">{{ gradeTeacherName(g) }}</span>
+                      @if (g.teacherComment) {
+                        <span class="text-(--text-muted)">Commentaire</span>
+                        <span class="text-(--text) text-right">{{ g.teacherComment }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </ng-template>
               @if (gradesMeta(); as m) {
                 <panga-paginator [meta]="m" (pageChange)="goPage($event)" />
               }
@@ -465,19 +539,23 @@ const STATUS_TONE: Record<string, BadgeTone> = {
         @case ('averages') {
           <section class="panga-card p-5">
             <panga-section-header icon="leaderboard" title="Moyennes & proclamation">
-              <div class="flex flex-wrap items-center gap-2">
-                <mat-form-field appearance="outline" class="w-40 -mb-5!" subscriptSizing="dynamic">
-                  <mat-label>Trimestre</mat-label>
-                  <mat-select [value]="avgTerm()" (selectionChange)="setAvgTerm($event.value)">
-                    @for (o of termOptions(); track o.value) {
+              <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                <mat-form-field
+                  appearance="outline"
+                  class="w-full sm:w-52 sm:-mb-5!"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Portée</mat-label>
+                  <mat-select [value]="avgScope()" (selectionChange)="setAvgScope($event.value)">
+                    @for (o of avgScopeOptions(); track o.value) {
                       <mat-option [value]="o.value">{{ o.label }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
-                  [disabled]="loadingAverages() || !avgTerm()"
+                  class="rounded-xl! w-full sm:w-auto"
+                  [disabled]="loadingAverages() || !avgScope()"
                   (click)="loadAverages(true)"
                 >
                   <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
@@ -487,48 +565,35 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
             @if (loadingAverages()) {
               <p class="text-sm text-(--text-muted) py-6 text-center">Calcul en cours…</p>
-            } @else if (!classAverages() && !proclamation()) {
+            } @else if (!proclamation()) {
               <panga-empty-state
                 icon="leaderboard"
                 title="Pas encore de moyennes"
                 [description]="
-                  avgTerm()
-                    ? 'Cliquez sur « Calculer » pour obtenir la grille et le classement.'
+                  avgScope()
+                    ? 'Cliquez sur « Calculer » pour obtenir le classement.'
                     : 'Aucune période configurée pour cette classe.'
                 "
               />
             } @else {
-              @if (classAverages(); as ca) {
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-5">
-                  <div class="rounded-2xl border border-(--border) p-4">
-                    <p class="text-xs text-(--text-muted)">Moyenne de classe</p>
-                    <p class="text-2xl font-semibold" [style.color]="avgColor(ca.classAverage)">
-                      {{ pctOr(ca.classAverage) }}
-                    </p>
-                  </div>
-                  <div class="rounded-2xl border border-(--border) p-4">
-                    <p class="text-xs text-(--text-muted)">Effectif</p>
-                    <p class="text-2xl font-semibold text-(--text)">
-                      {{ ca.studentCount ?? avgStudents().length }}
-                    </p>
-                  </div>
-                  <div class="rounded-2xl border border-(--border) p-4">
-                    <p class="text-xs text-(--text-muted) mb-1">Statut</p>
-                    <panga-status-badge
-                      [label]="ca.isFinal ? 'Définitive' : 'Provisoire'"
-                      [tone]="ca.isFinal ? 'success' : 'warning'"
-                    />
-                  </div>
-                  @if (ca.computedAt) {
-                    <div class="rounded-2xl border border-(--border) p-4">
-                      <p class="text-xs text-(--text-muted)">Calculé le</p>
-                      <p class="text-sm font-medium text-(--text)">
-                        {{ ca.computedAt | date: 'dd/MM/yy HH:mm' }}
-                      </p>
-                    </div>
-                  }
+              <div class="grid gap-4 sm:grid-cols-2 mb-5">
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Moyenne générale</p>
+                  <p class="text-2xl font-semibold" [style.color]="avgColor(classAveragePercent())">
+                    {{ over20(classAveragePercent()) }}
+                    <span class="text-sm text-(--text-muted)">/20</span>
+                    <span class="text-sm text-(--text-muted)">
+                      · {{ pctOr(classAveragePercent()) }}</span
+                    >
+                  </p>
                 </div>
-              }
+                <div class="rounded-2xl border border-(--border) p-4">
+                  <p class="text-xs text-(--text-muted)">Effectif</p>
+                  <p class="text-2xl font-semibold text-(--text)">
+                    {{ proclamation()?.studentCount ?? ranking().length }}
+                  </p>
+                </div>
+              </div>
 
               <div class="grid gap-4 sm:grid-cols-3 mb-5">
                 <div class="rounded-2xl border border-(--border) p-4">
@@ -545,137 +610,37 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 </div>
               </div>
 
-              <div class="mb-4 inline-flex rounded-xl border border-(--border) p-1">
-                <button
-                  class="rounded-lg px-3 py-1.5 text-sm font-medium"
-                  [class.bg-(--brand-500)]="avgView() === 'grid'"
-                  [class.text-white]="avgView() === 'grid'"
-                  [class.text-(--text-muted)]="avgView() !== 'grid'"
-                  (click)="avgView.set('grid')"
-                >
-                  Grille des moyennes
-                </button>
-                <button
-                  class="rounded-lg px-3 py-1.5 text-sm font-medium"
-                  [class.bg-(--brand-500)]="avgView() === 'ranking'"
-                  [class.text-white]="avgView() === 'ranking'"
-                  [class.text-(--text-muted)]="avgView() !== 'ranking'"
-                  (click)="avgView.set('ranking')"
-                >
-                  Classement
-                </button>
-              </div>
-
-              @if (avgView() === 'grid') {
-                @if (avgMatrix().length === 0) {
-                  <panga-empty-state
-                    icon="table_chart"
-                    title="Aucune donnée"
-                    description="Aucune note pour ce trimestre."
-                  />
-                } @else {
-                  <div class="overflow-x-auto -mx-5 px-5">
-                    <table class="min-w-full text-sm border-collapse">
-                      <thead>
-                        <tr class="text-xs text-(--text-muted)">
-                          <th class="px-2 py-2 text-left font-medium">#</th>
-                          <th class="px-2 py-2 text-left font-medium">Élève</th>
-                          <th class="px-2 py-2 text-right font-medium">Générale</th>
-                          @for (s of avgSubjects(); track s.nationalProgramSlotId) {
-                            <th class="px-2 py-2 text-right font-medium whitespace-nowrap">
-                              {{ s.label }}
-                            </th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (row of avgMatrix(); track row.student.studentId) {
-                          <tr class="border-t border-(--border)">
-                            <td class="px-2 py-2 text-(--text-muted)">
-                              {{ row.student.rank ?? '—' }}
-                            </td>
-                            <td class="px-2 py-2 whitespace-nowrap font-medium text-(--text)">
-                              {{
-                                row.student.studentName ||
-                                  row.student.studentNumber ||
-                                  row.student.studentId
-                              }}
-                              @if (!row.student.isFinal) {
-                                <span
-                                  class="ml-1 text-(--warning)"
-                                  matTooltip="Provisoire (examen manquant)"
-                                  >•</span
-                                >
-                              }
-                            </td>
-                            <td
-                              class="px-2 py-2 text-right font-semibold"
-                              [style.color]="avgColor(row.student.generalAverage)"
-                            >
-                              {{ pctOr(row.student.generalAverage) }}
-                            </td>
-                            @for (c of row.cells; track $index) {
-                              <td
-                                class="px-2 py-2 text-right text-(--text)"
-                                [matTooltip]="cellTip(c)"
-                              >
-                                {{ cellVal(c) }}
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                      @if (avgSubjects().length) {
-                        <tfoot>
-                          <tr class="border-t-2 border-(--border) text-xs text-(--text-muted)">
-                            <td class="px-2 py-2"></td>
-                            <td class="px-2 py-2 font-medium">Moyenne de classe</td>
-                            <td class="px-2 py-2 text-right font-semibold text-(--text)">
-                              {{ pctOr(classAverages()?.classAverage) }}
-                            </td>
-                            @for (s of avgSubjects(); track s.nationalProgramSlotId) {
-                              <td class="px-2 py-2 text-right">
-                                {{ pctOr(s.classAverage) }}
-                              </td>
-                            }
-                          </tr>
-                        </tfoot>
-                      }
-                    </table>
-                  </div>
-                }
+              @if (ranking().length === 0) {
+                <panga-empty-state
+                  icon="leaderboard"
+                  title="Aucun classement"
+                  description="Aucune note pour cette portée."
+                />
               } @else {
-                @if (ranking().length === 0) {
-                  <panga-empty-state
-                    icon="leaderboard"
-                    title="Aucun classement"
-                    description="Aucune note pour ce trimestre."
-                  />
-                } @else {
-                  <div class="divide-y divide-(--border) -mx-5">
-                    @for (r of ranking(); track r.studentId || $index; let i = $index) {
-                      <div class="flex items-center gap-4 px-5 py-2.5">
-                        <span
-                          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
-                          [style.background]="rankBg(i)"
-                          [style.color]="rankFg(i)"
-                        >
-                          {{ r.rank || i + 1 }}
-                        </span>
-                        <panga-avatar [name]="rankName(r)" [size]="32" />
-                        <span class="flex-1 min-w-0 text-sm text-(--text) truncate">
+                <div class="divide-y divide-(--border) -mx-5">
+                  @for (r of ranking(); track r.studentId || $index; let i = $index) {
+                    <div class="flex items-start gap-3 px-5 py-3">
+                      <span
+                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
+                        [style.background]="rankBg(i)"
+                        [style.color]="rankFg(i)"
+                      >
+                        {{ r.rank || i + 1 }}
+                      </span>
+                      <panga-avatar [name]="rankName(r)" [size]="32" />
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-medium text-(--text) truncate">
                           {{ rankName(r) }}
-                        </span>
-                        <span
-                          class="text-sm font-semibold"
-                          [style.color]="avgColor(r.averagePercent)"
-                        >
+                        </p>
+                        <p class="text-sm font-semibold" [style.color]="avgColor(r.averagePercent)">
+                          {{ over20(r.averagePercent) }}/20
+                          <span class="mx-1 text-(--text-muted) font-normal">·</span>
                           {{ pct(r.averagePercent) }}%
-                        </span>
+                        </p>
                       </div>
-                    }
-                  </div>
-                }
+                    </div>
+                  }
+                </div>
               }
             }
           </section>
@@ -692,6 +657,7 @@ export class GradesList {
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
   private readonly auth = inject(AuthStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   /**
    * Gestion du calendrier des périodes (générer / verrouiller) réservée au
@@ -746,7 +712,6 @@ export class GradesList {
   protected readonly bulkPeriod = new FormControl('', { nonNullable: true });
   protected readonly bulkMaxScore = new FormControl<number | null>(null);
   protected readonly bulkExamType = new FormControl('final', { nonNullable: true });
-  protected readonly bulkExamName = new FormControl('', { nonNullable: true });
   protected readonly bulkExamDate = new FormControl('', { nonNullable: true });
   protected readonly scores = signal<Record<string, string>>({});
   protected readonly savingBulk = signal(false);
@@ -777,6 +742,13 @@ export class GradesList {
   /** Affinage période P1/P2/Examen — appliqué **côté client** sur la page chargée. */
   protected readonly clientPeriod = signal('');
   protected readonly grades = signal<Grade[]>([]);
+  /** Note affichée dans le popup de détails (ouvert au tap sur une ligne). */
+  protected readonly detailsGrade = signal<Grade | null>(null);
+  /** Libellé de la classe sélectionnée (contexte affiché dans le popup de détails). */
+  protected readonly selectedClassLabel = computed(() => {
+    const c = this.classes().find((x) => x.id === this.classId());
+    return c?.template?.name || c?.id || '—';
+  });
 
   /** Termes réellement présents dans la classe (primaire → trimestres, etc.). */
   protected readonly termOptions = computed<EnumOption[]>(() => {
@@ -810,31 +782,30 @@ export class GradesList {
   protected readonly savingEdit = signal(false);
 
   /* ------------------------------- Moyennes -------------------------------- */
-  /** Trimestre ciblé pour la grille de moyennes + la proclamation (§A/§B). */
-  protected readonly avgTerm = signal('');
-  /** Sous-vue de l'onglet Moyennes : grille détaillée ou classement. */
-  protected readonly avgView = signal<'grid' | 'ranking'>('grid');
-  protected readonly classAverages = signal<ClassTermAverages | null>(null);
+  /**
+   * Portée ciblée pour la proclamation (§B) : `TERM1`/`SEMESTER1`/… (terme complet),
+   * `TERM1:P1` (1ère période du terme — check-point intermédiaire) ou `ANNUAL`.
+   */
+  protected readonly avgScope = signal('');
   protected readonly proclamation = signal<ScopedProclamation | null>(null);
   protected readonly loadingAverages = signal(false);
 
-  /** Colonnes matière de la grille (ordre = moyennes de classe). */
-  protected readonly avgSubjects = computed<SubjectClassAverage[]>(
-    () => this.classAverages()?.subjects ?? [],
-  );
-  /** Élèves de la grille, triés par rang. */
-  protected readonly avgStudents = computed<StudentTermAverages[]>(() =>
-    [...(this.classAverages()?.students ?? [])].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)),
-  );
-  /** Matrice élève × matière (cellules alignées sur `avgSubjects`). */
-  protected readonly avgMatrix = computed<AvgRow[]>(() => {
-    const subs = this.avgSubjects();
-    return this.avgStudents().map((student) => ({
-      student,
-      cells: subs.map((s) =>
-        student.subjects?.find((x) => x.nationalProgramSlotId === s.nationalProgramSlotId),
-      ),
-    }));
+  /**
+   * Options de portée : chaque terme réel (P1 intermédiaire + terme complet) +
+   * « Annuel ». Couvre trimestres (P1/P3/P5 = 1ère période de chaque trimestre)
+   * et semestres (P1/P3 = 1ère période de chaque semestre) sans distinction —
+   * `termOptions` reflète déjà le système de la classe (périodes réellement générées).
+   */
+  protected readonly avgScopeOptions = computed<EnumOption[]>(() => {
+    const opts: EnumOption[] = [];
+    for (const t of this.termOptions()) {
+      opts.push({ value: `${t.value}:P1`, label: `${t.label} — 1ère période` });
+      opts.push({ value: t.value, label: t.label });
+    }
+    if (opts.length) {
+      opts.push({ value: 'ANNUAL', label: 'Annuel' });
+    }
+    return opts;
   });
   /** Classement de la proclamation (tous, triés). */
   protected readonly ranking = computed<ProclamationRankRow[]>(() =>
@@ -843,6 +814,14 @@ export class GradesList {
   protected readonly tranche75 = computed(() => this.proclamation()?.above75Percent ?? []);
   protected readonly tranche50 = computed(() => this.proclamation()?.between50And75Percent ?? []);
   protected readonly trancheLow = computed(() => this.proclamation()?.below50Percent ?? []);
+  /** Moyenne générale de la classe (%) — moyenne arithmétique du classement affiché. */
+  protected readonly classAveragePercent = computed<number | null>(() => {
+    const rows = this.ranking();
+    if (!rows.length) {
+      return null;
+    }
+    return rows.reduce((sum, r) => sum + (r.averagePercent ?? 0), 0) / rows.length;
+  });
 
   constructor() {
     // Sélection cours/période → synchronise les signaux + auto-remplit la note max.
@@ -862,6 +841,15 @@ export class GradesList {
         this.reloadAll();
       });
     });
+  }
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
+  }
+
+  openGradeDetails(g: Grade, template: TemplateRef<unknown>): void {
+    this.detailsGrade.set(g);
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Détails de la note', template } });
   }
 
   /* ------------------------------- Sélection ------------------------------- */
@@ -890,10 +878,9 @@ export class GradesList {
       this.allStudents.set(r.students.items);
       this.courses.set(toCourses(r.courses.items));
       this.periods.set(r.periods);
-      // Réinitialise l'onglet Moyennes et cible le 1er trimestre disponible.
-      this.classAverages.set(null);
+      // Réinitialise l'onglet Moyennes et cible la 1ère portée disponible.
       this.proclamation.set(null);
-      this.avgTerm.set(this.termOptions()[0]?.value ?? '');
+      this.avgScope.set(this.avgScopeOptions()[0]?.value ?? '');
       this.reloadGrades();
     });
   }
@@ -988,7 +975,6 @@ export class GradesList {
     if (period.periodNumber) dto.periodNumber = period.periodNumber;
     if (this.bulkMaxScore.value) dto.maxScore = Number(this.bulkMaxScore.value);
     if (isExam) dto.examType = this.bulkExamType.value || 'final';
-    if (this.bulkExamName.value) dto.examName = this.bulkExamName.value;
     if (this.bulkExamDate.value) dto.examDate = this.bulkExamDate.value;
 
     this.savingBulk.set(true);
@@ -997,7 +983,6 @@ export class GradesList {
         this.savingBulk.set(false);
         this.notify.success(`${rows.length} note(s) enregistrée(s).`);
         this.scores.set({});
-        this.bulkExamName.reset('');
         this.reloadGrades();
         this.tab.set('list');
       },
@@ -1009,7 +994,6 @@ export class GradesList {
     this.bulkSlot.reset('');
     this.bulkPeriod.reset('');
     this.bulkMaxScore.reset(null);
-    this.bulkExamName.reset('');
     this.bulkExamDate.reset('');
     this.scores.set({});
   }
@@ -1095,34 +1079,43 @@ export class GradesList {
 
   /* ------------------------------- Moyennes -------------------------------- */
 
-  setAvgTerm(term: string): void {
-    this.avgTerm.set(term);
+  setAvgScope(scope: string): void {
+    this.avgScope.set(scope);
     this.loadAverages();
   }
 
+  /** Décode une valeur d'`avgScopeOptions` en paramètres de l'API proclamation. */
+  private parseAvgScope(value: string): {
+    term?: string;
+    scope?: string;
+    periodNumber?: number;
+  } {
+    if (!value || value === 'ANNUAL') {
+      return { scope: 'annual' };
+    }
+    const [term, marker] = value.split(':');
+    return marker === 'P1' ? { term, scope: 'period', periodNumber: 1 } : { term, scope: 'term' };
+  }
+
   /**
-   * Charge la grille de moyennes (§A) et la proclamation (§B) pour le trimestre
-   * sélectionné. `recompute` force d'abord un recalcul persistant côté back.
+   * Charge la proclamation (§B) pour la portée sélectionnée (terme complet, 1ère
+   * période d'un terme, ou annuel). `recompute` force d'abord un recalcul côté back.
    */
   loadAverages(recompute = false): void {
-    const term = this.avgTerm();
-    if (!this.classId() || !term) {
+    const scopeValue = this.avgScope();
+    if (!this.classId() || !scopeValue) {
       return;
     }
+    const { term, scope, periodNumber } = this.parseAvgScope(scopeValue);
     this.loadingAverages.set(true);
     const run = () => {
-      forkJoin({
-        averages: this.gradesApi
-          .classAverages(this.classId(), this.yr(), term)
-          .pipe(catchError(() => of(null))),
-        proclamation: this.gradesApi
-          .proclamation(this.classId(), this.yr(), term)
-          .pipe(catchError(() => of(null))),
-      }).subscribe((r) => {
-        this.classAverages.set(r.averages);
-        this.proclamation.set(r.proclamation);
-        this.loadingAverages.set(false);
-      });
+      this.gradesApi
+        .proclamation(this.classId(), this.yr(), term, scope, periodNumber)
+        .pipe(catchError(() => of(null)))
+        .subscribe((r) => {
+          this.proclamation.set(r);
+          this.loadingAverages.set(false);
+        });
     };
     if (recompute) {
       this.gradesApi.computeClassAverages(this.classId(), this.yr()).subscribe({
@@ -1140,19 +1133,6 @@ export class GradesList {
       `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || r.studentNumber || r.studentId || '—'
     );
   }
-  /** Valeur affichée d'une cellule (moyenne de trimestre). */
-  protected cellVal(c: StudentSubjectAverage | undefined): string {
-    return c?.termAverage != null ? `${this.pct(c.termAverage)}%` : '—';
-  }
-  /** Infobulle P1/P2/Examen d'une cellule. */
-  protected cellTip(c: StudentSubjectAverage | undefined): string {
-    if (!c) {
-      return '';
-    }
-    const part = (label: string, v: number | null | undefined) =>
-      v === null || v === undefined ? `${label} —` : `${label} ${this.num(v)}`;
-    return `${part('P1', c.period1)} · ${part('P2', c.period2)} · ${part('Ex', c.exam)}`;
-  }
 
   /* -------------------------------- Helpers -------------------------------- */
 
@@ -1166,6 +1146,10 @@ export class GradesList {
   /** Pourcentage affiché, ou « — » si absent (null/undefined). */
   protected pctOr(v: number | null | undefined): string {
     return v === null || v === undefined ? '—' : `${this.pct(v)}%`;
+  }
+  /** Pourcentage (0–100) converti en note sur 20, à 1 décimale (« — » si absent). */
+  protected over20(v: number | null | undefined): string {
+    return v === null || v === undefined ? '—' : (v / 5).toFixed(1);
   }
   protected studentName(s: Student): string {
     return `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id;
@@ -1185,6 +1169,14 @@ export class GradesList {
   }
   protected courseLabel(g: Grade): string {
     return g.nationalProgramSlot?.labelFr ?? g.nationalProgramSlot?.programCode ?? 'Cours';
+  }
+  /** Enseignant ayant saisi la note (relation embarquée, sinon id brut). */
+  protected gradeTeacherName(g: Grade): string {
+    const t = (g.teacher ?? {}) as Record<string, unknown>;
+    const embedded =
+      `${(t['firstName'] as string) ?? ''} ${(t['lastName'] as string) ?? ''}`.trim() ||
+      (t['fullName'] as string);
+    return embedded || g.teacherId || '—';
   }
   /** Libellé de période partagé (« 1er trimestre — Examen » / « … — P1 »). */
   protected readonly periodLabel = periodLabel;

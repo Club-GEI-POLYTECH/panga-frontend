@@ -122,12 +122,19 @@ export class GradesService {
 
   /**
    * Proclamation scopée (§B) : classement + tranches. `term` optionnel — omis =
-   * classement annuel.
+   * classement annuel. `scope` = 'term' (défaut si term fourni) | 'period' (+
+   * `periodNumber` 1|2, période au sein du terme) | 'exam' | 'annual'.
    */
-  proclamation(classId: string, schoolYear: string, term?: string): Observable<ScopedProclamation> {
+  proclamation(
+    classId: string,
+    schoolYear: string,
+    term?: string,
+    scope?: string,
+    periodNumber?: number,
+  ): Observable<ScopedProclamation> {
     return this.http
       .get<unknown>(`${this.base}/classes/${classId}/proclamation`, {
-        params: toHttpParams({ schoolYear, term }),
+        params: toHttpParams({ schoolYear, term, scope, periodNumber }),
       })
       .pipe(map((r) => unwrapEnvelope<ScopedProclamation>(r)));
   }

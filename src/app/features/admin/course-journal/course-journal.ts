@@ -81,14 +81,14 @@ interface SlotRow {
     />
 
     <!-- Filtres -->
-    <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="w-37.5">
+    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
         <mat-label>Année scolaire</mat-label>
         <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
 
       @if (isParent()) {
-        <mat-form-field appearance="outline" class="flex-1 min-w-55">
+        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
           <mat-label>Enfant</mat-label>
           <mat-select [value]="studentId()" (selectionChange)="selectStudent($event.value)">
             @for (c of children(); track c.studentId) {
@@ -97,7 +97,7 @@ interface SlotRow {
           </mat-select>
         </mat-form-field>
       } @else {
-        <mat-form-field appearance="outline" class="flex-1 min-w-55">
+        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
           <mat-label>Classe</mat-label>
           <mat-select [value]="classInstanceId()" (selectionChange)="selectClass($event.value)">
             @for (c of classes(); track c.id) {
@@ -108,7 +108,7 @@ interface SlotRow {
       }
 
       @if (periods().length) {
-        <mat-form-field appearance="outline" class="min-w-45">
+        <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-45">
           <mat-label>Période</mat-label>
           <mat-select [value]="periodId()" (selectionChange)="selectPeriod($event.value)">
             <mat-option [value]="''">Toutes les périodes</mat-option>
@@ -120,7 +120,7 @@ interface SlotRow {
       }
 
       @if (subjects().length) {
-        <mat-form-field appearance="outline" class="min-w-45">
+        <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-45">
           <mat-label>Cours</mat-label>
           <mat-select
             [value]="courseFilterId()"
@@ -148,8 +148,12 @@ interface SlotRow {
       @if (isAdmin() && classInstanceId()) {
         <section class="panga-card p-5 mb-6">
           <panga-section-header icon="menu_book" title="Programme national de la classe" />
-          <div class="flex flex-wrap items-end gap-3">
-            <mat-form-field appearance="outline" class="flex-1 min-w-65">
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+            <mat-form-field
+              appearance="outline"
+              class="w-full sm:flex-1 sm:min-w-65"
+              subscriptSizing="dynamic"
+            >
               <mat-label>Programme publié</mat-label>
               <mat-select [formControl]="programCtrl">
                 @for (p of programs(); track p.id) {
@@ -164,7 +168,7 @@ interface SlotRow {
             </mat-form-field>
             <button
               mat-stroked-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="activateProgram()"
               matTooltip="Activer ce programme pour l'école"
@@ -173,7 +177,7 @@ interface SlotRow {
             </button>
             <button
               mat-flat-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="assignProgram()"
               matTooltip="Lier le programme à cette classe (instance)"
@@ -182,7 +186,7 @@ interface SlotRow {
             </button>
             <button
               mat-stroked-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="prepareOpenCourses()"
               matTooltip="Ouvrir les cours à partir du programme assigné"
@@ -196,10 +200,10 @@ interface SlotRow {
             <b>Lier ≠ peupler</b> : il reste à ouvrir les cours ci-dessous.
           </p>
 
-          <div class="flex flex-wrap items-center gap-2 mt-3">
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 mt-3">
             <button
               mat-stroked-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               [disabled]="seedingPeriods()"
               (click)="seedPeriods()"
               matTooltip="Crée les périodes manquantes pour toutes les classes de l'école"
@@ -380,8 +384,12 @@ interface SlotRow {
             [count]="subjects().length"
           />
           <!-- Attribution en masse : tous les cours à un enseignant -->
-          <div class="flex flex-wrap items-end gap-3 mb-4">
-            <mat-form-field appearance="outline" class="flex-1 min-w-55">
+          <div class="flex flex-col sm:flex-row sm:items-end gap-3 mb-4">
+            <mat-form-field
+              appearance="outline"
+              class="w-full sm:flex-1 sm:min-w-55"
+              subscriptSizing="dynamic"
+            >
               <mat-label>Attribuer tous les cours à…</mat-label>
               <mat-select [value]="bulkTeacher()" (selectionChange)="bulkTeacher.set($event.value)">
                 <mat-option [value]="''">—</mat-option>
@@ -392,7 +400,7 @@ interface SlotRow {
             </mat-form-field>
             <button
               mat-flat-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               type="button"
               [disabled]="!bulkTeacher() || bulkAssigning()"
               (click)="assignAll()"
@@ -405,9 +413,15 @@ interface SlotRow {
           <!-- Liste éditable en ligne (enseignant + volume par cours) -->
           <div class="rounded-xl border border-(--border) divide-y divide-(--border)">
             @for (cs of subjects(); track cs.id) {
-              <div class="flex flex-wrap items-center gap-3 px-3 py-2">
-                <p class="text-sm text-(--text) flex-1 min-w-40 truncate">{{ subjectLabel(cs) }}</p>
-                <mat-form-field appearance="outline" class="w-48 -mb-5!" subscriptSizing="dynamic">
+              <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 px-3 py-2">
+                <p class="text-sm text-(--text) sm:flex-1 sm:min-w-40 truncate">
+                  {{ subjectLabel(cs) }}
+                </p>
+                <mat-form-field
+                  appearance="outline"
+                  class="w-full sm:w-48"
+                  subscriptSizing="dynamic"
+                >
                   <mat-label>Enseignant</mat-label>
                   <mat-select
                     [value]="edit(cs.id).teacherId"
@@ -419,38 +433,40 @@ interface SlotRow {
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="w-24 -mb-5!" subscriptSizing="dynamic">
-                  <mat-label>H/sem</mat-label>
-                  <input
-                    matInput
-                    type="number"
-                    min="0"
-                    [value]="edit(cs.id).hoursPerWeek ?? ''"
-                    (input)="patchEdit(cs.id, 'hoursPerWeek', $any($event.target).value)"
-                  />
-                </mat-form-field>
-                <button
-                  mat-icon-button
-                  type="button"
-                  matTooltip="Enregistrer"
-                  [disabled]="savingRowId() === cs.id"
-                  (click)="saveRow(cs.id)"
-                >
-                  <mat-icon fontSet="material-symbols-outlined" style="color: var(--success)"
-                    >check</mat-icon
+                <div class="flex items-center gap-2">
+                  <mat-form-field appearance="outline" class="w-24" subscriptSizing="dynamic">
+                    <mat-label>H/sem</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      min="0"
+                      [value]="edit(cs.id).hoursPerWeek ?? ''"
+                      (input)="patchEdit(cs.id, 'hoursPerWeek', $any($event.target).value)"
+                    />
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Enregistrer"
+                    [disabled]="savingRowId() === cs.id"
+                    (click)="saveRow(cs.id)"
                   >
-                </button>
-                <button
-                  mat-icon-button
-                  type="button"
-                  matTooltip="Fermer ce cours"
-                  [disabled]="deletingCourseId() === cs.id"
-                  (click)="deleteCourse(cs)"
-                >
-                  <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
-                    >delete</mat-icon
+                    <mat-icon fontSet="material-symbols-outlined" style="color: var(--success)"
+                      >check</mat-icon
+                    >
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Fermer ce cours"
+                    [disabled]="deletingCourseId() === cs.id"
+                    (click)="deleteCourse(cs)"
                   >
-                </button>
+                    <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
+                      >delete</mat-icon
+                    >
+                  </button>
+                </div>
               </div>
             }
           </div>
@@ -467,9 +483,13 @@ interface SlotRow {
           <form
             [formGroup]="targetForm"
             (ngSubmit)="saveTarget()"
-            class="flex flex-wrap items-end gap-3"
+            class="flex flex-col sm:flex-row sm:items-end gap-3"
           >
-            <mat-form-field appearance="outline" class="flex-1 min-w-55">
+            <mat-form-field
+              appearance="outline"
+              class="w-full sm:flex-1 sm:min-w-55"
+              subscriptSizing="dynamic"
+            >
               <mat-label>Cours</mat-label>
               <mat-select formControlName="classSubjectId">
                 @for (cs of subjects(); track cs.id) {
@@ -477,7 +497,7 @@ interface SlotRow {
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline" class="w-35">
+            <mat-form-field appearance="outline" class="w-full sm:w-35" subscriptSizing="dynamic">
               <mat-label>Heures / période</mat-label>
               <input
                 matInput
@@ -490,7 +510,7 @@ interface SlotRow {
             </mat-form-field>
             <button
               mat-flat-button
-              class="rounded-xl!"
+              class="rounded-xl! w-full sm:w-auto"
               type="submit"
               [disabled]="targetForm.invalid || savingTarget()"
             >
@@ -526,7 +546,7 @@ interface SlotRow {
         @if (showForm() && canEdit()) {
           <form [formGroup]="entryForm" (ngSubmit)="submitEntry()" class="mb-6">
             <div class="grid gap-4 sm:grid-cols-2">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Cours</mat-label>
                 <mat-select formControlName="classSubjectId">
                   @for (cs of subjects(); track cs.id) {

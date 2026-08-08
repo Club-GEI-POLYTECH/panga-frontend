@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -8,7 +9,9 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { NgTemplateOutlet } from '@angular/common';
 import { forkJoin } from 'rxjs';
+import { MatBottomSheet, type MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,6 +28,7 @@ import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { DateField } from '../../../shared/ui/date-field';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { ClassInstance, ClassScheduleSlot, Student } from '../models/admin.models';
@@ -47,6 +51,7 @@ function today(): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    NgTemplateOutlet,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -69,8 +74,8 @@ function today(): string {
     />
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-55">
+    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+      <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -79,12 +84,12 @@ function today(): string {
         </mat-select>
       </mat-form-field>
       <panga-date-field
-        class="min-w-40"
+        class="w-full sm:w-auto sm:min-w-40"
         label="Date"
         [formControl]="dateCtrl"
         (changed)="reload()"
       />
-      <mat-form-field appearance="outline" class="min-w-37.5">
+      <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-37.5">
         <mat-label>Mode</mat-label>
         <mat-select [value]="mode()" (selectionChange)="setMode($event.value)">
           @for (m of modes; track m.value) {
@@ -93,7 +98,7 @@ function today(): string {
         </mat-select>
       </mat-form-field>
       @if (mode() === 'period') {
-        <mat-form-field appearance="outline" class="flex-1 min-w-55">
+        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
           <mat-label>Créneau</mat-label>
           <mat-select [value]="slotId()" (selectionChange)="slotId.set($event.value)">
             @for (s of slots(); track s.id) {
@@ -172,35 +177,47 @@ function today(): string {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (s of roster(); track s.id) {
                   <div class="px-5 py-3">
-                    <div class="flex items-center gap-4">
-                      <panga-avatar [name]="studentName(s)" [size]="38" />
-                      <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
-                        {{ studentName(s) }}
-                      </p>
-                      <span
-                        class="h-2.5 w-2.5 rounded-full shrink-0"
-                        [style.background]="
-                          entryFor(s.id) ? color(statusOf(s.id)) : 'var(--border)'
-                        "
-                      ></span>
-                      <mat-form-field appearance="outline" class="w-40!" subscriptSizing="dynamic">
-                        <mat-select
-                          [value]="statusOf(s.id)"
-                          (selectionChange)="setStatus(s.id, $event.value)"
+                    <div class="flex flex-wrap sm:flex-nowrap items-center gap-3">
+                      <div class="flex w-full items-center gap-4 sm:w-auto sm:flex-1 sm:min-w-0">
+                        <panga-avatar [name]="studentName(s)" [size]="38" />
+                        <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
+                          {{ studentName(s) }}
+                        </p>
+                      </div>
+                      <div class="flex items-center gap-3 pl-13.5 sm:pl-0">
+                        <span
+                          class="h-2.5 w-2.5 rounded-full shrink-0"
+                          [style.background]="
+                            entryFor(s.id) ? color(statusOf(s.id)) : 'var(--border)'
+                          "
+                        ></span>
+                        <mat-form-field
+                          appearance="outline"
+                          class="w-40!"
+                          subscriptSizing="dynamic"
                         >
-                          @for (st of statuses; track st.value) {
-                            <mat-option [value]="st.value">{{ st.label }}</mat-option>
-                          }
-                        </mat-select>
-                      </mat-form-field>
+                          <mat-select
+                            [value]="statusOf(s.id)"
+                            (selectionChange)="setStatus(s.id, $event.value)"
+                          >
+                            @for (st of statuses; track st.value) {
+                              <mat-option [value]="st.value">{{ st.label }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+                      </div>
                     </div>
 
                     <!-- Justification -->
                     @if (entryFor(s.id); as e) {
                       @if (needsJustify(e)) {
-                        <div class="flex items-center gap-2 mt-2 pl-13.5">
+                        <div class="flex flex-wrap items-center gap-2 mt-2 pl-13.5">
                           @if (!e.isExcused) {
-                            <button mat-button class="rounded-lg!" (click)="openJustify(e)">
+                            <button
+                              mat-button
+                              class="rounded-lg!"
+                              (click)="openJustify(e, justifyTpl)"
+                            >
                               <mat-icon fontSet="material-symbols-outlined" class="text-[18px]!"
                                 >note_add</mat-icon
                               >
@@ -242,57 +259,54 @@ function today(): string {
                           }
                         </div>
                       }
-
-                      <!-- Formulaire de justification -->
-                      @if (justifyId() === e.id) {
-                        <div
-                          class="mt-3 ml-13.5 rounded-2xl border border-(--brand-300) bg-(--brand-50) p-4"
-                        >
-                          <mat-form-field appearance="outline" class="w-full">
-                            <mat-label>Motif</mat-label>
-                            <input
-                              matInput
-                              [formControl]="reasonCtrl"
-                              placeholder="ex. Rendez-vous médical"
-                            />
-                          </mat-form-field>
-                          <div class="flex flex-wrap items-center gap-4 mt-1">
-                            <mat-slide-toggle [formControl]="medicalCtrl"
-                              >Certificat médical</mat-slide-toggle
-                            >
-                            <button
-                              type="button"
-                              mat-stroked-button
-                              class="rounded-xl!"
-                              (click)="fileInput.click()"
-                            >
-                              <mat-icon fontSet="material-symbols-outlined">attach_file</mat-icon>
-                              {{ fileName() || 'Joindre un document' }}
-                            </button>
-                            <input
-                              #fileInput
-                              type="file"
-                              class="hidden"
-                              accept=".pdf,image/jpeg,image/png,image/webp"
-                              (change)="pickFile($event)"
-                            />
-                            <div class="flex-1"></div>
-                            <button mat-button (click)="closeJustify()">Annuler</button>
-                            <button
-                              mat-flat-button
-                              class="rounded-xl!"
-                              [disabled]="!reasonCtrl.value || submittingJustify()"
-                              (click)="submitJustify(e)"
-                            >
-                              Envoyer
-                            </button>
-                          </div>
-                        </div>
-                      }
                     }
                   </div>
                 }
               </div>
+
+              <!-- Formulaire de justification (popup, cohérent PC/mobile + thème). -->
+              <ng-template #justifyTpl>
+                @if (justifyEntry(); as e) {
+                  <mat-form-field appearance="outline" class="w-full">
+                    <mat-label>Motif</mat-label>
+                    <input
+                      matInput
+                      [formControl]="reasonCtrl"
+                      placeholder="ex. Rendez-vous médical"
+                    />
+                  </mat-form-field>
+                  <mat-slide-toggle [formControl]="medicalCtrl"
+                    >Certificat médical</mat-slide-toggle
+                  >
+                  <button
+                    type="button"
+                    mat-stroked-button
+                    class="rounded-xl! w-full"
+                    (click)="fileInput.click()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">attach_file</mat-icon>
+                    {{ fileName() || 'Joindre un document' }}
+                  </button>
+                  <input
+                    #fileInput
+                    type="file"
+                    class="hidden"
+                    accept=".pdf,image/jpeg,image/png,image/webp"
+                    (change)="pickFile($event)"
+                  />
+                  <div class="flex justify-end gap-2">
+                    <button mat-button (click)="closeJustify()">Annuler</button>
+                    <button
+                      mat-flat-button
+                      class="rounded-xl!"
+                      [disabled]="!reasonCtrl.value || submittingJustify()"
+                      (click)="submitJustify(e)"
+                    >
+                      Envoyer
+                    </button>
+                  </div>
+                }
+              </ng-template>
             </section>
           }
         }
@@ -304,27 +318,41 @@ function today(): string {
               title="Rapport d'absences"
               [count]="report().length"
             >
+              <button
+                mat-stroked-button
+                class="rounded-xl! sm:hidden"
+                (click)="openFilters(reportFiltersTpl)"
+              >
+                <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+                Filtrer
+              </button>
+              <div class="hidden sm:flex sm:flex-wrap items-center gap-2">
+                <ng-container [ngTemplateOutlet]="reportFiltersTpl" />
+              </div>
+            </panga-section-header>
+
+            <ng-template #reportFiltersTpl>
               <panga-date-field
-                class="w-37.5 -mb-5!"
+                class="w-full sm:w-37.5 sm:-mb-5!"
                 label="Du"
                 subscriptSizing="dynamic"
                 [formControl]="fromCtrl"
               />
               <panga-date-field
-                class="w-37.5 -mb-5!"
+                class="w-full sm:w-37.5 sm:-mb-5!"
                 label="Au"
                 subscriptSizing="dynamic"
                 [formControl]="toCtrl"
               />
               <button
                 mat-flat-button
-                class="rounded-xl!"
+                class="rounded-xl! w-full sm:w-auto"
                 (click)="loadReport()"
                 [disabled]="loadingReport()"
               >
                 <mat-icon fontSet="material-symbols-outlined">refresh</mat-icon> Générer
               </button>
-            </panga-section-header>
+            </ng-template>
 
             @if (loadingReport()) {
               <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
@@ -404,6 +432,7 @@ export class Attendance {
   private readonly store = inject(AuthStore);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly statuses = ATTENDANCE_STATUS_OPTIONS;
   protected readonly modes = ATTENDANCE_TYPE_OPTIONS;
@@ -436,7 +465,9 @@ export class Attendance {
   protected readonly roster = signal<Student[]>([]);
 
   /* ----------------------------- Justification ----------------------------- */
-  protected readonly justifyId = signal<string | null>(null);
+  /** Ligne d'appel en cours de justification, affichée dans le popup (`justifyTpl`). */
+  protected readonly justifyEntry = signal<AttendanceLine | null>(null);
+  private justifySheetRef: MatBottomSheetRef | null = null;
   protected readonly reasonCtrl = new FormControl('', { nonNullable: true });
   protected readonly medicalCtrl = new FormControl(false, { nonNullable: true });
   protected readonly fileName = signal('');
@@ -586,22 +617,30 @@ export class Attendance {
     });
   }
 
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
+  }
+
   /* ----------------------------- Justification ----------------------------- */
 
   protected needsJustify(e: AttendanceLine): boolean {
     return ABSENCE_STATUSES.has(e.status ?? '') && e.status !== 'excused';
   }
 
-  openJustify(e: AttendanceLine): void {
-    this.justifyId.set(e.id);
+  openJustify(e: AttendanceLine, template: TemplateRef<unknown>): void {
+    this.justifyEntry.set(e);
     this.reasonCtrl.setValue(e.excuseReason ?? '');
     this.medicalCtrl.setValue(false);
     this.file = null;
     this.fileName.set('');
+    this.justifySheetRef = this.bottomSheet.open(FilterSheetContent, {
+      data: { title: "Justifier l'absence", template },
+    });
+    this.justifySheetRef.afterDismissed().subscribe(() => this.justifyEntry.set(null));
   }
 
   closeJustify(): void {
-    this.justifyId.set(null);
+    this.justifySheetRef?.dismiss();
     this.file = null;
     this.fileName.set('');
   }
