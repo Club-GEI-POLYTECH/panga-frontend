@@ -2,7 +2,34 @@
   "permissions": {
     "allow": [
       "Bash(git commit -m ' *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 4200 -ErrorAction SilentlyContinue)",
+      "Bash(curl -s -o /dev/null -w \"http_code=%{http_code} time_total=%{time_total}\\\\n\" -X POST http://localhost:3000/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test@test.com\",\"password\":\"test\"}' --max-time 8)",
+      "Bash(curl -s -o /dev/null -w \"http_code=%{http_code} time_total=%{time_total}\\\\n\" http://localhost:3000/health --max-time 5)",
+      "PowerShell(Get-Process -Id 62712 -ErrorAction SilentlyContinue)",
+      "Bash(grep -o '\\\\.sm\\\\\\\\:hidden[^}]*}' dist/panga-frontend/browser/styles*.css)",
+      "Bash(grep -c \"sm\\\\\\\\\\\\\\\\:hidden\" dist/panga-frontend/browser/styles*.css)",
+      "Bash(grep -o \"@media \\(min-width:40rem\\){[^}]*\\\\.sm\\\\\\\\\\\\\\\\:[a-z-]*{[^}]*}\" dist/panga-frontend/browser/styles.css)",
+      "Bash(grep -o \"\\\\.sm\\\\\\\\\\\\\\\\:[a-zA-Z-]*\" dist/panga-frontend/browser/styles.css)",
+      "Bash(grep -o \".\\\\{0,40\\\\}display:none.\\\\{0,10\\\\}\" dist/panga-frontend/browser/styles.css)",
+      "Bash(grep -n \"sm\\\\\\\\\\\\\\\\:hidden\\\\|sm:hidden\" dist/panga-frontend/browser/styles.css)",
+      "Bash(node -e ' *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(ls \"C:/Users/ulrich-dev/Documents/Projets/panga\" 2>&1 | head -30)",
+      "Read(//c/Users/ulrich-dev/Documents/Projets/panga/**)",
+      "Read(//c/Users/ulrich-dev/Documents/Projets/panga/src/discipline/**)",
+      "Bash(cd \"C:/Users/ulrich-dev/Documents/Projets/panga\" && grep -rn \"periodNumber\" src/discipline 2>/dev/null; grep -rln \"seedPeriods\\\\|periodNumber\" src/grades 2>/dev/null)",
+      "Read(//c/Users/ulrich-dev/Documents/Projets/panga/src/grades/**)",
+      "Bash(echo \"TSC_EXIT:$?\")",
+      "Read(//c/Users/ulrich-dev/Documents/Projets/panga/src/attendance/**)",
+      "Bash(cd \"C:/Users/ulrich-dev/Documents/Projets/panga\" && grep -n \"firstName\\\\|lastName\\\\|class Student\\\\b\" src/students/entities/student.entity.ts | head -30)",
+      "Read(//c/Users/ulrich-dev/Documents/Projets/panga/src/students/entities/**)",
+      "Bash(cd \"C:/Users/ulrich-dev/Documents/Projets/panga\" && npx tsc -p tsconfig.json --noEmit 2>&1 | head -60)",
+      "Bash(git restore *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\ulrich-dev\\Documents\\Projets\\panga\\src\\attendance"
     ]
   }
 }

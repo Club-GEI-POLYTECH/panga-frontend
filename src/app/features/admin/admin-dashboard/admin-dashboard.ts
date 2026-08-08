@@ -112,7 +112,7 @@ function fmt(n: number | null | undefined): string {
         }
       </section>
 
-      <section class="grid gap-4 lg:grid-cols-2 mb-6">
+      <section class="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6">
         <div class="panga-card p-5">
           <panga-section-header icon="menu_book" title="Académique" />
           <panga-key-value [data]="academic()" />
@@ -123,8 +123,8 @@ function fmt(n: number | null | undefined): string {
         </div>
       </section>
 
-      <section class="grid gap-4 lg:grid-cols-3 mb-6">
-        <div class="panga-card p-5 lg:col-span-2">
+      <section class="grid gap-4 grid-cols-1 lg:grid-cols-3 mb-6">
+        <div class="panga-card p-5 lg:col-span-2 min-w-0">
           <panga-section-header icon="history" title="Activité récente" />
           @if (audit().length) {
             <ul class="divide-y divide-(--border)">

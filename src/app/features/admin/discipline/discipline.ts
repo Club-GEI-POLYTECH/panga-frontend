@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,18 +8,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   DisciplineService,
   type BehaviorIncident,
   type BehaviorReport,
   type DisciplinaryAction,
+  type DisciplinaryMeeting,
+  type MeetingParticipant,
   type Reward,
   type Sanction,
 } from './discipline.service';
 import { StudentsService } from '../services/students.service';
 import { ParentsService } from '../services/parents.service';
-import type { Student } from '../models/admin.models';
-import { personLabel } from '../shared/labels';
+import { ClassesService } from '../services/classes.service';
+import type { ClassInstance, Student } from '../models/admin.models';
+import { classLabel, personLabel } from '../shared/labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
@@ -28,26 +32,42 @@ import { KpiCard } from '../../../shared/ui/kpi-card';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { DateField } from '../../../shared/ui/date-field';
 import { AuthStore } from '../../../core/auth/auth.store';
+import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+import {
+  ACTION_STATUS_OPTIONS,
+  ACTION_TYPE_OPTIONS,
+  DISCIPLINARY_MEETING_TYPE_OPTIONS,
+  INCIDENT_SEVERITY_OPTIONS,
+  INCIDENT_STATUS_OPTIONS,
+  INCIDENT_TYPE_OPTIONS,
+  MEETING_STATUS_OPTIONS,
+  REWARD_LEVEL_OPTIONS,
+  REWARD_TYPE_OPTIONS,
+  SANCTION_CATEGORY_OPTIONS,
+  SANCTION_LEVEL_OPTIONS,
+} from '../../../core/models/discipline.enums';
 
-const SEVERITY: { value: string; label: string }[] = [
-  { value: 'low', label: 'Faible' },
-  { value: 'medium', label: 'Moyenne' },
-  { value: 'high', label: 'Élevée' },
-  { value: 'critical', label: 'Critique' },
-];
-const ACTION_TYPES: { value: string; label: string }[] = [
-  { value: 'warning', label: 'Avertissement' },
-  { value: 'detention', label: 'Retenue' },
-  { value: 'suspension', label: 'Suspension' },
-  { value: 'expulsion', label: 'Renvoi' },
-];
 const SEVERITY_TONE: Record<string, BadgeTone> = {
   low: 'neutral',
   medium: 'warning',
   high: 'warning',
   critical: 'danger',
 };
-type Tab = 'report' | 'incidents' | 'actions' | 'rewards' | 'sanctions';
+const ACTION_STATUS_TONE: Record<string, BadgeTone> = {
+  pending: 'neutral',
+  active: 'warning',
+  completed: 'success',
+  cancelled: 'neutral',
+  appealed: 'danger',
+};
+const MEETING_STATUS_TONE: Record<string, BadgeTone> = {
+  scheduled: 'info',
+  in_progress: 'warning',
+  completed: 'success',
+  cancelled: 'neutral',
+  rescheduled: 'warning',
+};
+type Tab = 'report' | 'incidents' | 'actions' | 'rewards' | 'sanctions' | 'meetings';
 
 interface ChildRef {
   id: string;
@@ -59,6 +79,7 @@ interface ChildRef {
   selector: 'panga-discipline',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
     NgTemplateOutlet,
     ReactiveFormsModule,
     MatButtonModule,
@@ -67,6 +88,7 @@ interface ChildRef {
     MatInputModule,
     MatMenuModule,
     MatSelectModule,
+    MatTooltipModule,
     PageHeader,
     SectionHeader,
     EmptyState,
@@ -139,9 +161,20 @@ interface ChildRef {
             >
               <mat-form-field appearance="outline">
                 <mat-label>Élève</mat-label>
-                <mat-select formControlName="studentId">
+                <mat-select
+                  formControlName="studentId"
+                  (selectionChange)="onIncidentStudent($event.value)"
+                >
                   @for (s of students(); track s.id) {
                     <mat-option [value]="s.id">{{ studentName(s) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Classe</mat-label>
+                <mat-select formControlName="classId">
+                  @for (c of classes(); track c.id) {
+                    <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -154,8 +187,12 @@ interface ChildRef {
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
-                <mat-label>Type</mat-label>
-                <input matInput formControlName="incidentType" placeholder="ex. Bagarre" />
+                <mat-label>Type d'incident</mat-label>
+                <mat-select formControlName="incidentType">
+                  @for (o of incidentTypes; track o.value) {
+                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <panga-date-field label="Date" formControlName="incidentDate" />
               <mat-form-field appearance="outline" class="sm:col-span-2">
@@ -186,7 +223,7 @@ interface ChildRef {
                         {{ resolveName(i.studentId, i.studentName) }}
                       </p>
                       <p class="text-xs text-(--text-muted) truncate">
-                        {{ i.incidentType || '—' }} · {{ i.description }}
+                        {{ incidentTypeLabel(i.incidentType) }} · {{ i.description }}
                       </p>
                     </div>
                     <panga-status-badge
@@ -194,11 +231,43 @@ interface ChildRef {
                       [tone]="sevTone(i.severity)"
                       [dot]="false"
                     />
-                    <button mat-icon-button (click)="removeIncident(i)">
-                      <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
-                        >delete</mat-icon
-                      >
+                    <panga-status-badge
+                      [label]="incidentStatusLabel(i.incidentStatus)"
+                      tone="neutral"
+                      [dot]="false"
+                      class="hidden sm:inline-flex"
+                    />
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="incidentStatusMenu"
+                      matTooltip="Changer le statut"
+                      aria-label="Changer le statut"
+                    >
+                      <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
+                        more_vert
+                      </mat-icon>
                     </button>
+                    <mat-menu #incidentStatusMenu="matMenu" class="panga-menu">
+                      <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
+                      @for (st of incidentStatuses; track st.value) {
+                        <button
+                          mat-menu-item
+                          (click)="changeIncidentStatus(i, st.value)"
+                          [disabled]="i.incidentStatus === st.value"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">
+                            {{ i.incidentStatus === st.value ? 'check' : 'radio_button_unchecked' }}
+                          </mat-icon>
+                          <span>{{ st.label }}</span>
+                        </button>
+                      }
+                      <button mat-menu-item (click)="removeIncident(i)">
+                        <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
+                          >delete</mat-icon
+                        >
+                        <span>Supprimer</span>
+                      </button>
+                    </mat-menu>
                   </div>
                 }
               </div>
@@ -216,9 +285,20 @@ interface ChildRef {
             >
               <mat-form-field appearance="outline">
                 <mat-label>Élève</mat-label>
-                <mat-select formControlName="studentId">
+                <mat-select
+                  formControlName="studentId"
+                  (selectionChange)="onActionStudent($event.value)"
+                >
                   @for (s of students(); track s.id) {
                     <mat-option [value]="s.id">{{ studentName(s) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Classe</mat-label>
+                <mat-select formControlName="classId">
+                  @for (c of classes(); track c.id) {
+                    <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
@@ -229,6 +309,11 @@ interface ChildRef {
                     <mat-option [value]="o.value">{{ o.label }}</mat-option>
                   }
                 </mat-select>
+              </mat-form-field>
+              <panga-date-field label="Date de l'action" formControlName="actionDate" />
+              <mat-form-field appearance="outline" class="sm:col-span-2">
+                <mat-label>Raison</mat-label>
+                <input matInput formControlName="reason" placeholder="Motif de la sanction" />
               </mat-form-field>
               <mat-form-field appearance="outline" class="sm:col-span-2">
                 <mat-label>Description</mat-label>
@@ -262,17 +347,41 @@ interface ChildRef {
                         @if (a.isAutomatic) {
                           · auto
                         }
-                        · {{ a.description }}
+                        @if (a.reason) {
+                          · {{ a.reason }}
+                        }
                       </p>
                     </div>
                     <panga-status-badge
-                      [label]="a.status || '—'"
-                      [tone]="a.status === 'completed' ? 'success' : 'neutral'"
+                      [label]="actionStatusLabel(a.status)"
+                      [tone]="actionStatusTone(a.status)"
                       [dot]="false"
                     />
-                    @if (a.status !== 'completed') {
-                      <button mat-button (click)="complete(a)">Clôturer</button>
-                    }
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="actionStatusMenu"
+                      matTooltip="Changer le statut"
+                      aria-label="Changer le statut"
+                    >
+                      <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
+                        more_vert
+                      </mat-icon>
+                    </button>
+                    <mat-menu #actionStatusMenu="matMenu" class="panga-menu">
+                      <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
+                      @for (st of actionStatuses; track st.value) {
+                        <button
+                          mat-menu-item
+                          (click)="changeActionStatus(a, st.value)"
+                          [disabled]="a.status === st.value"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">
+                            {{ a.status === st.value ? 'check' : 'radio_button_unchecked' }}
+                          </mat-icon>
+                          <span>{{ st.label }}</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </div>
                 }
               </div>
@@ -290,20 +399,44 @@ interface ChildRef {
             >
               <mat-form-field appearance="outline">
                 <mat-label>Élève</mat-label>
-                <mat-select formControlName="studentId">
+                <mat-select
+                  formControlName="studentId"
+                  (selectionChange)="onRewardStudent($event.value)"
+                >
                   @for (s of students(); track s.id) {
                     <mat-option [value]="s.id">{{ studentName(s) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
+                <mat-label>Classe</mat-label>
+                <mat-select formControlName="classId">
+                  @for (c of classes(); track c.id) {
+                    <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
                 <mat-label>Type</mat-label>
-                <input matInput formControlName="rewardType" placeholder="ex. mérite" />
+                <mat-select formControlName="rewardType">
+                  @for (o of rewardTypes; track o.value) {
+                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Niveau</mat-label>
+                <mat-select formControlName="level">
+                  @for (o of rewardLevels; track o.value) {
+                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline">
                 <mat-label>Titre</mat-label>
                 <input matInput formControlName="title" />
               </mat-form-field>
+              <panga-date-field label="Date d'attribution" formControlName="awardDate" />
               <mat-form-field appearance="outline">
                 <mat-label>Points</mat-label>
                 <input matInput type="number" formControlName="pointsAwarded" min="0" />
@@ -332,9 +465,16 @@ interface ChildRef {
                         {{ resolveName(r.studentId, r.studentName) }}
                       </p>
                       <p class="text-xs text-(--text-muted) truncate">
-                        {{ r.title || r.rewardType }} · {{ r.pointsAwarded ?? 0 }} pts
+                        {{ r.title || rewardTypeLabel(r.rewardType) }} ·
+                        {{ r.pointsAwarded ?? 0 }} pts
                       </p>
                     </div>
+                    <panga-status-badge
+                      [label]="rewardLevelLabel(r.level)"
+                      tone="brand"
+                      [dot]="false"
+                      class="hidden sm:inline-flex"
+                    />
                     <button mat-icon-button (click)="removeReward(r)">
                       <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
                         >delete</mat-icon
@@ -368,6 +508,22 @@ interface ChildRef {
                     }
                   </mat-select>
                 </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Niveau</mat-label>
+                  <mat-select formControlName="level">
+                    @for (o of sanctionLevels; track o.value) {
+                      <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Catégorie</mat-label>
+                  <mat-select formControlName="category">
+                    @for (o of sanctionCategories; track o.value) {
+                      <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
                 <mat-form-field appearance="outline" class="sm:col-span-2">
                   <mat-label>Description</mat-label>
                   <input matInput formControlName="description" />
@@ -395,9 +551,23 @@ interface ChildRef {
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">{{ s.name }}</p>
                       <p class="text-xs text-(--text-muted) truncate">
-                        {{ actionLabel(s.actionType) }} · {{ s.description }}
+                        {{ actionLabel(s.actionType) }}
+                        @if (s.description) {
+                          · {{ s.description }}
+                        }
                       </p>
                     </div>
+                    <panga-status-badge
+                      [label]="sanctionCategoryLabel(s.category)"
+                      tone="neutral"
+                      [dot]="false"
+                      class="hidden sm:inline-flex"
+                    />
+                    <panga-status-badge
+                      [label]="sanctionLevelLabel(s.level)"
+                      [tone]="sanctionLevelTone(s.level)"
+                      [dot]="false"
+                    />
                     @if (canManageSanctions()) {
                       <button mat-icon-button (click)="removeSanction(s)">
                         <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
@@ -405,6 +575,173 @@ interface ChildRef {
                         >
                       </button>
                     }
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
+
+        @case ('meetings') {
+          <section class="panga-card p-5 mb-4">
+            <panga-section-header icon="groups" title="Planifier une réunion" />
+            <form
+              [formGroup]="meetingForm"
+              (ngSubmit)="addMeeting()"
+              class="grid gap-3 sm:grid-cols-2"
+            >
+              <mat-form-field appearance="outline">
+                <mat-label>Élève</mat-label>
+                <mat-select
+                  formControlName="studentId"
+                  (selectionChange)="onMeetingStudent($event.value)"
+                >
+                  @for (s of students(); track s.id) {
+                    <mat-option [value]="s.id">{{ studentName(s) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Classe</mat-label>
+                <mat-select formControlName="classId">
+                  @for (c of classes(); track c.id) {
+                    <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Type de réunion</mat-label>
+                <mat-select formControlName="meetingType">
+                  @for (o of meetingTypes; track o.value) {
+                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Sujet</mat-label>
+                <input matInput formControlName="subject" />
+              </mat-form-field>
+              <panga-date-field label="Date" formControlName="meetingDate" />
+              <mat-form-field appearance="outline">
+                <mat-label>Heure</mat-label>
+                <input matInput type="time" formControlName="meetingTime" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="sm:col-span-2">
+                <mat-label>Ordre du jour</mat-label>
+                <textarea matInput rows="2" formControlName="agenda"></textarea>
+              </mat-form-field>
+
+              <div class="sm:col-span-2">
+                <p class="text-sm font-medium text-(--text) mb-2">Participants</p>
+                @if (meetingParticipants().length) {
+                  <div class="flex flex-wrap gap-2 mb-2">
+                    @for (p of meetingParticipants(); track p.userId; let idx = $index) {
+                      <span
+                        class="inline-flex items-center gap-1.5 rounded-full border border-(--border) px-3 py-1 text-xs text-(--text)"
+                      >
+                        {{ p.name }} · {{ p.role }}
+                        <button
+                          type="button"
+                          class="text-(--text-muted) hover:text-(--danger)"
+                          (click)="removeParticipant(idx)"
+                          aria-label="Retirer"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined" class="text-[16px]!"
+                            >close</mat-icon
+                          >
+                        </button>
+                      </span>
+                    }
+                  </div>
+                }
+                <div class="flex flex-wrap items-end gap-2">
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="flex-1 min-w-32"
+                  >
+                    <mat-label>Nom</mat-label>
+                    <input matInput [formControl]="participantName" />
+                  </mat-form-field>
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="flex-1 min-w-32"
+                  >
+                    <mat-label>Rôle</mat-label>
+                    <input matInput [formControl]="participantRole" placeholder="ex. Enseignant" />
+                  </mat-form-field>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="rounded-xl!"
+                    (click)="addParticipant()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Ajouter
+                  </button>
+                </div>
+              </div>
+
+              <div class="sm:col-span-2 flex justify-end">
+                <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                  Planifier
+                </button>
+              </div>
+            </form>
+          </section>
+          <section class="panga-card p-5">
+            <panga-section-header icon="groups" title="Réunions" [count]="meetings().length" />
+            @if (meetings().length === 0) {
+              <panga-empty-state icon="groups" title="Aucune réunion" description="—" />
+            } @else {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (m of meetings(); track m.id) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-medium text-(--text) truncate">
+                        {{ m.subject || meetingTypeLabel(m.meetingType) }}
+                      </p>
+                      <p class="text-xs text-(--text-muted) truncate">
+                        {{ resolveName(m.studentId, m.studentName) }} ·
+                        {{ meetingTypeLabel(m.meetingType) }}
+                        @if (m.meetingDate) {
+                          · {{ m.meetingDate | date: 'dd/MM/yyyy' }}
+                        }
+                        @if (m.meetingTime) {
+                          · {{ m.meetingTime }}
+                        }
+                      </p>
+                    </div>
+                    <panga-status-badge
+                      [label]="meetingStatusLabel(m.status)"
+                      [tone]="meetingStatusTone(m.status)"
+                      [dot]="false"
+                    />
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="meetingStatusMenu"
+                      matTooltip="Changer le statut"
+                      aria-label="Changer le statut"
+                    >
+                      <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
+                        more_vert
+                      </mat-icon>
+                    </button>
+                    <mat-menu #meetingStatusMenu="matMenu" class="panga-menu">
+                      <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
+                      @for (st of meetingStatuses; track st.value) {
+                        <button
+                          mat-menu-item
+                          (click)="changeMeetingStatus(m, st.value)"
+                          [disabled]="m.status === st.value"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">
+                            {{ m.status === st.value ? 'check' : 'radio_button_unchecked' }}
+                          </mat-icon>
+                          <span>{{ st.label }}</span>
+                        </button>
+                      }
+                    </mat-menu>
                   </div>
                 }
               </div>
@@ -472,17 +809,30 @@ export class Discipline {
   private readonly api = inject(DisciplineService);
   private readonly studentsApi = inject(StudentsService);
   private readonly parentsApi = inject(ParentsService);
+  private readonly classesApi = inject(ClassesService);
   private readonly notify = inject(NotificationService);
   private readonly auth = inject(AuthStore);
+  private readonly sy = inject(SchoolYearStore);
 
-  protected readonly severities = SEVERITY;
-  protected readonly actionTypes = ACTION_TYPES;
+  protected readonly severities = INCIDENT_SEVERITY_OPTIONS;
+  protected readonly incidentTypes = INCIDENT_TYPE_OPTIONS;
+  protected readonly incidentStatuses = INCIDENT_STATUS_OPTIONS;
+  protected readonly actionTypes = ACTION_TYPE_OPTIONS;
+  protected readonly actionStatuses = ACTION_STATUS_OPTIONS;
+  protected readonly rewardTypes = REWARD_TYPE_OPTIONS;
+  protected readonly rewardLevels = REWARD_LEVEL_OPTIONS;
+  protected readonly sanctionLevels = SANCTION_LEVEL_OPTIONS;
+  protected readonly sanctionCategories = SANCTION_CATEGORY_OPTIONS;
+  protected readonly meetingTypes = DISCIPLINARY_MEETING_TYPE_OPTIONS;
+  protected readonly meetingStatuses = MEETING_STATUS_OPTIONS;
+  protected readonly classLabel = classLabel;
   protected readonly tabs = [
     { key: 'report' as const, label: 'Rapport élève' },
     { key: 'incidents' as const, label: 'Incidents' },
     { key: 'actions' as const, label: 'Sanctions' },
     { key: 'rewards' as const, label: 'Récompenses' },
     { key: 'sanctions' as const, label: 'Catalogue' },
+    { key: 'meetings' as const, label: 'Réunions' },
   ];
 
   protected readonly isParent = computed(() => this.auth.role() === 'parent');
@@ -494,13 +844,18 @@ export class Discipline {
   protected readonly saving = signal(false);
 
   protected readonly students = signal<Student[]>([]);
+  protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly children = signal<ChildRef[]>([]);
   protected readonly incidents = signal<BehaviorIncident[]>([]);
   protected readonly actions = signal<DisciplinaryAction[]>([]);
   protected readonly rewards = signal<Reward[]>([]);
   protected readonly sanctions = signal<Sanction[]>([]);
+  protected readonly meetings = signal<DisciplinaryMeeting[]>([]);
   protected readonly reportStudentId = signal('');
   protected readonly report = signal<BehaviorReport | null>(null);
+  protected readonly meetingParticipants = signal<MeetingParticipant[]>([]);
+  protected readonly participantName = new FormControl('', { nonNullable: true });
+  protected readonly participantRole = new FormControl('', { nonNullable: true });
 
   private readonly studentsById = computed(() => {
     const m = new Map<string, Student>();
@@ -512,26 +867,47 @@ export class Discipline {
 
   protected readonly incidentForm = new FormGroup({
     studentId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    classId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     severity: new FormControl('medium', { nonNullable: true }),
-    incidentType: new FormControl('', { nonNullable: true }),
-    incidentDate: new FormControl('', { nonNullable: true }),
+    incidentType: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    incidentDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     description: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   protected readonly actionForm = new FormGroup({
     studentId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    classId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     actionType: new FormControl('warning', { nonNullable: true }),
-    description: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    actionDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    reason: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    description: new FormControl('', { nonNullable: true }),
   });
   protected readonly rewardForm = new FormGroup({
     studentId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    classId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     rewardType: new FormControl('merit', { nonNullable: true }),
+    level: new FormControl('class', { nonNullable: true }),
     title: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    awardDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     pointsAwarded: new FormControl<number | null>(null),
   });
   protected readonly sanctionForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     actionType: new FormControl('warning', { nonNullable: true }),
+    level: new FormControl('minor', { nonNullable: true, validators: [Validators.required] }),
+    category: new FormControl('behavioral', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
     description: new FormControl('', { nonNullable: true }),
+  });
+  protected readonly meetingForm = new FormGroup({
+    studentId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    classId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    meetingType: new FormControl('parent_teacher', { nonNullable: true }),
+    subject: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    meetingDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    meetingTime: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    agenda: new FormControl('', { nonNullable: true }),
   });
 
   constructor() {
@@ -542,8 +918,32 @@ export class Discipline {
         .list({ page: 1, limit: 500 })
         .pipe(catchError(() => of({ items: [] as Student[] })))
         .subscribe((r) => this.students.set(r.items));
+      this.classesApi
+        .list(this.sy.filter())
+        .pipe(catchError(() => of({ items: [] as ClassInstance[] })))
+        .subscribe((r) => this.classes.set(r.items));
       this.reload();
     }
+  }
+
+  /** Pré-remplit la classe depuis la classe courante de l'élève choisi. */
+  private autofillClass(control: FormControl<string>, studentId: string): void {
+    const student = this.studentsById().get(studentId);
+    if (student?.classInstanceId) {
+      control.setValue(student.classInstanceId);
+    }
+  }
+  onIncidentStudent(studentId: string): void {
+    this.autofillClass(this.incidentForm.controls.classId, studentId);
+  }
+  onActionStudent(studentId: string): void {
+    this.autofillClass(this.actionForm.controls.classId, studentId);
+  }
+  onRewardStudent(studentId: string): void {
+    this.autofillClass(this.rewardForm.controls.classId, studentId);
+  }
+  onMeetingStudent(studentId: string): void {
+    this.autofillClass(this.meetingForm.controls.classId, studentId);
   }
 
   private loadChildren(): void {
@@ -585,6 +985,10 @@ export class Discipline {
       .sanctions()
       .pipe(catchError(() => of({ items: [] })))
       .subscribe((r) => this.sanctions.set(r.items));
+    this.api
+      .meetings({ limit: 100 })
+      .pipe(catchError(() => of({ items: [] })))
+      .subscribe((r) => this.meetings.set(r.items));
   }
 
   loadReport(studentId: string): void {
@@ -618,6 +1022,19 @@ export class Discipline {
       next: () => this.incidents.update((l) => l.filter((x) => x.id !== i.id)),
     });
   }
+  changeIncidentStatus(i: BehaviorIncident, status: string): void {
+    if (i.incidentStatus === status) {
+      return;
+    }
+    this.api.updateIncident(i.id, { status }).subscribe({
+      next: () => {
+        this.notify.success('Statut mis à jour.');
+        this.incidents.update((l) =>
+          l.map((x) => (x.id === i.id ? { ...x, incidentStatus: status } : x)),
+        );
+      },
+    });
+  }
 
   addAction(): void {
     if (this.actionForm.invalid || this.saving()) {
@@ -635,9 +1052,15 @@ export class Discipline {
       error: () => this.saving.set(false),
     });
   }
-  complete(a: DisciplinaryAction): void {
-    this.api.completeAction(a.id).subscribe({
-      next: () => this.api.actions({ limit: 100 }).subscribe((r) => this.actions.set(r.items)),
+  changeActionStatus(a: DisciplinaryAction, status: string): void {
+    if (a.status === status) {
+      return;
+    }
+    this.api.updateAction(a.id, { status }).subscribe({
+      next: () => {
+        this.notify.success('Statut mis à jour.');
+        this.actions.update((l) => l.map((x) => (x.id === a.id ? { ...x, status } : x)));
+      },
     });
   }
 
@@ -691,6 +1114,58 @@ export class Discipline {
     });
   }
 
+  /* --------------------------------- Réunions -------------------------------- */
+  addParticipant(): void {
+    const name = this.participantName.value.trim();
+    const role = this.participantRole.value.trim();
+    if (!name || !role) {
+      return;
+    }
+    this.meetingParticipants.update((l) => [...l, { userId: name, name, role }]);
+    this.participantName.reset('');
+    this.participantRole.reset('');
+  }
+  removeParticipant(index: number): void {
+    this.meetingParticipants.update((l) => l.filter((_, i) => i !== index));
+  }
+
+  addMeeting(): void {
+    if (this.meetingForm.invalid || this.meetingParticipants().length === 0 || this.saving()) {
+      this.meetingForm.markAllAsTouched();
+      if (this.meetingParticipants().length === 0) {
+        this.notify.warning('Ajoutez au moins un participant.');
+      }
+      return;
+    }
+    this.saving.set(true);
+    this.api
+      .createMeeting({
+        ...this.meetingForm.getRawValue(),
+        participants: this.meetingParticipants(),
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.notify.success('Réunion planifiée.');
+          this.meetingForm.reset({ meetingType: 'parent_teacher' });
+          this.meetingParticipants.set([]);
+          this.api.meetings({ limit: 100 }).subscribe((r) => this.meetings.set(r.items));
+        },
+        error: () => this.saving.set(false),
+      });
+  }
+  changeMeetingStatus(m: DisciplinaryMeeting, status: string): void {
+    if (m.status === status) {
+      return;
+    }
+    this.api.updateMeeting(m.id, { status }).subscribe({
+      next: () => {
+        this.notify.success('Statut mis à jour.');
+        this.meetings.update((l) => l.map((x) => (x.id === m.id ? { ...x, status } : x)));
+      },
+    });
+  }
+
   /* --------------------------------- Helpers -------------------------------- */
   protected studentName(s: Student): string {
     return personLabel(s as unknown as Record<string, unknown>);
@@ -703,12 +1178,51 @@ export class Discipline {
     return s ? this.studentName(s) : (studentId ?? '—');
   }
   protected sevLabel(v?: string): string {
-    return SEVERITY.find((o) => o.value === v)?.label ?? v ?? '—';
+    return INCIDENT_SEVERITY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
   }
   protected sevTone(v?: string): BadgeTone {
     return SEVERITY_TONE[v ?? ''] ?? 'neutral';
   }
+  protected incidentTypeLabel(v?: string): string {
+    return INCIDENT_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected incidentStatusLabel(v?: string): string {
+    return INCIDENT_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
   protected actionLabel(v?: string): string {
-    return ACTION_TYPES.find((o) => o.value === v)?.label ?? v ?? '—';
+    return ACTION_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected actionStatusLabel(v?: string): string {
+    return ACTION_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected actionStatusTone(v?: string): BadgeTone {
+    return ACTION_STATUS_TONE[v ?? ''] ?? 'neutral';
+  }
+  protected rewardTypeLabel(v?: string): string {
+    return REWARD_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected rewardLevelLabel(v?: string): string {
+    return REWARD_LEVEL_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected sanctionLevelLabel(v?: string): string {
+    return SANCTION_LEVEL_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected sanctionLevelTone(v?: string): BadgeTone {
+    if (v === 'severe') return 'danger';
+    if (v === 'major') return 'warning';
+    if (v === 'moderate') return 'brand';
+    return 'neutral';
+  }
+  protected sanctionCategoryLabel(v?: string): string {
+    return SANCTION_CATEGORY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected meetingTypeLabel(v?: string): string {
+    return DISCIPLINARY_MEETING_TYPE_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected meetingStatusLabel(v?: string): string {
+    return MEETING_STATUS_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
+  }
+  protected meetingStatusTone(v?: string): BadgeTone {
+    return MEETING_STATUS_TONE[v ?? ''] ?? 'neutral';
   }
 }

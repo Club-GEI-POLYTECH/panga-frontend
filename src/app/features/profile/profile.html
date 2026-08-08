@@ -152,46 +152,50 @@
       </div>
     } @else {
       <div class="panga-card overflow-hidden">
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="text-left text-(--text-muted) border-b border-(--border)">
-              <th class="px-4 py-3 font-medium">{{ t('profile.date') }}</th>
-              <th class="px-4 py-3 font-medium">{{ t('profile.device') }}</th>
-              <th class="px-4 py-3 font-medium">IP</th>
-              <th class="px-4 py-3 font-medium">{{ t('profile.status') }}</th>
-              <th class="px-4 py-3 font-medium">Motif</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (entry of history(); track $index) {
-              <tr class="border-b border-(--border) last:border-0">
-                <td class="px-4 py-3 text-(--text)">
-                  {{ entry.createdAt ? (entry.createdAt | date: 'short') : '—' }}
-                </td>
-                <td class="px-4 py-3 text-(--text-muted) max-w-80 truncate">
-                  {{ entry.device || entry.userAgent || '—' }}
-                </td>
-                <td class="px-4 py-3 text-(--text-muted)">{{ entry.ipAddress || '—' }}</td>
-                <td class="px-4 py-3">
-                  <span
-                    class="px-2 py-0.5 rounded-full text-xs font-medium"
-                    [style.background]="
-                      failed(entry)
-                        ? 'color-mix(in srgb, var(--danger) 14%, transparent)'
-                        : 'color-mix(in srgb, var(--success) 14%, transparent)'
-                    "
-                    [style.color]="failed(entry) ? 'var(--danger)' : 'var(--success)'"
-                  >
-                    {{ failed(entry) ? t('profile.failed') : t('profile.success') }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-(--text-muted)">
-                  {{ failed(entry) ? entry.reason || '—' : '—' }}
-                </td>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-left text-(--text-muted) border-b border-(--border)">
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t('profile.date') }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t('profile.device') }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">IP</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">{{ t('profile.status') }}</th>
+                <th class="px-4 py-3 font-medium whitespace-nowrap">Motif</th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (entry of history(); track $index) {
+                <tr class="border-b border-(--border) last:border-0">
+                  <td class="px-4 py-3 text-(--text) whitespace-nowrap">
+                    {{ entry.createdAt ? (entry.createdAt | date: 'short') : '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-(--text-muted) max-w-64 truncate">
+                    {{ entry.device || entry.userAgent || '—' }}
+                  </td>
+                  <td class="px-4 py-3 text-(--text-muted) whitespace-nowrap">
+                    {{ entry.ipAddress || '—' }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <span
+                      class="px-2 py-0.5 rounded-full text-xs font-medium"
+                      [style.background]="
+                        failed(entry)
+                          ? 'color-mix(in srgb, var(--danger) 14%, transparent)'
+                          : 'color-mix(in srgb, var(--success) 14%, transparent)'
+                      "
+                      [style.color]="failed(entry) ? 'var(--danger)' : 'var(--success)'"
+                    >
+                      {{ failed(entry) ? t('profile.failed') : t('profile.success') }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3 text-(--text-muted) whitespace-nowrap">
+                    {{ failed(entry) ? entry.reason || '—' : '—' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     }
   </section>

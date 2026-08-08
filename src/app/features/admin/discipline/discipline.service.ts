@@ -24,6 +24,7 @@ export interface DisciplinaryAction {
   studentName?: string;
   actionType?: string;
   status?: string;
+  reason?: string;
   description?: string;
   isAutomatic?: boolean;
   startDate?: string;
@@ -36,6 +37,7 @@ export interface Reward {
   studentId?: string;
   studentName?: string;
   rewardType?: string;
+  level?: string;
   title?: string;
   description?: string;
   pointsAwarded?: number;
@@ -43,13 +45,23 @@ export interface Reward {
   [key: string]: unknown;
 }
 
+export interface MeetingParticipant {
+  userId: string;
+  name: string;
+  role: string;
+}
+
 export interface DisciplinaryMeeting {
   id: string;
   studentId?: string;
+  studentName?: string;
   meetingType?: string;
   status?: string;
-  scheduledDate?: string;
-  notes?: string;
+  meetingDate?: string;
+  meetingTime?: string;
+  subject?: string;
+  agenda?: string;
+  participants?: MeetingParticipant[];
   [key: string]: unknown;
 }
 
@@ -57,6 +69,8 @@ export interface DisciplinaryMeeting {
 export interface Sanction {
   id: string;
   name?: string;
+  level?: string;
+  category?: string;
   actionType?: string;
   description?: string;
   [key: string]: unknown;
@@ -110,6 +124,11 @@ export class DisciplineService {
       .post<unknown>(`${this.base}/incidents`, dto)
       .pipe(map((r) => unwrapEnvelope<BehaviorIncident>(r)));
   }
+  updateIncident(id: string, dto: Record<string, unknown>): Observable<BehaviorIncident> {
+    return this.http
+      .patch<unknown>(`${this.base}/incidents/${id}`, dto)
+      .pipe(map((r) => unwrapEnvelope<BehaviorIncident>(r)));
+  }
   deleteIncident(id: string): Observable<unknown> {
     return this.http.delete<unknown>(`${this.base}/incidents/${id}`);
   }
@@ -128,6 +147,11 @@ export class DisciplineService {
   completeAction(id: string): Observable<DisciplinaryAction> {
     return this.http
       .post<unknown>(`${this.base}/actions/${id}/complete`, {})
+      .pipe(map((r) => unwrapEnvelope<DisciplinaryAction>(r)));
+  }
+  updateAction(id: string, dto: Record<string, unknown>): Observable<DisciplinaryAction> {
+    return this.http
+      .patch<unknown>(`${this.base}/actions/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<DisciplinaryAction>(r)));
   }
   deleteAction(id: string): Observable<unknown> {
@@ -158,6 +182,11 @@ export class DisciplineService {
   createMeeting(dto: Record<string, unknown>): Observable<DisciplinaryMeeting> {
     return this.http
       .post<unknown>(`${this.base}/meetings`, dto)
+      .pipe(map((r) => unwrapEnvelope<DisciplinaryMeeting>(r)));
+  }
+  updateMeeting(id: string, dto: Record<string, unknown>): Observable<DisciplinaryMeeting> {
+    return this.http
+      .patch<unknown>(`${this.base}/meetings/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<DisciplinaryMeeting>(r)));
   }
 

@@ -45,23 +45,26 @@ import { AuthoritiesManager } from './authorities-manager';
           class="absolute -right-8 -bottom-10 h-40 w-40 rounded-full opacity-15"
           style="background:#fff"
         ></div>
-        <div class="relative flex flex-wrap items-center gap-4">
-          <panga-avatar [name]="school()?.name || '?'" [size]="64" />
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
-              {{ school()?.displayName || school()?.name || 'Mon établissement' }}
-            </h1>
-            <p class="text-sm opacity-90">
-              {{ school()?.code }}
-              @if (school()?.city) {
-                · {{ school()?.city }}
-              }
-            </p>
+        <div class="relative flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex items-center gap-4 min-w-0">
+            <panga-avatar [name]="school()?.name || '?'" [size]="64" class="shrink-0" />
+            <div class="min-w-0 flex-1">
+              <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
+                {{ school()?.displayName || school()?.name || 'Mon établissement' }}
+              </h1>
+              <p class="text-sm opacity-90">
+                {{ school()?.code }}
+                @if (school()?.city) {
+                  · {{ school()?.city }}
+                }
+              </p>
+            </div>
           </div>
           @if (asString(roVal('status'))) {
             <panga-status-badge
               [label]="asString(roVal('status'))"
               [tone]="school()?.isActive ? 'success' : 'neutral'"
+              class="self-start sm:self-center sm:ml-auto"
             />
           }
         </div>
@@ -89,7 +92,7 @@ import { AuthoritiesManager } from './authorities-manager';
       }
 
       <!-- Lecture seule -->
-      <section class="grid gap-4 lg:grid-cols-2 mb-4">
+      <section class="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-4">
         @for (group of readonly; track group.title) {
           <div class="panga-card p-5">
             <panga-section-header [icon]="group.icon" [title]="group.title" />

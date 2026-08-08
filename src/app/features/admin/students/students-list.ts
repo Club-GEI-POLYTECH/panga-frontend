@@ -1,7 +1,8 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -12,6 +13,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +21,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
 import { ParentsService } from '../services/parents.service';
@@ -156,6 +159,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     MatMenuModule,
     MatSelectModule,
     MatTooltipModule,
+    NgTemplateOutlet,
     Avatar,
     CredentialReveal,
     EmptyState,
@@ -285,12 +289,36 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     }
 
     <div class="panga-card p-4 mb-4 flex flex-wrap items-center gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-45" subscriptSizing="dynamic">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-45"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Rechercher</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
         <input matInput [formControl]="searchCtrl" placeholder="Nom, matricule…" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="flex-1 min-w-36" subscriptSizing="dynamic">
+
+      <button
+        mat-stroked-button
+        class="rounded-xl! shrink-0 sm:hidden"
+        (click)="openFilters(filtersTpl)"
+      >
+        <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+        Filtrer
+      </button>
+
+      <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+        <ng-container [ngTemplateOutlet]="filtersTpl" />
+      </div>
+    </div>
+
+    <ng-template #filtersTpl>
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-36"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Statut</mat-label>
         <mat-select [value]="activeStatus()" (selectionChange)="filterByStatus($event.value)">
           <mat-option value="">Tous</mat-option>
@@ -299,7 +327,11 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="flex-1 min-w-28" subscriptSizing="dynamic">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-28"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Par page</mat-label>
         <mat-select [value]="limit()" (selectionChange)="changeLimit($event.value)">
           @for (n of pageSizes; track n) {
@@ -307,7 +339,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
           }
         </mat-select>
       </mat-form-field>
-    </div>
+    </ng-template>
 
     @if (loading()) {
       <panga-skeleton-table />
@@ -414,6 +446,7 @@ export class StudentsList {
   private readonly parentsApi = inject(ParentsService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly groups = GROUPS;
   protected readonly statusOptions = STUDENT_STATUS_OPTIONS;
@@ -488,6 +521,10 @@ export class StudentsList {
     this.limit.set(limit);
     this.page.set(1);
     this.load();
+  }
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
   }
 
   protected fullName(s: Student): string {

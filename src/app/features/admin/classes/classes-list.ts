@@ -1,6 +1,8 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -11,11 +13,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { debounceTime } from 'rxjs';
 import { RouterLink } from '@angular/router';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { ClassesService } from '../services/classes.service';
 import { TeachersService } from '../services/teachers.service';
 import type { ClassInstance, SchoolSubOption, Teacher } from '../models/admin.models';
@@ -55,6 +59,7 @@ function statusTone(status?: string): BadgeTone {
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    NgTemplateOutlet,
     EmptyState,
     KpiCard,
     PageHeader,
@@ -83,12 +88,32 @@ function statusTone(status?: string): BadgeTone {
 
     <!-- Filtres -->
     <div class="flex flex-wrap items-center gap-3 mb-4">
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-50">
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="w-full sm:flex-1 sm:min-w-50"
+      >
         <mat-label>Rechercher</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
         <input matInput [formControl]="searchCtrl" placeholder="Nom de classe…" />
       </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
+
+      <button
+        mat-stroked-button
+        class="rounded-xl! shrink-0 sm:hidden"
+        (click)="openFilters(filtersTpl)"
+      >
+        <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+        Filtrer
+      </button>
+
+      <div class="hidden sm:flex sm:flex-wrap items-center gap-3">
+        <ng-container [ngTemplateOutlet]="filtersTpl" />
+      </div>
+    </div>
+
+    <ng-template #filtersTpl>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full sm:min-w-45">
         <mat-label>Niveau d'éducation</mat-label>
         <mat-select [formControl]="eduLevelCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -97,7 +122,7 @@ function statusTone(status?: string): BadgeTone {
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="min-w-45">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full sm:min-w-45">
         <mat-label>Horaire</mat-label>
         <mat-select [formControl]="scheduleCtrl">
           <mat-option [value]="''">Tous</mat-option>
@@ -106,7 +131,7 @@ function statusTone(status?: string): BadgeTone {
           }
         </mat-select>
       </mat-form-field>
-    </div>
+    </ng-template>
 
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
@@ -262,6 +287,7 @@ export class ClassesList {
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
   protected readonly schoolYear = this.sy.selected();
   protected readonly eduLevels = CLASS_EDUCATION_LEVEL_OPTIONS;
@@ -339,6 +365,10 @@ export class ClassesList {
       this.sy.selected();
       untracked(() => this.load());
     });
+  }
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
   }
 
   protected teacherName(t: unknown): string {
