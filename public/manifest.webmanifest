@@ -1,6 +1,6 @@
 {
-  "name": "panga-frontend",
-  "short_name": "panga-frontend",
+  "name": "panga",
+  "short_name": "panga",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",

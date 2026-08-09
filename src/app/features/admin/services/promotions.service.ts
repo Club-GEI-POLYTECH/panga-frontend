@@ -1,11 +1,13 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { ListResult, toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
+import { SKIP_ERROR_TOAST } from '../../../core/http/http-context';
 import type {
   ComputeDecisionsDto,
   FinalizeDecisionsDto,
+  FinalizeResult,
   PromotionDecision,
   RecordTransferDto,
   UpdateDecisionDto,
@@ -33,11 +35,17 @@ export class PromotionsService {
       .pipe(map((r) => unwrapList<PromotionDecision>(r).items));
   }
 
-  /** Finaliser (clôturer) les décisions d'une classe. */
-  finalize(dto: FinalizeDecisionsDto): Observable<unknown> {
+  /**
+   * Finaliser (clôturer) les décisions d'une classe. Toast global désactivé :
+   * l'appelant affiche le résultat (`enrollments`) ou le 422 « notes incomplètes »
+   * dans un panneau dédié plutôt qu'un simple toast d'erreur.
+   */
+  finalize(dto: FinalizeDecisionsDto): Observable<FinalizeResult> {
     return this.http
-      .post<unknown>(`${this.base}/finalize`, dto)
-      .pipe(map((r) => unwrapEnvelope(r)));
+      .post<unknown>(`${this.base}/finalize`, dto, {
+        context: new HttpContext().set(SKIP_ERROR_TOAST, true),
+      })
+      .pipe(map((r) => unwrapEnvelope<FinalizeResult>(r)));
   }
 
   /** Lister les décisions (paginé + filtres). */

@@ -81,8 +81,14 @@ interface CourseRef {
     @switch (tab()) {
       @case ('exams') {
         <!-- Filtres -->
-        <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
-          <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-50">
+        <div
+          class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3"
+        >
+          <mat-form-field
+            appearance="outline"
+            class="w-full sm:flex-1 sm:min-w-50"
+            subscriptSizing="dynamic"
+          >
             <mat-label>Classe</mat-label>
             <mat-select [formControl]="filterClass" (selectionChange)="onClassChange()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -91,7 +97,11 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-37.5">
+          <mat-form-field
+            appearance="outline"
+            class="w-full sm:w-auto sm:min-w-37.5"
+            subscriptSizing="dynamic"
+          >
             <mat-label>Période</mat-label>
             <mat-select [formControl]="filterTerm" (selectionChange)="reload()">
               <mat-option [value]="''">Toutes</mat-option>
@@ -100,7 +110,11 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-37.5">
+          <mat-form-field
+            appearance="outline"
+            class="w-full sm:w-auto sm:min-w-37.5"
+            subscriptSizing="dynamic"
+          >
             <mat-label>Type</mat-label>
             <mat-select [formControl]="filterType" (selectionChange)="reload()">
               <mat-option [value]="''">Tous</mat-option>
@@ -109,7 +123,11 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-37.5">
+          <mat-form-field
+            appearance="outline"
+            class="w-full sm:w-auto sm:min-w-37.5"
+            subscriptSizing="dynamic"
+          >
             <mat-label>Statut</mat-label>
             <mat-select [formControl]="filterStatus" (selectionChange)="reload()">
               <mat-option [value]="''">Tous</mat-option>

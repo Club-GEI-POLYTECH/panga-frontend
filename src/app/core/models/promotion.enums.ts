@@ -38,3 +38,24 @@ export function promotionLabel(options: EnumOption[], value: string | undefined 
   }
   return options.find((o) => o.value === value)?.label ?? value;
 }
+
+/** `PromotionEnrollmentResult.outcome` — réinscription effective (POST /finalize). */
+export const ENROLLMENT_OUTCOME_OPTIONS: EnumOption[] = [
+  { value: 'promoted', label: 'Promus' },
+  { value: 'repeated', label: 'Redoublent' },
+  { value: 'graduated', label: 'Diplômés' },
+  { value: 'skipped', label: 'Ignorés' },
+  { value: 'failed', label: 'Échecs' },
+];
+
+const ENROLLMENT_TONE: Record<string, BadgeTone> = {
+  promoted: 'success',
+  repeated: 'warning',
+  graduated: 'brand',
+  skipped: 'neutral',
+  failed: 'danger',
+};
+
+export function enrollmentTone(outcome: string | undefined): BadgeTone {
+  return ENROLLMENT_TONE[outcome ?? ''] ?? 'neutral';
+}

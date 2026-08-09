@@ -1,20 +1,13 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
-import { ApiError, ApiErrorBody, ErrorCode } from '../models/api.models';
+import { ErrorCode } from '../models/api.models';
 import { NotificationService } from '../../shared/ui/notification.service';
+import { extractApiError } from './api.util';
 import { SKIP_ERROR_TOAST } from './http-context';
 
 /** Codes dont l'UX est gérée localement (pas de toast global). */
 const SILENT_CODES = new Set<string>([ErrorCode.VALIDATION_ERROR]);
-
-function extractError(err: HttpErrorResponse): ApiError | null {
-  const body = err.error as ApiErrorBody | undefined;
-  if (body && body.success === false && body.error) {
-    return body.error;
-  }
-  return null;
-}
 
 /**
  * Mappe l'enveloppe d'erreur backend `{ success:false, error:{code,message} }`
@@ -32,7 +25,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
-      const apiError = extractError(err);
+      const apiError = extractApiError(err);
       const code = apiError?.code;
 
       // Erreurs réseau (status 0) — backend injoignable / hors-ligne.
@@ -54,7 +47,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       // Les messages backend sont déjà traduits (FR/EN) — on les affiche.
       if (apiError) {
-        notify.error(apiError.message);
+        // BUSINESS_RULE_VIOLATION : `message` est un texte générique fixe côté
+        // backend, l'info utile (ex. liste de notes manquantes) est dans `details`.
+        const details = apiError.details;
+        const useDetails =
+          code === ErrorCode.BUSINESS_RULE_VIOLATION &&
+          typeof details === 'string' &&
+          details.trim().length > 0;
+        notify.error(useDetails ? (details as string) : apiError.message);
       } else if (err.status >= 500) {
         notify.error('Une erreur serveur est survenue. Réessayez plus tard.');
       } else if (err.status !== 401) {

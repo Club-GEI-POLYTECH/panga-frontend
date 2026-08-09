@@ -33,6 +33,8 @@ export interface ComputeDecisionsDto {
 export interface FinalizeDecisionsDto {
   classInstanceId: string;
   schoolYear: string;
+  /** Année de destination si différente de schoolYear + 1 (déduite sinon). */
+  toSchoolYear?: string;
 }
 
 export interface UpdateDecisionDto {
@@ -44,4 +46,25 @@ export interface RecordTransferDto {
   studentId: string;
   schoolYear: string;
   notes?: string;
+}
+
+/* ------------------------- Résultat de finalisation ------------------------ */
+
+export type EnrollmentOutcome = 'promoted' | 'repeated' | 'graduated' | 'skipped' | 'failed';
+
+/** Ré-inscription effective d'un élève, distincte de sa décision (voir FinalizeResult). */
+export interface PromotionEnrollmentResult {
+  studentId: string;
+  outcome: EnrollmentOutcome;
+  /** Présent surtout sur `outcome: 'failed'` — raison du rattrapage manuel requis. */
+  message?: string;
+}
+
+/** POST /promotions/finalize — `decisions[].status` passe à FINALIZED même si l'entrée
+ *  correspondante dans `enrollments` est `failed` (décision et ré-inscription sont
+ *  deux choses distinctes). */
+export interface FinalizeResult {
+  finalized: number;
+  decisions: PromotionDecision[];
+  enrollments: PromotionEnrollmentResult[];
 }

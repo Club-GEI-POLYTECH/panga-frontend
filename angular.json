@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "panga-frontend": {
+    "panga": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -71,10 +71,10 @@
           },
           "configurations": {
             "production": {
-              "buildTarget": "panga-frontend:build:production"
+              "buildTarget": "panga:build:production"
             },
             "development": {
-              "buildTarget": "panga-frontend:build:development"
+              "buildTarget": "panga:build:development"
             }
           },
           "defaultConfiguration": "development"

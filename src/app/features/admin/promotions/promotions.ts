@@ -8,6 +8,8 @@ import {
   untracked,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,6 +21,7 @@ import { ClassesService } from '../services/classes.service';
 import { StudentsService } from '../services/students.service';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { NotificationService } from '../../../shared/ui/notification.service';
+import { extractApiError } from '../../../core/http/api.util';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
@@ -26,12 +29,19 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { PaginationMeta } from '../../../core/models/api.models';
+import { ErrorCode } from '../../../core/models/api.models';
 import type { ClassInstance, Student } from '../models/admin.models';
-import type { PromotionDecision } from '../models/promotion.models';
+import type {
+  FinalizeResult,
+  PromotionDecision,
+  PromotionEnrollmentResult,
+} from '../models/promotion.models';
 import {
   DECISION_STATUS_OPTIONS,
+  ENROLLMENT_OUTCOME_OPTIONS,
   PROMOTION_DECISION_OPTIONS,
   decisionTone,
+  enrollmentTone,
   promotionLabel,
 } from '../../../core/models/promotion.enums';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
@@ -41,6 +51,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ReactiveFormsModule,
+    RouterLink,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -62,53 +73,139 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     />
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
-      <mat-form-field
-        appearance="outline"
-        class="w-full sm:flex-1 sm:min-w-55"
-        subscriptSizing="dynamic"
-      >
-        <mat-label>Classe</mat-label>
-        <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
-          @for (c of classes(); track c.id) {
-            <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
-          }
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
-        <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
-        <mat-label>Seuil (%)</mat-label>
-        <input
-          matInput
-          type="number"
-          [formControl]="threshold"
-          min="0"
-          max="100"
-          placeholder="50"
-        />
-      </mat-form-field>
+    <div class="panga-card p-5 mb-6">
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:flex-1 sm:min-w-55"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>Classe</mat-label>
+          <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
+            @for (c of classes(); track c.id) {
+              <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
+          <mat-label>Année scolaire</mat-label>
+          <input
+            matInput
+            [formControl]="schoolYear"
+            placeholder="Année en cours"
+            (blur)="reload()"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
+          <mat-label>Seuil (%)</mat-label>
+          <input
+            matInput
+            type="number"
+            [formControl]="threshold"
+            min="0"
+            max="100"
+            placeholder="50"
+          />
+        </mat-form-field>
+        @if (isAdmin() && classId()) {
+          <button
+            mat-stroked-button
+            class="rounded-xl! w-full sm:w-auto"
+            (click)="compute()"
+            [disabled]="busy()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
+          </button>
+          <button
+            mat-flat-button
+            class="rounded-xl! w-full sm:w-auto"
+            (click)="finalize()"
+            [disabled]="busy() || !hasDraft()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">lock</mat-icon> Finaliser
+          </button>
+        }
+      </div>
+
       @if (isAdmin() && classId()) {
-        <button
-          mat-stroked-button
-          class="rounded-xl! w-full sm:w-auto"
-          (click)="compute()"
-          [disabled]="busy()"
-        >
-          <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
-        </button>
-        <button
-          mat-flat-button
-          class="rounded-xl! w-full sm:w-auto"
-          (click)="finalize()"
-          [disabled]="busy() || !hasDraft()"
-        >
-          <mat-icon fontSet="material-symbols-outlined">lock</mat-icon> Finaliser
-        </button>
+        <div class="mt-3 flex flex-col items-start gap-2">
+          <button
+            type="button"
+            class="appearance-none border-0 bg-transparent p-0 inline-flex items-center gap-1 text-xs text-(--text-muted) hover:text-(--text)"
+            (click)="showAdvanced.set(!showAdvanced())"
+          >
+            <mat-icon fontSet="material-symbols-outlined" class="text-base!">{{
+              showAdvanced() ? 'expand_less' : 'expand_more'
+            }}</mat-icon>
+            Options avancées
+          </button>
+          @if (showAdvanced()) {
+            <mat-form-field
+              appearance="outline"
+              class="block w-full sm:w-50"
+              subscriptSizing="dynamic"
+            >
+              <mat-label>Année de destination</mat-label>
+              <input matInput [formControl]="toSchoolYear" placeholder="Déduite de l'année + 1" />
+            </mat-form-field>
+          }
+        </div>
       }
     </div>
+
+    @if (incompleteNotes(); as notes) {
+      <div class="panga-card p-4 mb-6 border border-(--danger)!">
+        <p class="text-sm font-medium text-(--danger) flex items-center gap-2">
+          <mat-icon fontSet="material-symbols-outlined">error</mat-icon>
+          Notes incomplètes — impossible de finaliser
+        </p>
+        <ul class="mt-2 ml-7 list-disc text-sm text-(--text-muted) space-y-1">
+          @for (n of notes; track n) {
+            <li>{{ n }}</li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (finalizeResult(); as result) {
+      <section class="panga-card p-5 mb-6">
+        <panga-section-header icon="fact_check" title="Résultat de la finalisation" />
+        <div class="grid gap-3 grid-cols-2 sm:grid-cols-5 my-4">
+          @for (o of enrollmentOptions; track o.value) {
+            <div class="panga-card p-4 text-center">
+              <p class="text-2xl font-semibold" [style.color]="enrollmentColor(o.value)">
+                {{ enrollmentCount(result, o.value) }}
+              </p>
+              <p class="text-xs text-(--text-muted)">{{ o.label }}</p>
+            </div>
+          }
+        </div>
+        @if (failedEnrollments(result).length) {
+          <div class="border-t border-(--border) pt-3 mt-1">
+            <p class="text-sm font-medium text-(--danger) mb-2">
+              Réinscriptions à faire manuellement
+            </p>
+            <ul class="space-y-2">
+              @for (e of failedEnrollments(result); track e.studentId) {
+                <li class="text-sm">
+                  <span class="font-medium text-(--text)">{{ enrollmentStudentName(e) }}</span>
+                  <span class="text-(--text-muted)"> — {{ e.message }}</span>
+                </li>
+              }
+            </ul>
+            <a
+              routerLink="/classes"
+              class="inline-flex items-center gap-1 mt-3 text-sm text-(--brand) hover:underline"
+            >
+              <mat-icon fontSet="material-symbols-outlined" style="font-size: 18px"
+                >arrow_forward</mat-icon
+              >
+              Créer la classe manquante puis réinscrire depuis sa fiche
+            </a>
+          </div>
+        }
+      </section>
+    }
 
     @if (!classId()) {
       <div class="panga-card">
@@ -247,6 +344,9 @@ export class Promotions {
   }
   protected readonly threshold = new FormControl<number | null>(null);
   protected readonly filterDecision = new FormControl('', { nonNullable: true });
+  /** Année de destination optionnelle pour la finalisation (options avancées). */
+  protected readonly toSchoolYear = new FormControl('', { nonNullable: true });
+  protected readonly showAdvanced = signal(false);
 
   protected readonly decisions = signal<PromotionDecision[]>([]);
   protected readonly meta = signal<PaginationMeta | null>(null);
@@ -254,6 +354,11 @@ export class Promotions {
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   private page = 1;
+
+  protected readonly enrollmentOptions = ENROLLMENT_OUTCOME_OPTIONS;
+  /** Checklist affichée sur le 422 « notes incomplètes » (BUSINESS_RULE_VIOLATION). */
+  protected readonly incompleteNotes = signal<string[] | null>(null);
+  protected readonly finalizeResult = signal<FinalizeResult | null>(null);
 
   protected readonly hasDraft = computed(() =>
     this.decisions().some((d) => d.status !== 'finalized'),
@@ -275,6 +380,8 @@ export class Promotions {
 
   selectClass(id: string): void {
     this.classId.set(id);
+    this.incompleteNotes.set(null);
+    this.finalizeResult.set(null);
     this.studentsApi
       .list({ page: 1, limit: 300, schoolYear: this.schoolYear.value })
       .subscribe({ next: (r) => this.students.set(r.items) });
@@ -285,6 +392,7 @@ export class Promotions {
     if (!this.classId()) {
       return;
     }
+    this.incompleteNotes.set(null);
     this.page = 1;
     this.load();
   }
@@ -323,6 +431,8 @@ export class Promotions {
       return;
     }
     this.busy.set(true);
+    this.incompleteNotes.set(null);
+    this.finalizeResult.set(null);
     this.promotionsApi
       .compute({
         classInstanceId: this.classId(),
@@ -344,16 +454,49 @@ export class Promotions {
     if (this.busy()) {
       return;
     }
+    const draftCount = this.decisions().filter((d) => d.status !== 'finalized').length;
+    if (
+      !confirm(
+        `Cette action réinscrit réellement ${draftCount} élève(s) dans leur classe suivante et est irréversible. Continuer ?`,
+      )
+    ) {
+      return;
+    }
     this.busy.set(true);
+    this.incompleteNotes.set(null);
+    this.finalizeResult.set(null);
+    const toYear = this.toSchoolYear.value.trim();
     this.promotionsApi
-      .finalize({ classInstanceId: this.classId(), schoolYear: this.yr() })
+      .finalize({
+        classInstanceId: this.classId(),
+        schoolYear: this.yr(),
+        ...(toYear ? { toSchoolYear: toYear } : {}),
+      })
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.busy.set(false);
-          this.notify.success('Décisions finalisées.');
+          this.finalizeResult.set(result);
+          this.notify.success(`${result.finalized} décision(s) finalisée(s).`);
           this.reload();
         },
-        error: () => this.busy.set(false),
+        error: (err: HttpErrorResponse) => {
+          this.busy.set(false);
+          const apiError = extractApiError(err);
+          if (
+            apiError?.code === ErrorCode.BUSINESS_RULE_VIOLATION &&
+            typeof apiError.details === 'string' &&
+            apiError.details.trim()
+          ) {
+            this.incompleteNotes.set(
+              apiError.details
+                .split(';')
+                .map((s) => s.trim())
+                .filter(Boolean),
+            );
+          } else {
+            this.notify.error(apiError?.message ?? 'Impossible de finaliser les décisions.');
+          }
+        },
       });
   }
 
@@ -392,7 +535,12 @@ export class Promotions {
     return this.decisions().filter((d) => d.decision === decision).length;
   }
   protected countColor(decision: string): string {
-    const tone = decisionTone(decision);
+    return this.toneColor(decisionTone(decision));
+  }
+  protected enrollmentColor(outcome: string): string {
+    return this.toneColor(enrollmentTone(outcome));
+  }
+  private toneColor(tone: string): string {
     return tone === 'success'
       ? 'var(--success)'
       : tone === 'danger'
@@ -456,5 +604,24 @@ export class Promotions {
       default:
         return 'edit';
     }
+  }
+
+  /* --------------------------- Résultat finalisation ------------------------ */
+
+  protected enrollmentCount(result: FinalizeResult, outcome: string): number {
+    return result.enrollments.filter((e) => e.outcome === outcome).length;
+  }
+  protected failedEnrollments(result: FinalizeResult): PromotionEnrollmentResult[] {
+    return result.enrollments.filter((e) => e.outcome === 'failed');
+  }
+  protected enrollmentStudentName(e: PromotionEnrollmentResult): string {
+    const decision = this.decisions().find((d) => d.studentId === e.studentId);
+    if (decision) {
+      return this.studentName(decision);
+    }
+    const match = this.students().find((x) => x.id === e.studentId);
+    return match
+      ? `${match.firstName || ''} ${match.lastName || ''}`.trim() || e.studentId
+      : e.studentId;
   }
 }

@@ -1,5 +1,14 @@
-import { HttpParams } from '@angular/common/http';
-import type { PaginationMeta } from '../models/api.models';
+import { HttpErrorResponse, HttpParams } from '@angular/common/http';
+import type { ApiError, ApiErrorBody, PaginationMeta } from '../models/api.models';
+
+/** Lit l'enveloppe d'erreur backend `{ success:false, error:{code,message,details} }`. */
+export function extractApiError(err: HttpErrorResponse): ApiError | null {
+  const body = err.error as ApiErrorBody | undefined;
+  if (body && body.success === false && body.error) {
+    return body.error;
+  }
+  return null;
+}
 
 /**
  * Déballe l'enveloppe `{ success, data }` du backend si présente, sinon renvoie

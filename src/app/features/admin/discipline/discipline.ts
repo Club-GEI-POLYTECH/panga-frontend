@@ -120,15 +120,14 @@ interface ChildRef {
       <ng-container [ngTemplateOutlet]="reportTpl" />
     } @else {
       <!-- ================== Vue gestion (admin / enseignant) ================= -->
-      <div class="flex flex-wrap gap-2 mb-5">
+      <div
+        class="flex gap-1 mb-5 p-1 rounded-xl bg-(--background) w-fit border border-(--border) overflow-x-auto"
+      >
         @for (t of tabs; track t.key) {
           <button
-            class="rounded-xl px-4 py-2 text-sm font-medium border"
-            [class.bg-(--brand-500)]="tab() === t.key"
-            [class.text-white]="tab() === t.key"
-            [class.border-transparent]="tab() === t.key"
-            [class.border-(--border)]="tab() !== t.key"
-            [class.text-(--text-muted)]="tab() !== t.key"
+            class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
+            [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
+            [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
             (click)="tab.set(t.key)"
           >
             {{ t.label }}

@@ -16,8 +16,11 @@ export interface ApiErrorBody {
 export interface ApiError {
   code: ErrorCode | string;
   message: string;
-  /** Détails de validation : { champ: [messages] } ou structure libre. */
-  details?: Record<string, unknown> | FieldError[] | null;
+  /**
+   * Détails d'erreur : { champ: [messages] } ou tableau (VALIDATION_ERROR), ou
+   * texte libre actionnable (BUSINESS_RULE_VIOLATION — voir errorInterceptor).
+   */
+  details?: Record<string, unknown> | FieldError[] | string | null;
 }
 
 export interface FieldError {
@@ -64,4 +67,6 @@ export enum ErrorCode {
   PAYMENT_FAILED = 'PAYMENT_FAILED',
   RATE_LIMITED = 'RATE_LIMITED',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
+  /** `error.message` est un texte générique fixe : afficher `error.details` à la place. */
+  BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION',
 }
