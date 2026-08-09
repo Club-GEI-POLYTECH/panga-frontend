@@ -62,8 +62,8 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     />
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-wrap items-end gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-55">
+    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
+      <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -71,11 +71,11 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-37.5">
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
         <mat-label>Année scolaire</mat-label>
         <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-37.5">
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
         <mat-label>Seuil (%)</mat-label>
         <input
           matInput
@@ -87,12 +87,17 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         />
       </mat-form-field>
       @if (isAdmin() && classId()) {
-        <button mat-stroked-button class="rounded-xl!" (click)="compute()" [disabled]="busy()">
+        <button
+          mat-stroked-button
+          class="rounded-xl! w-full sm:w-auto"
+          (click)="compute()"
+          [disabled]="busy()"
+        >
           <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
         </button>
         <button
           mat-flat-button
-          class="rounded-xl!"
+          class="rounded-xl! w-full sm:w-auto"
           (click)="finalize()"
           [disabled]="busy() || !hasDraft()"
         >
@@ -152,49 +157,53 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         } @else {
           <div class="divide-y divide-(--border) -mx-5">
             @for (d of decisions(); track d.id || $index) {
-              <div class="flex items-center gap-4 px-5 py-3">
-                <panga-avatar [name]="studentName(d)" [size]="38" />
-                <div class="min-w-0 flex-1">
-                  <p class="text-sm font-medium text-(--text) truncate">
+              <div class="flex flex-col gap-1.5 px-5 py-3">
+                <div class="flex items-center gap-4">
+                  <panga-avatar [name]="studentName(d)" [size]="38" />
+                  <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
                     {{ studentName(d) }}
                   </p>
-                  <p class="text-xs text-(--text-muted)">
+                </div>
+                <div class="flex flex-wrap items-center justify-between gap-2 pl-13.5">
+                  <span class="text-xs text-(--text-muted) truncate">
                     Moyenne :
                     <span class="font-medium" [style.color]="avgColor(d)">{{ avg(d) }}</span>
                     @if (d.passThreshold !== null && d.passThreshold !== undefined) {
                       · seuil {{ num(d.passThreshold) }}%
                     }
-                  </p>
-                </div>
-                <panga-status-badge
-                  [label]="decisionLabel(d.decision)"
-                  [tone]="tone(d.decision)"
-                  [dot]="false"
-                />
-                <panga-status-badge
-                  [label]="statusLabel(d.status)"
-                  [tone]="d.status === 'finalized' ? 'neutral' : 'brand'"
-                  [dot]="false"
-                />
-                @if (isAdmin() && d.status !== 'finalized') {
-                  <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Décision">
-                    <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
-                  </button>
-                  <mat-menu #menu="matMenu" class="panga-menu">
-                    @for (o of decisionOptions; track o.value) {
-                      <button
-                        mat-menu-item
-                        (click)="override(d, o.value)"
-                        [disabled]="d.decision === o.value"
-                      >
-                        <mat-icon fontSet="material-symbols-outlined">{{
-                          iconFor(o.value)
-                        }}</mat-icon>
-                        <span>{{ o.label }}</span>
+                  </span>
+                  <div class="flex shrink-0 items-center gap-1.5">
+                    <panga-status-badge
+                      [label]="decisionLabel(d.decision)"
+                      [tone]="tone(d.decision)"
+                      [dot]="false"
+                    />
+                    <panga-status-badge
+                      [label]="statusLabel(d.status)"
+                      [tone]="d.status === 'finalized' ? 'neutral' : 'brand'"
+                      [dot]="false"
+                    />
+                    @if (isAdmin() && d.status !== 'finalized') {
+                      <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Décision">
+                        <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
                       </button>
+                      <mat-menu #menu="matMenu" class="panga-menu">
+                        @for (o of decisionOptions; track o.value) {
+                          <button
+                            mat-menu-item
+                            (click)="override(d, o.value)"
+                            [disabled]="d.decision === o.value"
+                          >
+                            <mat-icon fontSet="material-symbols-outlined">{{
+                              iconFor(o.value)
+                            }}</mat-icon>
+                            <span>{{ o.label }}</span>
+                          </button>
+                        }
+                      </mat-menu>
                     }
-                  </mat-menu>
-                }
+                  </div>
+                </div>
               </div>
             }
           </div>

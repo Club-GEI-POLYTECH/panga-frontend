@@ -6,12 +6,16 @@
 .wrap {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 1fr;
+  // `minmax(0, 1fr)` (et pas juste `1fr`) : une piste de grille `1fr` a un minimum
+  // implicite = `auto`, càd le min-content de son contenu. Sans le `0`, un enfant
+  // incompressible (ex. valeur d'un champ) élargit `.wrap` au-delà du viewport →
+  // scroll horizontal indésirable en mobile.
+  grid-template-columns: minmax(0, 1fr);
 }
 
 @media (min-width: 1024px) {
   .wrap {
-    grid-template-columns: 1.05fr 0.95fr;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   }
 }
 
@@ -226,6 +230,12 @@
 .form-panel {
   position: relative;
   display: grid;
+  // Piste explicite (et `minmax(0, ...)`) : sans `grid-template-columns`, la
+  // cellule implicite de `place-items: center` se dimensionne sur le contenu
+  // (`.card`) au lieu de l'espace réellement disponible. `.card` (width: 100%)
+  // ne pouvait alors pas se référencer à une taille définie et gardait sa
+  // largeur intrinsèque, ancrée à gauche → débordement/rognage à droite.
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 1.5rem;
   background:

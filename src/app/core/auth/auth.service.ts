@@ -160,9 +160,9 @@ export class AuthService {
   }
 
   /** Réinitialise le mot de passe via le token reçu par e-mail (route publique). */
-  resetPassword(token: string, password: string): Observable<void> {
+  resetPassword(token: string, newPassword: string): Observable<void> {
     return this.http
-      .post<unknown>(`${this.base}/reset-password`, { token, password })
+      .post<unknown>(`${this.base}/reset-password`, { token, newPassword })
       .pipe(map(() => undefined));
   }
 
