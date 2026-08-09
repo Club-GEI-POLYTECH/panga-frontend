@@ -62,8 +62,12 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     />
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
-      <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
+    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-55"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
@@ -71,11 +75,11 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
         <mat-label>Année scolaire</mat-label>
         <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
       </mat-form-field>
-      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
         <mat-label>Seuil (%)</mat-label>
         <input
           matInput
