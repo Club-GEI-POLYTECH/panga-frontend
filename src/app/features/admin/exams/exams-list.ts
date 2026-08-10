@@ -17,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { ExamsService } from '../services/exams.service';
 import { ClassesService } from '../services/classes.service';
 import { SubjectsService } from '../services/subjects.service';
+import { TeachersService } from '../services/teachers.service';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
@@ -25,13 +26,14 @@ import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import type { PaginationMeta } from '../../../core/models/api.models';
-import type { ClassInstance } from '../models/admin.models';
+import type { ClassInstance, Teacher } from '../models/admin.models';
 import type { ClassSubject } from '../models/course.models';
-import type { Exam, ExamRoom, ExamSession } from '../models/exam.models';
+import type { Exam, ExamRoom, ExamSession, SeatingRoomRoster } from '../models/exam.models';
 import {
   EXAM_STATUS_OPTIONS,
   EXAM_TYPE_OPTIONS,
   ROOM_TYPE_OPTIONS,
+  SEATING_MODE_OPTIONS,
   examLabel,
   examStatusTone,
 } from '../../../core/models/exam.enums';
@@ -309,11 +311,11 @@ interface CourseRef {
               (ngSubmit)="createSession()"
               class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-5"
             >
-              <mat-form-field appearance="outline" class="lg:col-span-2">
+              <mat-form-field appearance="outline" class="lg:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Nom</mat-label>
                 <input matInput formControlName="name" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Période</mat-label>
                 <mat-select formControlName="term">
                   @for (o of terms; track o.value) {
@@ -321,8 +323,26 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <panga-date-field class="w-full" label="Début" formControlName="startDate" />
-              <panga-date-field class="w-full" label="Fin" formControlName="endDate" />
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>Répartition des salles</mat-label>
+                <mat-select formControlName="seatingMode">
+                  @for (o of seatingModes; track o.value) {
+                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <panga-date-field
+                class="w-full"
+                label="Début"
+                formControlName="startDate"
+                subscriptSizing="dynamic"
+              />
+              <panga-date-field
+                class="w-full"
+                label="Fin"
+                formControlName="endDate"
+                subscriptSizing="dynamic"
+              />
               <div class="flex items-end">
                 <button
                   mat-flat-button
@@ -339,23 +359,158 @@ interface CourseRef {
           @if (sessions().length === 0) {
             <p class="text-sm text-(--text-muted)">Aucune session.</p>
           } @else {
-            <div class="grid gap-3 sm:grid-cols-2">
+            <div class="flex flex-col gap-3">
               @for (s of sessions(); track s.id) {
                 <div class="rounded-2xl border border-(--border) p-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <p class="font-medium text-(--text) truncate">{{ s.name }}</p>
-                      <p class="text-xs text-(--text-muted)">{{ s.schoolYear }} · {{ s.term }}</p>
+                  <button
+                    type="button"
+                    class="appearance-none border-0 bg-transparent p-0 w-full text-left"
+                    (click)="toggleSession(s)"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="font-medium text-(--text) truncate">{{ s.name }}</p>
+                        <p class="text-xs text-(--text-muted)">
+                          {{ s.schoolYear }} · {{ s.term }} · {{ seatingModeLabel(s.seatingMode) }}
+                        </p>
+                      </div>
+                      <panga-status-badge
+                        [label]="sessionStatusLabel(s.status)"
+                        tone="info"
+                        [dot]="false"
+                      />
                     </div>
-                    <panga-status-badge
-                      [label]="sessionStatusLabel(s.status)"
-                      tone="info"
-                      [dot]="false"
-                    />
-                  </div>
-                  <p class="text-xs text-(--text-muted) mt-2">
-                    {{ s.startDate }} → {{ s.endDate }} · {{ s.totalExams ?? 0 }} examen(s)
-                  </p>
+                    <p class="text-xs text-(--text-muted) mt-2">
+                      {{ s.startDate }} → {{ s.endDate }} · {{ s.totalExams ?? 0 }} examen(s)
+                    </p>
+                  </button>
+
+                  @if (expandedSessionId() === s.id) {
+                    <div class="mt-4 pt-4 border-t border-(--border)">
+                      <p class="text-sm font-medium text-(--text) mb-2">Placement en salle</p>
+                      <div class="flex flex-wrap items-end gap-3 mb-5">
+                        <mat-form-field
+                          appearance="outline"
+                          subscriptSizing="dynamic"
+                          class="flex-1 min-w-55"
+                        >
+                          <mat-label>Salles</mat-label>
+                          <mat-select
+                            multiple
+                            [value]="selectedRoomIds()"
+                            (selectionChange)="selectedRoomIds.set($event.value)"
+                          >
+                            @for (r of rooms(); track r.id) {
+                              <mat-option [value]="r.id">{{
+                                r.roomName || r.roomNumber
+                              }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+                        <button
+                          mat-flat-button
+                          class="rounded-xl!"
+                          [disabled]="!selectedRoomIds().length || saving()"
+                          (click)="onGenerateSeating(s.id)"
+                        >
+                          <mat-icon fontSet="material-symbols-outlined">event_seat</mat-icon>
+                          Générer le placement
+                        </button>
+                      </div>
+
+                      @if (s.seatingMode === 'mixed') {
+                        <p class="text-sm font-medium text-(--text) mb-2">
+                          Surveillant — salle & fenêtre horaire
+                        </p>
+                        <form
+                          [formGroup]="sessionSupForm"
+                          (ngSubmit)="onAddSessionSupervisor(s.id)"
+                          class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5 mb-5"
+                        >
+                          <mat-form-field
+                            appearance="outline"
+                            subscriptSizing="dynamic"
+                            class="lg:col-span-2"
+                          >
+                            <mat-label>Enseignant</mat-label>
+                            <mat-select formControlName="teacherId">
+                              @for (t of teachers(); track t.id) {
+                                <mat-option [value]="t.id">{{ teacherName(t) }}</mat-option>
+                              }
+                            </mat-select>
+                          </mat-form-field>
+                          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                            <mat-label>Salle</mat-label>
+                            <mat-select formControlName="roomId">
+                              @for (r of rooms(); track r.id) {
+                                <mat-option [value]="r.id">{{
+                                  r.roomName || r.roomNumber
+                                }}</mat-option>
+                              }
+                            </mat-select>
+                          </mat-form-field>
+                          <panga-date-field
+                            class="w-full"
+                            label="Date"
+                            formControlName="date"
+                            subscriptSizing="dynamic"
+                          />
+                          <div class="flex gap-2">
+                            <mat-form-field
+                              appearance="outline"
+                              subscriptSizing="dynamic"
+                              class="flex-1"
+                            >
+                              <mat-label>Début</mat-label>
+                              <input matInput type="time" formControlName="startTime" />
+                            </mat-form-field>
+                            <mat-form-field
+                              appearance="outline"
+                              subscriptSizing="dynamic"
+                              class="flex-1"
+                            >
+                              <mat-label>Fin</mat-label>
+                              <input matInput type="time" formControlName="endTime" />
+                            </mat-form-field>
+                          </div>
+                          <div class="flex items-end lg:col-span-5">
+                            <button
+                              mat-flat-button
+                              class="rounded-xl!"
+                              type="submit"
+                              [disabled]="sessionSupForm.invalid || saving()"
+                            >
+                              Ajouter
+                            </button>
+                          </div>
+                        </form>
+                      }
+
+                      @if (loadingSeating()) {
+                        <p class="text-sm text-(--text-muted)">Chargement du placement…</p>
+                      } @else if (seatingRooms().length === 0) {
+                        <p class="text-sm text-(--text-muted)">
+                          Aucun placement généré pour l'instant.
+                        </p>
+                      } @else {
+                        <div class="grid gap-3 sm:grid-cols-2">
+                          @for (room of seatingRooms(); track room.roomId) {
+                            <div class="rounded-xl border border-(--border) p-3">
+                              <p class="text-sm font-medium text-(--text)">{{ roomLabel(room) }}</p>
+                              <p class="text-xs text-(--text-muted) mb-1">
+                                {{ room.students?.length ?? 0 }} élève(s)
+                              </p>
+                              @if (room.supervisors?.length) {
+                                <p class="text-xs text-(--text-muted)">
+                                  Surveillance : {{ supervisorNames(room) }}
+                                </p>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>
@@ -452,6 +607,7 @@ export class ExamsList {
   private readonly examsApi = inject(ExamsService);
   private readonly classesApi = inject(ClassesService);
   private readonly subjectsApi = inject(SubjectsService);
+  private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
 
@@ -459,6 +615,7 @@ export class ExamsList {
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
   protected readonly statuses = EXAM_STATUS_OPTIONS;
   protected readonly roomTypes = ROOM_TYPE_OPTIONS;
+  protected readonly seatingModes = SEATING_MODE_OPTIONS;
   protected readonly tabs = [
     { key: 'exams' as const, label: 'Examens' },
     { key: 'sessions' as const, label: 'Sessions' },
@@ -472,12 +629,20 @@ export class ExamsList {
   protected readonly meta = signal<PaginationMeta | null>(null);
   protected readonly sessions = signal<ExamSession[]>([]);
   protected readonly rooms = signal<ExamRoom[]>([]);
+  protected readonly teachers = signal<Teacher[]>([]);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly showCreate = signal(false);
   protected readonly showSession = signal(false);
   protected readonly showRoom = signal(false);
   private page = 1;
+
+  /* ------------------------------- Placement --------------------------------- */
+
+  protected readonly expandedSessionId = signal<string | null>(null);
+  protected readonly selectedRoomIds = signal<string[]>([]);
+  protected readonly seatingRooms = signal<SeatingRoomRoster[]>([]);
+  protected readonly loadingSeating = signal(false);
 
   protected readonly filterClass = new FormControl('', { nonNullable: true });
   protected readonly filterTerm = new FormControl('', { nonNullable: true });
@@ -508,8 +673,18 @@ export class ExamsList {
   protected readonly sessionForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     term: new FormControl('TERM1', { nonNullable: true, validators: [Validators.required] }),
+    seatingMode: new FormControl('by_class', { nonNullable: true }),
     startDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     endDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
+
+  /** Surveillant session (mode `mixed`) : salle + fenêtre horaire, sans examen unique. */
+  protected readonly sessionSupForm = new FormGroup({
+    teacherId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    roomId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    date: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    startTime: new FormControl('08:00', { nonNullable: true, validators: [Validators.required] }),
+    endTime: new FormControl('10:00', { nonNullable: true, validators: [Validators.required] }),
   });
 
   protected readonly roomForm = new FormGroup({
@@ -525,6 +700,9 @@ export class ExamsList {
   constructor() {
     this.examsApi.sessions().subscribe({ next: (s) => this.sessions.set(s) });
     this.examsApi.rooms().subscribe({ next: (r) => this.rooms.set(r) });
+    this.teachersApi
+      .list({ page: 1, limit: 200 })
+      .subscribe({ next: (r) => this.teachers.set(r.items) });
     // Recharge classes & examens à chaque changement d'année (sélecteur global).
     effect(() => {
       this.sy.selected();
@@ -644,9 +822,65 @@ export class ExamsList {
       next: () => {
         this.saving.set(false);
         this.notify.success('Session créée.');
-        this.sessionForm.reset({ term: 'TERM1' });
+        this.sessionForm.reset({ term: 'TERM1', seatingMode: 'by_class' });
         this.showSession.set(false);
         this.examsApi.sessions().subscribe({ next: (s) => this.sessions.set(s) });
+      },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  /* ------------------------------- Placement --------------------------------- */
+
+  toggleSession(s: ExamSession): void {
+    if (this.expandedSessionId() === s.id) {
+      this.expandedSessionId.set(null);
+      return;
+    }
+    this.expandedSessionId.set(s.id);
+    this.selectedRoomIds.set([]);
+    this.sessionSupForm.reset({ startTime: '08:00', endTime: '10:00' });
+    this.loadSeating(s.id);
+  }
+
+  private loadSeating(sessionId: string): void {
+    this.loadingSeating.set(true);
+    this.examsApi
+      .seating(sessionId)
+      .pipe(catchError(() => of([] as SeatingRoomRoster[])))
+      .subscribe((rows) => {
+        this.seatingRooms.set(rows);
+        this.loadingSeating.set(false);
+      });
+  }
+
+  onGenerateSeating(sessionId: string): void {
+    if (!this.selectedRoomIds().length || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    this.examsApi.generateSeating(sessionId, { roomIds: this.selectedRoomIds() }).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.notify.success('Placement généré.');
+        this.loadSeating(sessionId);
+      },
+      error: () => this.saving.set(false),
+    });
+  }
+
+  onAddSessionSupervisor(sessionId: string): void {
+    if (this.sessionSupForm.invalid || this.saving()) {
+      return;
+    }
+    const v = this.sessionSupForm.getRawValue();
+    this.saving.set(true);
+    this.examsApi.addSessionSupervisor(sessionId, v).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.notify.success('Surveillant ajouté.');
+        this.sessionSupForm.reset({ startTime: '08:00', endTime: '10:00' });
+        this.loadSeating(sessionId);
       },
       error: () => this.saving.set(false),
     });
@@ -698,6 +932,33 @@ export class ExamsList {
   }
   protected roomTypeLabel(t: string | undefined): string {
     return examLabel(ROOM_TYPE_OPTIONS, t);
+  }
+  protected seatingModeLabel(m: string | undefined): string {
+    return examLabel(SEATING_MODE_OPTIONS, m || 'by_class');
+  }
+  protected teacherName(t: Teacher): string {
+    const u = (t.user ?? {}) as Record<string, unknown>;
+    return (
+      `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
+      (t.employeeNumber as string) ||
+      t.id
+    );
+  }
+  protected roomLabel(room: SeatingRoomRoster): string {
+    return room.room?.roomName || room.room?.roomNumber || 'Salle';
+  }
+  protected supervisorNames(room: SeatingRoomRoster): string {
+    return (room.supervisors ?? [])
+      .map((sup) => {
+        const t = (sup.teacher ?? {}) as Record<string, unknown>;
+        const u = (t['user'] ?? {}) as Record<string, unknown>;
+        return (
+          `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
+          (t['employeeNumber'] as string) ||
+          'Surveillant'
+        );
+      })
+      .join(', ');
   }
 }
 

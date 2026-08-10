@@ -66,6 +66,16 @@ export const SUPERVISOR_ROLE_OPTIONS: EnumOption[] = [
   { value: 'backup', label: 'Remplaçant' },
 ];
 
+/**
+ * ExamSession.seatingMode — répartition des salles pour toute la session.
+ * `by_class` (défaut) : chaque classe garde sa propre salle. `mixed` : les
+ * élèves de plusieurs classes/niveaux sont dispersés dans les mêmes salles.
+ */
+export const SEATING_MODE_OPTIONS: EnumOption[] = [
+  { value: 'by_class', label: 'Par classe' },
+  { value: 'mixed', label: 'Mixte (salles partagées)' },
+];
+
 const EXAM_STATUS_TONE: Record<string, BadgeTone> = {
   draft: 'neutral',
   scheduled: 'info',

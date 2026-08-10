@@ -203,11 +203,34 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    // Gestion complète : admin uniquement (l'enseignant a `nav.myExams` ci-dessous —
+    // `exams.read` est aussi accordé à l'enseignant mais pour un écran différent,
+    // donc le filtrage se fait par rôle plutôt que par permission ici).
     labelKey: 'nav.exams',
     icon: 'quiz',
     path: 'exams',
-    roles: ['admin', 'teacher'],
-    permission: 'exams.read',
+    roles: ['admin'],
+    group: 'pedagogie',
+  },
+  {
+    labelKey: 'nav.myExams',
+    icon: 'quiz',
+    path: 'mes-examens',
+    roles: ['teacher'],
+    group: 'pedagogie',
+  },
+  {
+    labelKey: 'nav.mySupervisions',
+    icon: 'meeting_room',
+    path: 'mes-surveillances',
+    roles: ['teacher'],
+    group: 'pedagogie',
+  },
+  {
+    labelKey: 'nav.myExams',
+    icon: 'quiz',
+    path: 'mes-resultats-examens',
+    roles: ['student', 'parent'],
     group: 'pedagogie',
   },
   {

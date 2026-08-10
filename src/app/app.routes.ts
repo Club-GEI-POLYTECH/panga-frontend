@@ -45,6 +45,9 @@ const IMPLEMENTED = new Set([
   'mes-paiements',
   'mes-notifications',
   'mes-services',
+  'mes-examens',
+  'mes-surveillances',
+  'mes-resultats-examens',
 ]);
 
 /**
@@ -144,14 +147,38 @@ const adminRoutes: Routes = [
     loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
   },
   {
+    // Gestion complète (sessions, salles, examens, surveillants) : admin uniquement.
+    // L'enseignant a son propre écran resserré (`mes-examens`) — le backend refuse
+    // désormais (403) toute action de gestion depuis un compte enseignant.
     path: 'exams',
-    canActivate: [permissionGuard('exams.read')],
+    canActivate: [roleGuard('admin')],
     loadComponent: () => import('./features/admin/exams/exams-list').then((m) => m.ExamsList),
   },
   {
+    // Détail d'un examen : admin (gestion complète) ET enseignant (saisie des
+    // résultats de ses propres examens) — les actions admin-only sont masquées
+    // dans le composant, le backend scope de toute façon quel examen est visible.
     path: 'exams/:id',
     canActivate: [permissionGuard('exams.read')],
     loadComponent: () => import('./features/admin/exams/exam-detail').then((m) => m.ExamDetail),
+  },
+  {
+    path: 'mes-examens',
+    canActivate: [roleGuard('teacher')],
+    loadComponent: () =>
+      import('./features/teacher/exams/teacher-exams').then((m) => m.TeacherExams),
+  },
+  {
+    path: 'mes-surveillances',
+    canActivate: [roleGuard('teacher')],
+    loadComponent: () =>
+      import('./features/teacher/exams/teacher-supervisions').then((m) => m.TeacherSupervisions),
+  },
+  {
+    path: 'mes-resultats-examens',
+    canActivate: [roleGuard('student', 'parent')],
+    loadComponent: () =>
+      import('./features/student/exams/student-exams').then((m) => m.StudentExams),
   },
   {
     path: 'course-journal',

@@ -65,7 +65,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           (ngSubmit)="pay()"
           class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
         >
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Opérateur</mat-label>
             <mat-select formControlName="provider">
               @for (p of providers; track p.value) {
@@ -73,11 +73,11 @@ const STATUS_TONE: Record<string, BadgeTone> = {
               }
             </mat-select>
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Numéro de téléphone</mat-label>
             <input matInput formControlName="phoneNumber" placeholder="09xxxxxxxx" />
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Montant</mat-label>
             <input matInput type="number" formControlName="amount" min="1" />
           </mat-form-field>

@@ -300,7 +300,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
                 <span class="text-sm text-(--text)">{{ label(p) }}</span>
                 <button
                   type="button"
-                  class="ml-0.5 shrink-0 leading-none text-(--text-muted) outline-none transition-colors hover:text-(--danger)"
+                  class="appearance-none border-0 bg-transparent p-0 ml-0.5 shrink-0 leading-none text-(--text-muted) outline-none transition-colors hover:text-(--danger)"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
@@ -314,8 +314,8 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         } @else {
           <p class="text-sm text-(--text-muted) mb-4">Aucun parent lié.</p>
         }
-        <div class="flex flex-wrap items-end gap-3">
-          <mat-form-field appearance="outline" class="flex-1 min-w-55">
+        <div class="flex flex-wrap items-center gap-3">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-55">
             <mat-label>Lier un parent</mat-label>
             <mat-select [formControl]="parentCtrl">
               @for (p of parents(); track p.id) {
@@ -325,7 +325,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </mat-form-field>
           <button
             mat-flat-button
-            class="rounded-xl! mb-1!"
+            class="rounded-xl!"
             (click)="addParent()"
             [disabled]="!parentCtrl.value || linking()"
           >

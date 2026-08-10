@@ -641,7 +641,7 @@ interface ChildRef {
                         {{ p.name }} · {{ p.role }}
                         <button
                           type="button"
-                          class="text-(--text-muted) hover:text-(--danger)"
+                          class="appearance-none border-0 bg-transparent p-0 text-(--text-muted) hover:text-(--danger)"
                           (click)="removeParticipant(idx)"
                           aria-label="Retirer"
                         >

@@ -9,11 +9,16 @@ import type {
   CreateExamRoomDto,
   CreateExamSessionDto,
   CreateExamSupervisorDto,
+  CreateSessionSupervisorDto,
   Exam,
   ExamFilter,
   ExamResult,
+  ExamResultsResponse,
   ExamRoom,
   ExamSession,
+  GenerateSeatingDto,
+  SeatingRoomRoster,
+  UpdateSeatDto,
 } from '../models/exam.models';
 
 /** Examens : sessions, salles, examens, surveillants, résultats, statistiques. */
@@ -34,6 +39,45 @@ export class ExamsService {
     return this.http
       .post<unknown>(`${this.base}/sessions`, dto)
       .pipe(map((r) => unwrapEnvelope<ExamSession>(r)));
+  }
+
+  /* -------------------------------- Placement -------------------------------- */
+
+  /** Génère (ou régénère intégralement) le placement en salle de toute la session. */
+  generateSeating(sessionId: string, dto: GenerateSeatingDto): Observable<unknown> {
+    return this.http
+      .post<unknown>(`${this.base}/sessions/${sessionId}/seating/generate`, dto)
+      .pipe(map((r) => unwrapEnvelope(r)));
+  }
+
+  /** Roster complet par salle (élèves + surveillants) pour toute la session. */
+  seating(sessionId: string): Observable<SeatingRoomRoster[]> {
+    return this.http
+      .get<unknown>(`${this.base}/sessions/${sessionId}/seating`)
+      .pipe(map((r) => unwrapList<SeatingRoomRoster>(r).items));
+  }
+
+  /** Salle d'un élève pour la session (studentId forcé au demandeur si élève). */
+  mySeat(sessionId: string, studentId?: string): Observable<Record<string, unknown>> {
+    return this.http
+      .get<unknown>(`${this.base}/sessions/${sessionId}/my-seat`, {
+        params: toHttpParams({ studentId }),
+      })
+      .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
+  }
+
+  /** Ajustement manuel ponctuel de la salle d'un élève. */
+  updateSeat(sessionId: string, studentId: string, dto: UpdateSeatDto): Observable<unknown> {
+    return this.http
+      .patch<unknown>(`${this.base}/sessions/${sessionId}/seating/${studentId}`, dto)
+      .pipe(map((r) => unwrapEnvelope(r)));
+  }
+
+  /** Surveillant lié à une salle sur une fenêtre horaire (mode `mixed`, sans examen unique). */
+  addSessionSupervisor(sessionId: string, dto: CreateSessionSupervisorDto): Observable<unknown> {
+    return this.http
+      .post<unknown>(`${this.base}/sessions/${sessionId}/supervisors`, dto)
+      .pipe(map((r) => unwrapEnvelope(r)));
   }
 
   /* -------------------------------- Salles ---------------------------------- */
@@ -101,10 +145,23 @@ export class ExamsService {
 
   /* -------------------------------- Résultats ------------------------------- */
 
-  results(examId: string): Observable<ExamResult[]> {
+  /**
+   * `published` distingue "pas encore publié" (`results: []`) de "publié mais
+   * personne noté" (`results: []` aussi) — à tester explicitement, pas déduit
+   * de la longueur du tableau. `studentId` requis pour un appel scopé parent.
+   */
+  results(examId: string, studentId?: string): Observable<ExamResultsResponse> {
     return this.http
-      .get<unknown>(`${this.base}/${examId}/results`)
-      .pipe(map((r) => unwrapList<ExamResult>(r).items));
+      .get<unknown>(`${this.base}/${examId}/results`, { params: toHttpParams({ studentId }) })
+      .pipe(
+        map((r) => {
+          const data = unwrapEnvelope<Partial<ExamResultsResponse> | ExamResult[]>(r);
+          if (Array.isArray(data)) {
+            return { published: true, results: data };
+          }
+          return { published: !!data?.published, results: data?.results ?? [] };
+        }),
+      );
   }
 
   upsertResult(dto: CreateExamResultDto): Observable<ExamResult> {

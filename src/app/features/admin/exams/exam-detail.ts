@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ExamsService } from '../services/exams.service';
 import { StudentsService } from '../services/students.service';
 import { TeachersService } from '../services/teachers.service';
+import { AuthStore } from '../../../core/auth/auth.store';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
@@ -116,15 +117,19 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         @case ('results') {
           <section class="panga-card p-5">
             <panga-section-header icon="grading" title="Résultats" [count]="roster().length">
-              <button
-                mat-flat-button
-                class="rounded-xl!"
-                [disabled]="publishing() || e.isResultsPublished"
-                (click)="publish()"
-              >
-                <mat-icon fontSet="material-symbols-outlined">publish</mat-icon>
-                {{ e.isResultsPublished ? 'Publiés' : 'Publier les résultats' }}
-              </button>
+              @if (isAdmin()) {
+                <button
+                  mat-flat-button
+                  class="rounded-xl!"
+                  [disabled]="publishing() || e.isResultsPublished"
+                  (click)="publish()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">publish</mat-icon>
+                  {{ e.isResultsPublished ? 'Publiés' : 'Publier les résultats' }}
+                </button>
+              } @else if (e.isResultsPublished) {
+                <panga-status-badge label="Résultats publiés" tone="success" [dot]="false" />
+              }
             </panga-section-header>
 
             @if (roster().length === 0) {
@@ -180,47 +185,53 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
               title="Surveillants"
               [count]="supervisors().length"
             />
-            <form
-              [formGroup]="supForm"
-              (ngSubmit)="addSupervisor()"
-              class="flex flex-wrap items-end gap-3 mb-4"
-            >
-              <mat-form-field appearance="outline" class="flex-1 min-w-55">
-                <mat-label>Enseignant</mat-label>
-                <mat-select formControlName="teacherId">
-                  @for (t of teachers(); track t.id) {
-                    <mat-option [value]="t.id">{{ teacherName(t) }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="min-w-40">
-                <mat-label>Rôle</mat-label>
-                <mat-select formControlName="role">
-                  @for (o of supervisorRoles; track o.value) {
-                    <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-              @if (rooms().length) {
-                <mat-form-field appearance="outline" class="min-w-40">
-                  <mat-label>Salle</mat-label>
-                  <mat-select formControlName="roomId">
-                    <mat-option [value]="''">—</mat-option>
-                    @for (r of rooms(); track r.id) {
-                      <mat-option [value]="r.id">{{ r.roomName || r.roomNumber }}</mat-option>
+            @if (isAdmin()) {
+              <form
+                [formGroup]="supForm"
+                (ngSubmit)="addSupervisor()"
+                class="flex flex-wrap items-end gap-3 mb-4"
+              >
+                <mat-form-field
+                  appearance="outline"
+                  class="flex-1 min-w-55"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Enseignant</mat-label>
+                  <mat-select formControlName="teacherId">
+                    @for (t of teachers(); track t.id) {
+                      <mat-option [value]="t.id">{{ teacherName(t) }}</mat-option>
                     }
                   </mat-select>
                 </mat-form-field>
-              }
-              <button
-                mat-flat-button
-                class="rounded-xl!"
-                type="submit"
-                [disabled]="supForm.invalid || savingSup()"
-              >
-                Ajouter
-              </button>
-            </form>
+                <mat-form-field appearance="outline" class="min-w-40" subscriptSizing="dynamic">
+                  <mat-label>Rôle</mat-label>
+                  <mat-select formControlName="role">
+                    @for (o of supervisorRoles; track o.value) {
+                      <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                @if (rooms().length) {
+                  <mat-form-field appearance="outline" class="min-w-40" subscriptSizing="dynamic">
+                    <mat-label>Salle</mat-label>
+                    <mat-select formControlName="roomId">
+                      <mat-option [value]="''">—</mat-option>
+                      @for (r of rooms(); track r.id) {
+                        <mat-option [value]="r.id">{{ r.roomName || r.roomNumber }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+                <button
+                  mat-flat-button
+                  class="rounded-xl!"
+                  type="submit"
+                  [disabled]="supForm.invalid || savingSup()"
+                >
+                  Ajouter
+                </button>
+              </form>
+            }
 
             @if (supervisors().length === 0) {
               <p class="text-sm text-(--text-muted)">Aucun surveillant assigné.</p>
@@ -233,18 +244,20 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
                       supervisorName(sup)
                     }}</span>
                     <panga-status-badge [label]="roleLabel(sup.role)" tone="brand" [dot]="false" />
-                    <button
-                      mat-icon-button
-                      class="h-8! w-8!"
-                      (click)="removeSupervisor(sup)"
-                      aria-label="Retirer"
-                    >
-                      <mat-icon
-                        fontSet="material-symbols-outlined"
-                        class="text-[18px]! text-(--danger)"
-                        >close</mat-icon
+                    @if (isAdmin()) {
+                      <button
+                        mat-icon-button
+                        class="h-8! w-8!"
+                        (click)="removeSupervisor(sup)"
+                        aria-label="Retirer"
                       >
-                    </button>
+                        <mat-icon
+                          fontSet="material-symbols-outlined"
+                          class="text-[18px]! text-(--danger)"
+                          >close</mat-icon
+                        >
+                      </button>
+                    }
                   </div>
                 }
               </div>
@@ -318,8 +331,15 @@ export class ExamDetail {
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly auth = inject(AuthStore);
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
+
+  /** Seul l'admin gère la logistique (surveillants, publication) — l'enseignant ne fait
+   *  que saisir les résultats de ses propres examens. */
+  protected readonly isAdmin = computed(
+    () => this.auth.role() === 'admin' || this.auth.role() === 'super_admin',
+  );
 
   protected readonly supervisorRoles = SUPERVISOR_ROLE_OPTIONS;
   protected readonly tabs = [
@@ -358,7 +378,11 @@ export class ExamDetail {
     forkJoin({
       exam: this.examsApi.get(this.id),
       students: this.studentsApi.list({ page: 1, limit: 300, schoolYear: this.sy.filter() }),
-      teachers: this.teachersApi.list({ page: 1, limit: 200 }),
+      // Liste des enseignants réservée au formulaire d'affectation (admin uniquement) —
+      // `teachers.read` est hors de portée pour un compte enseignant, on ne l'appelle pas.
+      teachers: this.isAdmin()
+        ? this.teachersApi.list({ page: 1, limit: 200 })
+        : of({ items: [] as Teacher[] }),
       rooms: this.examsApi.rooms(),
     }).subscribe({
       next: (r) => {
@@ -382,7 +406,8 @@ export class ExamDetail {
   }
 
   private loadResults(): void {
-    this.examsApi.results(this.id).subscribe({ next: (rows) => this.results.set(rows) });
+    // Admin/enseignant voient toujours les résultats réels, publiés ou non.
+    this.examsApi.results(this.id).subscribe({ next: (r) => this.results.set(r.results) });
   }
 
   private loadStats(): void {

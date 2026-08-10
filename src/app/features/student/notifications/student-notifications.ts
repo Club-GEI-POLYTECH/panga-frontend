@@ -45,7 +45,7 @@ type Row = Record<string, unknown>;
         @for (n of items(); track n['id'] || $index) {
           <button
             type="button"
-            class="w-full flex items-start gap-3 px-5 py-3.5 text-left hover:bg-(--background) transition-colors"
+            class="appearance-none border-0 bg-transparent w-full flex items-start gap-3 px-5 py-3.5 text-left hover:bg-(--background) transition-colors"
             (click)="open(n)"
           >
             <span

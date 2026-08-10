@@ -18,6 +18,28 @@ export interface ExamSession {
   totalExams?: number;
   completedExams?: number;
   instructions?: string;
+  /** Répartition des salles pour toute la session — voir `SEATING_MODE_OPTIONS`. */
+  seatingMode?: string;
+  [key: string]: unknown;
+}
+
+/** Salle assignée à un élève pour toute une session (`ExamSeatAssignment`). */
+export interface ExamSeatAssignment {
+  id: string;
+  examSessionId?: string;
+  studentId?: string;
+  roomId?: string;
+  student?: Record<string, unknown>;
+  room?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** GET /exams/sessions/:id/seating — roster par salle (élèves + surveillants). */
+export interface SeatingRoomRoster {
+  roomId?: string;
+  room?: ExamRoom;
+  students?: ExamSeatAssignment[];
+  supervisors?: ExamSupervisor[];
   [key: string]: unknown;
 }
 
@@ -148,6 +170,8 @@ export interface CreateExamSessionDto {
   description?: string;
   educationLevel?: string;
   instructions?: string;
+  /** `by_class` (défaut, une salle = une classe) ou `mixed` (salles partagées). */
+  seatingMode?: string;
 }
 
 export interface CreateExamRoomDto {
@@ -178,6 +202,32 @@ export interface CreateExamResultDto {
   wasPresent?: boolean;
   wasAbsent?: boolean;
   teacherComment?: string;
+}
+
+/** GET /exams/:id/results — `published` distingue "pas encore publié" de "publié, vide". */
+export interface ExamResultsResponse {
+  published: boolean;
+  results: ExamResult[];
+}
+
+/** POST /exams/sessions/:id/seating/generate */
+export interface GenerateSeatingDto {
+  roomIds: string[];
+}
+
+/** PATCH /exams/sessions/:id/seating/:studentId — ajustement manuel ponctuel. */
+export interface UpdateSeatDto {
+  roomId: string;
+}
+
+/** POST /exams/sessions/:id/supervisors — variante session (mode `mixed`, sans examen unique). */
+export interface CreateSessionSupervisorDto {
+  teacherId: string;
+  roomId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  role?: string;
 }
 
 export interface ExamFilter {
