@@ -38,6 +38,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         return throwError(() => err);
       }
 
+      // 403 + code UNAUTHORIZED = en réalité un token invalide/expiré (certains
+      // guards l'encapsulent en 403 plutôt qu'en 401) : `authInterceptor` gère déjà
+      // la déconnexion + redirection, pas de toast RBAC ici pour ne pas doubler.
+      if (err.status === 403 && code === ErrorCode.UNAUTHORIZED) {
+        return throwError(() => err);
+      }
+
       // 403 = authentifié mais permission RBAC manquante. Le gating UI (guards/nav)
       // masque déjà l'action ; ce toast couvre les accès forcés (URL directe, etc.).
       if (err.status === 403) {

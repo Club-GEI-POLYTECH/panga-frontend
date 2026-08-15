@@ -92,6 +92,7 @@ export interface ExamResult {
   wasAbsent?: boolean;
   wasLate?: boolean;
   isExcused?: boolean;
+  absenceReason?: string | null;
   teacherComment?: string | null;
   student?: Record<string, unknown>;
   [key: string]: unknown;
@@ -174,6 +175,9 @@ export interface CreateExamSessionDto {
   seatingMode?: string;
 }
 
+/** PATCH /exams/sessions/:id — modification partielle (ex. changer `seatingMode`). */
+export type UpdateExamSessionDto = Partial<CreateExamSessionDto>;
+
 export interface CreateExamRoomDto {
   roomNumber: string;
   capacity: number;
@@ -201,6 +205,7 @@ export interface CreateExamResultDto {
   maxScore: number;
   wasPresent?: boolean;
   wasAbsent?: boolean;
+  absenceReason?: string;
   teacherComment?: string;
 }
 

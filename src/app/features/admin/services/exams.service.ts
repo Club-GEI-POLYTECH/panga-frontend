@@ -18,6 +18,7 @@ import type {
   ExamSession,
   GenerateSeatingDto,
   SeatingRoomRoster,
+  UpdateExamSessionDto,
   UpdateSeatDto,
 } from '../models/exam.models';
 
@@ -38,6 +39,19 @@ export class ExamsService {
   createSession(dto: CreateExamSessionDto): Observable<ExamSession> {
     return this.http
       .post<unknown>(`${this.base}/sessions`, dto)
+      .pipe(map((r) => unwrapEnvelope<ExamSession>(r)));
+  }
+
+  getSession(id: string): Observable<ExamSession> {
+    return this.http
+      .get<unknown>(`${this.base}/sessions/${id}`)
+      .pipe(map((r) => unwrapEnvelope<ExamSession>(r)));
+  }
+
+  /** Modification partielle (ex. basculer `seatingMode` de `by_class` à `mixed`). */
+  updateSession(id: string, dto: UpdateExamSessionDto): Observable<ExamSession> {
+    return this.http
+      .patch<unknown>(`${this.base}/sessions/${id}`, dto)
       .pipe(map((r) => unwrapEnvelope<ExamSession>(r)));
   }
 

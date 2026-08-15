@@ -161,6 +161,16 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
                       (change)="togglePresent(s.id, $event.checked)"
                       matTooltip="Présent"
                     />
+                    @if (!presentOf(s.id)) {
+                      <input
+                        type="text"
+                        class="w-32 rounded-lg border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400) disabled:opacity-40"
+                        [value]="absenceReasonOf(s.id)"
+                        (change)="saveAbsenceReason(s.id, $event)"
+                        [disabled]="e.isResultsPublished"
+                        placeholder="Motif d'absence"
+                      />
+                    }
                     <input
                       type="number"
                       class="w-24 rounded-lg border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-right text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400) disabled:opacity-40"
@@ -444,6 +454,9 @@ export class ExamDetail {
   protected resultBadge(r: ExamResult): string {
     return `${Number(r.score)}/${Number(r.maxScore)}`;
   }
+  protected absenceReasonOf(studentId: string): string {
+    return this.resultFor(studentId)?.absenceReason ?? '';
+  }
 
   togglePresent(studentId: string, present: boolean): void {
     this.presence.update((m) => ({ ...m, [studentId]: present }));
@@ -461,7 +474,17 @@ export class ExamDetail {
     this.persist(studentId, score, true);
   }
 
-  private persist(studentId: string, score: number, present: boolean): void {
+  saveAbsenceReason(studentId: string, ev: Event): void {
+    const reason = (ev.target as HTMLInputElement).value.trim();
+    this.persist(studentId, 0, false, reason || undefined);
+  }
+
+  private persist(
+    studentId: string,
+    score: number,
+    present: boolean,
+    absenceReason?: string,
+  ): void {
     this.examsApi
       .upsertResult({
         examId: this.id,
@@ -470,6 +493,7 @@ export class ExamDetail {
         maxScore: this.maxScore(),
         wasPresent: present,
         wasAbsent: !present,
+        ...(absenceReason ? { absenceReason } : {}),
       })
       .subscribe({
         next: () => {

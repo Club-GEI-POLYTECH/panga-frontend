@@ -387,6 +387,22 @@ interface CourseRef {
 
                   @if (expandedSessionId() === s.id) {
                     <div class="mt-4 pt-4 border-t border-(--border)">
+                      <mat-form-field
+                        appearance="outline"
+                        subscriptSizing="dynamic"
+                        class="w-full sm:w-60 mb-5"
+                      >
+                        <mat-label>Répartition des salles</mat-label>
+                        <mat-select
+                          [value]="s.seatingMode || 'by_class'"
+                          (selectionChange)="onChangeSeatingMode(s, $event.value)"
+                        >
+                          @for (o of seatingModes; track o.value) {
+                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+
                       <p class="text-sm font-medium text-(--text) mb-2">Placement en salle</p>
                       <div class="flex flex-wrap items-end gap-3 mb-5">
                         <mat-form-field
@@ -831,6 +847,21 @@ export class ExamsList {
   }
 
   /* ------------------------------- Placement --------------------------------- */
+
+  onChangeSeatingMode(s: ExamSession, mode: string): void {
+    if (mode === (s.seatingMode || 'by_class') || this.saving()) {
+      return;
+    }
+    this.saving.set(true);
+    this.examsApi.updateSession(s.id, { seatingMode: mode }).subscribe({
+      next: (updated) => {
+        this.saving.set(false);
+        this.notify.success('Répartition des salles mise à jour.');
+        this.sessions.update((list) => list.map((x) => (x.id === s.id ? { ...x, ...updated } : x)));
+      },
+      error: () => this.saving.set(false),
+    });
+  }
 
   toggleSession(s: ExamSession): void {
     if (this.expandedSessionId() === s.id) {
