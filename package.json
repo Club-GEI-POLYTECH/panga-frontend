@@ -12,7 +12,7 @@
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,html,scss,json}\"",
     "api:generate": "orval --config orval.config.ts",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "private": true,
   "packageManager": "npm@11.3.0",
