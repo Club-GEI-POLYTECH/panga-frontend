@@ -6,7 +6,7 @@
   "auth": {
     "login": {
       "title": "Sign in",
-      "subtitle": "Access your Panga workspace",
+      "subtitle": "Access your school's workspace",
       "identifier": "Email or username",
       "password": "Password",
       "submit": "Sign in",

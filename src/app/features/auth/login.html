@@ -1,7 +1,7 @@
 <panga-auth-layout>
   <ng-container *transloco="let t">
-    <div class="brand">
-      <div class="brand-badge">P</div>
+    <div class="panga-brand">
+      <div class="badge">P</div>
       <div>
         <h1 class="brand-title">{{ t('app.name') }}</h1>
         <p class="brand-tag">{{ t('app.tagline') }}</p>
@@ -9,9 +9,11 @@
     </div>
 
     <h2 class="title">{{ t('auth.login.title') }}</h2>
+    <p class="subtitle">{{ t('auth.login.subtitle') }}</p>
+    <div class="title-rule" aria-hidden="true"></div>
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="form">
-      <mat-form-field appearance="outline" class="field">
+      <mat-form-field appearance="outline" class="field" subscriptSizing="dynamic">
         <mat-label>{{ t('auth.login.identifier') }}</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">person</mat-icon>
         <input matInput formControlName="identifier" autocomplete="username" />
@@ -20,7 +22,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="field">
+      <mat-form-field appearance="outline" class="field" subscriptSizing="dynamic">
         <mat-label>{{ t('auth.login.password') }}</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">lock</mat-icon>
         <input
@@ -45,7 +47,7 @@
         }
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="field">
+      <mat-form-field appearance="outline" class="field" subscriptSizing="dynamic">
         <mat-label>{{ t('auth.login.school') }}</mat-label>
         <mat-icon matPrefix fontSet="material-symbols-outlined">apartment</mat-icon>
         <input
@@ -70,15 +72,8 @@
       </mat-form-field>
 
       @if (errorMessage()) {
-        <div
-          class="flex items-start gap-2 rounded-xl p-3 mb-1 text-sm"
-          style="
-            background: color-mix(in srgb, var(--danger) 10%, transparent);
-            color: var(--danger);
-          "
-          role="alert"
-        >
-          <mat-icon fontSet="material-symbols-outlined" class="text-xl! w-5! h-5! shrink-0">
+        <div class="alert" role="alert">
+          <mat-icon fontSet="material-symbols-outlined">
             {{ locked() ? 'lock' : 'error' }}
           </mat-icon>
           <span>{{ errorMessage() }}</span>
@@ -89,13 +84,13 @@
         <a
           routerLink="/auth/forgot-password"
           class="link"
-          [class.font-semibold]="suggestReset()"
+          [class.emphasize]="suggestReset()"
           [class.animate-pulse]="locked()"
           >{{ t('auth.login.forgot') }}</a
         >
       </div>
 
-      <button type="submit" mat-flat-button class="submit" [disabled]="submitting()">
+      <button type="submit" mat-flat-button class="panga-auth-submit" [disabled]="submitting()">
         @if (submitting()) {
           <mat-spinner diameter="20" class="inline-spinner"></mat-spinner>
           <span>{{ t('auth.login.signingIn') }}</span>

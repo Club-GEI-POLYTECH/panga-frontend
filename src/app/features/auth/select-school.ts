@@ -15,11 +15,24 @@ import { AuthLayout } from './auth-layout';
     <panga-auth-layout>
       <div class="panga-brand">
         <div class="badge">P</div>
-        <h1 class="text-lg font-semibold" style="font-family: Urbanist, sans-serif">Panga</h1>
+        <div>
+          <h1
+            class="text-lg font-semibold tracking-tight"
+            style="font-family: Urbanist, sans-serif"
+          >
+            Panga
+          </h1>
+          <p class="text-xs text-(--text-muted) m-0">Gestion scolaire simplifiée</p>
+        </div>
       </div>
 
-      <h2 class="text-2xl font-semibold text-(--text)">Choisir une école</h2>
-      <p class="text-sm text-(--text-muted) mt-1 mb-6">
+      <h2
+        class="text-2xl font-semibold tracking-tight text-(--text)"
+        style="font-family: Urbanist, sans-serif"
+      >
+        Choisir une école
+      </h2>
+      <p class="text-sm text-(--text-muted) mt-1 mb-6 leading-relaxed">
         Vous avez accès à plusieurs établissements. Sélectionnez celui à consulter.
       </p>
 
@@ -48,19 +61,22 @@ import { AuthLayout } from './auth-layout';
         align-items: center;
         gap: 1rem;
         width: 100%;
-        padding: 0.9rem 1rem;
-        border-radius: 1rem;
+        padding: 0.95rem 1.05rem;
+        border-radius: 1.05rem;
         background: var(--surface);
         border: 1px solid var(--border);
         cursor: pointer;
+        text-align: left;
         transition:
           border-color 0.18s ease,
           box-shadow 0.18s ease,
-          transform 0.18s ease;
+          transform 0.18s ease,
+          background 0.18s ease;
       }
       .school-row:hover {
         transform: translateY(-1px);
         border-color: color-mix(in srgb, var(--brand-500) 45%, var(--border));
+        background: color-mix(in srgb, var(--brand-400) 12%, var(--surface));
         box-shadow: 0 14px 30px -18px rgb(15 23 42 / 25%);
       }
       .ico {
@@ -69,9 +85,10 @@ import { AuthLayout } from './auth-layout';
         flex: none;
         width: 44px;
         height: 44px;
-        border-radius: 0.8rem;
+        border-radius: 0.85rem;
         color: #fff;
         background: var(--brand-gradient);
+        box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--brand-700) 70%, transparent);
       }
       .chev {
         flex: none;

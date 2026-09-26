@@ -6,7 +6,7 @@
   "auth": {
     "login": {
       "title": "Connexion",
-      "subtitle": "Accédez à votre espace Panga",
+      "subtitle": "Accédez à l'espace de votre établissement",
       "identifier": "E-mail ou identifiant",
       "password": "Mot de passe",
       "submit": "Se connecter",

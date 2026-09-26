@@ -42,13 +42,26 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
       <ng-container *transloco="let t">
         <div class="panga-brand">
           <div class="badge">P</div>
-          <h1 class="text-lg font-semibold" style="font-family: Urbanist, sans-serif">
-            {{ t('app.name') }}
-          </h1>
+          <div>
+            <h1
+              class="text-lg font-semibold tracking-tight"
+              style="font-family: Urbanist, sans-serif"
+            >
+              {{ t('app.name') }}
+            </h1>
+            <p class="text-xs text-(--text-muted) m-0">{{ t('app.tagline') }}</p>
+          </div>
         </div>
 
-        <h2 class="text-2xl font-semibold text-(--text)">{{ t('auth.reset.title') }}</h2>
-        <p class="text-sm text-(--text-muted) mt-1 mb-6">{{ t('auth.reset.subtitle') }}</p>
+        <h2
+          class="text-2xl font-semibold tracking-tight text-(--text)"
+          style="font-family: Urbanist, sans-serif"
+        >
+          {{ t('auth.reset.title') }}
+        </h2>
+        <p class="text-sm text-(--text-muted) mt-1 mb-6 leading-relaxed">
+          {{ t('auth.reset.subtitle') }}
+        </p>
 
         @if (!token()) {
           <div class="text-center py-4">
@@ -64,7 +77,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
           </div>
         } @else {
           <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
-            <mat-form-field appearance="outline" class="w-full">
+            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.reset.password') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">lock</mat-icon>
               <input
@@ -83,7 +96,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
               }
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="w-full">
+            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.reset.confirm') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">lock_reset</mat-icon>
               <input

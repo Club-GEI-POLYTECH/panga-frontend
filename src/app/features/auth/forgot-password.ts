@@ -29,17 +29,30 @@ import { AuthLayout } from './auth-layout';
       <ng-container *transloco="let t">
         <div class="panga-brand">
           <div class="badge">P</div>
-          <h1 class="text-lg font-semibold" style="font-family: Urbanist, sans-serif">
-            {{ t('app.name') }}
-          </h1>
+          <div>
+            <h1
+              class="text-lg font-semibold tracking-tight"
+              style="font-family: Urbanist, sans-serif"
+            >
+              {{ t('app.name') }}
+            </h1>
+            <p class="text-xs text-(--text-muted) m-0">{{ t('app.tagline') }}</p>
+          </div>
         </div>
 
         @if (!sent()) {
-          <h2 class="text-2xl font-semibold text-(--text)">{{ t('auth.forgot.title') }}</h2>
-          <p class="text-sm text-(--text-muted) mt-1 mb-6">{{ t('auth.forgot.subtitle') }}</p>
+          <h2
+            class="text-2xl font-semibold tracking-tight text-(--text)"
+            style="font-family: Urbanist, sans-serif"
+          >
+            {{ t('auth.forgot.title') }}
+          </h2>
+          <p class="text-sm text-(--text-muted) mt-1 mb-6 leading-relaxed">
+            {{ t('auth.forgot.subtitle') }}
+          </p>
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
-            <mat-form-field appearance="outline" class="w-full">
+            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.forgot.email') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">mail</mat-icon>
               <input matInput type="email" formControlName="email" autocomplete="email" />
