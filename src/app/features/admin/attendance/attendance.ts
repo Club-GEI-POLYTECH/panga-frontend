@@ -31,6 +31,7 @@ import { DateField } from '../../../shared/ui/date-field';
 import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 import type { ClassInstance, ClassScheduleSlot, Student } from '../models/admin.models';
 import type { Attendance as AttendanceLine, ClassReportRow } from '../models/attendance.models';
 import {
@@ -40,6 +41,7 @@ import {
   statusColor,
   type AttendanceStatus,
 } from '../../../core/models/attendance.enums';
+import { classLabel, personLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 function today(): string {
@@ -65,31 +67,62 @@ function today(): string {
     DateField,
     SectionHeader,
     StatusBadge,
+    Skeleton,
   ],
   template: `
-    <panga-page-header
-      icon="fact_check"
-      title="Présences"
-      subtitle="Appel, justifications & rapports"
-    />
+    <panga-page-header icon="fact_check" title="Présences" [subtitle]="headerSubtitle()">
+      @if (classId() && tab() === 'appel' && roster().length) {
+        <button
+          mat-flat-button
+          class="rounded-xl! attendance-cta"
+          (click)="saveAll()"
+          [disabled]="saving()"
+        >
+          <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+      }
+    </panga-page-header>
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
-      <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
+    <div class="panga-card p-4 mb-6 flex flex-wrap items-center gap-3">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-55"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
-            <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
+
+      <div class="sm:hidden shrink-0">
+        <button mat-stroked-button class="rounded-xl!" (click)="openFilters(contextFiltersTpl)">
+          <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+          Filtrer
+        </button>
+      </div>
+
+      <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+        <ng-container [ngTemplateOutlet]="contextFiltersTpl" />
+      </div>
+    </div>
+
+    <ng-template #contextFiltersTpl>
       <panga-date-field
         class="w-full sm:w-auto sm:min-w-40"
         label="Date"
         [formControl]="dateCtrl"
         (changed)="reload()"
       />
-      <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-37.5">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:w-auto sm:min-w-37.5"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Mode</mat-label>
         <mat-select [value]="mode()" (selectionChange)="setMode($event.value)">
           @for (m of modes; track m.value) {
@@ -98,7 +131,11 @@ function today(): string {
         </mat-select>
       </mat-form-field>
       @if (mode() === 'period') {
-        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:flex-1 sm:min-w-55"
+          subscriptSizing="dynamic"
+        >
           <mat-label>Créneau</mat-label>
           <mat-select [value]="slotId()" (selectionChange)="slotId.set($event.value)">
             @for (s of slots(); track s.id) {
@@ -107,7 +144,7 @@ function today(): string {
           </mat-select>
         </mat-form-field>
       }
-    </div>
+    </ng-template>
 
     @if (!classId()) {
       <div class="panga-card">
@@ -119,12 +156,13 @@ function today(): string {
       </div>
     } @else {
       <!-- Onglets -->
-      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
+      <div class="flex gap-1 mb-4 p-1 rounded-xl border border-(--border) w-fit bg-(--surface)">
         @for (t of tabs; track t.key) {
           <button
-            class="px-4 py-2 rounded-lg text-sm font-medium"
-            [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-            [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-medium border"
+            [class.tab-active]="tab() === t.key"
+            [class.tab-idle]="tab() !== t.key"
             (click)="tab.set(t.key)"
           >
             {{ t.label }}
@@ -164,7 +202,7 @@ function today(): string {
                   </button>
                   <button
                     mat-flat-button
-                    class="rounded-xl!"
+                    class="rounded-xl! attendance-cta hidden sm:inline-flex"
                     (click)="saveAll()"
                     [disabled]="saving()"
                   >
@@ -176,7 +214,7 @@ function today(): string {
 
               <div class="divide-y divide-(--border) -mx-5">
                 @for (s of roster(); track s.id) {
-                  <div class="px-5 py-3">
+                  <div class="roster-row px-5 py-3">
                     <div class="flex flex-wrap sm:flex-nowrap items-center gap-3">
                       <div class="flex w-full items-center gap-4 sm:w-auto sm:flex-1 sm:min-w-0">
                         <panga-avatar [name]="studentName(s)" [size]="38" />
@@ -267,7 +305,7 @@ function today(): string {
               <!-- Formulaire de justification (popup, cohérent PC/mobile + thème). -->
               <ng-template #justifyTpl>
                 @if (justifyEntry(); as e) {
-                  <mat-form-field appearance="outline" class="w-full">
+                  <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
                     <mat-label>Motif</mat-label>
                     <input
                       matInput
@@ -298,7 +336,7 @@ function today(): string {
                     <button mat-button (click)="closeJustify()">Annuler</button>
                     <button
                       mat-flat-button
-                      class="rounded-xl!"
+                      class="rounded-xl! attendance-cta"
                       [disabled]="!reasonCtrl.value || submittingJustify()"
                       (click)="submitJustify(e)"
                     >
@@ -318,14 +356,16 @@ function today(): string {
               title="Rapport d'absences"
               [count]="report().length"
             >
-              <button
-                mat-stroked-button
-                class="rounded-xl! sm:hidden"
-                (click)="openFilters(reportFiltersTpl)"
-              >
-                <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
-                Filtrer
-              </button>
+              <div class="sm:hidden shrink-0">
+                <button
+                  mat-stroked-button
+                  class="rounded-xl!"
+                  (click)="openFilters(reportFiltersTpl)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+                  Filtrer
+                </button>
+              </div>
               <div class="hidden sm:flex sm:flex-wrap items-center gap-2">
                 <ng-container [ngTemplateOutlet]="reportFiltersTpl" />
               </div>
@@ -346,7 +386,7 @@ function today(): string {
               />
               <button
                 mat-flat-button
-                class="rounded-xl! w-full sm:w-auto"
+                class="rounded-xl! attendance-cta w-full sm:w-auto"
                 (click)="loadReport()"
                 [disabled]="loadingReport()"
               >
@@ -355,12 +395,24 @@ function today(): string {
             </ng-template>
 
             @if (loadingReport()) {
-              <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+              <div class="space-y-3 py-2">
+                @for (_ of [1, 2, 3, 4, 5]; track $index) {
+                  <div class="flex items-center gap-3 px-1">
+                    <panga-skeleton width="28px" height="28px" radius="999px" />
+                    <panga-skeleton width="40%" height="0.9rem" />
+                    <panga-skeleton class="ml-auto" width="12%" height="0.9rem" />
+                    <panga-skeleton width="10%" height="0.9rem" />
+                    <panga-skeleton width="10%" height="0.9rem" />
+                  </div>
+                }
+              </div>
             } @else if (report().length === 0) {
               <panga-empty-state
                 icon="summarize"
                 title="Aucune donnée"
                 description="Générez le rapport pour la période choisie."
+                actionLabel="Générer"
+                (action)="loadReport()"
               />
             } @else {
               <div class="overflow-x-auto -mx-5">
@@ -378,17 +430,15 @@ function today(): string {
                   <tbody>
                     @for (r of report(); track r.studentId || $index) {
                       <tr
-                        class="border-b border-(--border) last:border-0"
+                        class="report-row border-b border-(--border) last:border-0"
                         [style.background]="
                           r.overLimit ? 'color-mix(in srgb, var(--danger) 6%, transparent)' : ''
                         "
                       >
                         <td class="px-5 py-2.5">
                           <div class="flex items-center gap-2">
-                            <panga-avatar [name]="r.studentName || '?'" [size]="28" />
-                            <span class="text-(--text) truncate">{{
-                              r.studentName || r.studentId
-                            }}</span>
+                            <panga-avatar [name]="reportName(r)" [size]="28" />
+                            <span class="text-(--text) truncate">{{ reportName(r) }}</span>
                             @if (r.overLimit) {
                               <panga-status-badge
                                 label="Seuil dépassé"
@@ -424,6 +474,42 @@ function today(): string {
       }
     }
   `,
+  styles: [
+    `
+      button.attendance-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.attendance-cta .mat-icon,
+      button.attendance-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.attendance-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: transparent;
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+      }
+      .roster-row,
+      .report-row {
+        transition: background 0.15s ease;
+      }
+      .roster-row:hover,
+      .report-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+    `,
+  ],
 })
 export class Attendance {
   private readonly attendanceApi = inject(AttendanceService);
@@ -434,6 +520,7 @@ export class Attendance {
   private readonly sy = inject(SchoolYearStore);
   private readonly bottomSheet = inject(MatBottomSheet);
 
+  protected readonly classLabel = classLabel;
   protected readonly statuses = ATTENDANCE_STATUS_OPTIONS;
   protected readonly modes = ATTENDANCE_TYPE_OPTIONS;
   protected readonly tabs = [
@@ -463,6 +550,24 @@ export class Attendance {
    * client renvoyait donc systématiquement une liste vide.
    */
   protected readonly roster = signal<Student[]>([]);
+  /** Index `studentId → élève` pour résoudre les noms du rapport. */
+  private readonly studentsById = computed(() => {
+    const m = new Map<string, Student>();
+    for (const s of this.roster()) {
+      m.set(s.id, s);
+    }
+    return m;
+  });
+
+  protected readonly headerSubtitle = computed(() => {
+    const cls = this.classes().find((c) => c.id === this.classId());
+    const year = this.sy.selected();
+    const yearPart = year ? ` · Année ${year}` : '';
+    if (cls) {
+      return `Appel & absences · ${classLabel(cls as unknown as Record<string, unknown>)}${yearPart}`;
+    }
+    return `Appel, justifications & rapports${yearPart}`;
+  });
 
   /* ----------------------------- Justification ----------------------------- */
   /** Ligne d'appel en cours de justification, affichée dans le popup (`justifyTpl`). */
@@ -709,8 +814,25 @@ export class Attendance {
   /* -------------------------------- Helpers -------------------------------- */
 
   protected studentName(s: Student): string {
-    return `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id;
+    const label = personLabel(s as unknown as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return s.studentNumber || s.matricule || 'Élève';
   }
+
+  /** Nom lisible d'une ligne de rapport (évite d'afficher l'UUID). */
+  protected reportName(r: ClassReportRow): string {
+    if (typeof r.studentName === 'string' && r.studentName.trim() && !looksLikeId(r.studentName)) {
+      return r.studentName.trim();
+    }
+    const known = r.studentId ? this.studentsById().get(r.studentId) : undefined;
+    if (known) {
+      return this.studentName(known);
+    }
+    return 'Élève';
+  }
+
   protected slotLabel(s: ClassScheduleSlot): string {
     const time = [s.startTime, s.endTime].filter(Boolean).join('–');
     return [time, s.label].filter(Boolean).join(' · ') || s.id || 'Créneau';
@@ -721,4 +843,9 @@ export class Attendance {
   protected rate(r: ClassReportRow): string {
     return r.attendanceRate === undefined ? '—' : `${Math.round(r.attendanceRate)}%`;
   }
+}
+
+/** Heuristique : UUID / id technique affiché à la place d'un nom. */
+function looksLikeId(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
 }

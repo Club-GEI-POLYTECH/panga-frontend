@@ -1,6 +1,9 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
+  computed,
   effect,
   inject,
   signal,
@@ -9,6 +12,7 @@ import {
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, of } from 'rxjs';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,11 +24,13 @@ import { SubjectsService } from '../services/subjects.service';
 import { TeachersService } from '../services/teachers.service';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
 import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import type { ClassInstance, Teacher } from '../models/admin.models';
 import type { ClassSubject } from '../models/course.models';
@@ -38,6 +44,7 @@ import {
   examStatusTone,
 } from '../../../core/models/exam.enums';
 import { TERM_OPTIONS } from '../../../core/models/grade.enums';
+import { classLabel, personLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface CourseRef {
@@ -49,6 +56,7 @@ interface CourseRef {
   selector: 'panga-exams-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -62,17 +70,28 @@ interface CourseRef {
     DateField,
     SectionHeader,
     StatusBadge,
+    SkeletonTable,
   ],
   template: `
-    <panga-page-header icon="quiz" title="Examens" subtitle="Sessions, salles & épreuves" />
+    <panga-page-header icon="quiz" title="Examens" [subtitle]="headerSubtitle()">
+      @if (tab() === 'exams') {
+        <button mat-flat-button class="rounded-xl! exams-cta" (click)="toggleCreate()">
+          <mat-icon fontSet="material-symbols-outlined">{{
+            showCreate() ? 'close' : 'add'
+          }}</mat-icon>
+          {{ showCreate() ? 'Annuler' : 'Nouvel examen' }}
+        </button>
+      }
+    </panga-page-header>
 
     <!-- Onglets -->
-    <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
+    <div class="flex gap-1 mb-4 p-1 rounded-xl border border-(--border) w-fit bg-(--surface)">
       @for (t of tabs; track t.key) {
         <button
-          class="px-4 py-2 rounded-lg text-sm font-medium"
-          [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-          [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium border"
+          [class.tab-active]="tab() === t.key"
+          [class.tab-idle]="tab() !== t.key"
           (click)="tab.set(t.key)"
         >
           {{ t.label }}
@@ -83,22 +102,37 @@ interface CourseRef {
     @switch (tab()) {
       @case ('exams') {
         <!-- Filtres -->
-        <div
-          class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3"
-        >
+        <div class="panga-card p-4 mb-6 flex flex-wrap items-center gap-3">
           <mat-form-field
             appearance="outline"
             class="w-full sm:flex-1 sm:min-w-50"
             subscriptSizing="dynamic"
           >
             <mat-label>Classe</mat-label>
-            <mat-select [formControl]="filterClass" (selectionChange)="onClassChange()">
+            <mat-select
+              [value]="filterClassId()"
+              (selectionChange)="selectFilterClass($event.value)"
+            >
               <mat-option [value]="''">Toutes</mat-option>
               @for (c of classes(); track c.id) {
-                <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+                <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
               }
             </mat-select>
           </mat-form-field>
+
+          <div class="sm:hidden shrink-0">
+            <button mat-stroked-button class="rounded-xl!" (click)="openFilters(filtersTpl)">
+              <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+              Filtrer
+            </button>
+          </div>
+
+          <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+            <ng-container [ngTemplateOutlet]="filtersTpl" />
+          </div>
+        </div>
+
+        <ng-template #filtersTpl>
           <mat-form-field
             appearance="outline"
             class="w-full sm:w-auto sm:min-w-37.5"
@@ -138,28 +172,22 @@ interface CourseRef {
               }
             </mat-select>
           </mat-form-field>
-          <button mat-flat-button class="rounded-xl! w-full sm:w-auto" (click)="toggleCreate()">
-            <mat-icon fontSet="material-symbols-outlined">{{
-              showCreate() ? 'close' : 'add'
-            }}</mat-icon>
-            {{ showCreate() ? 'Annuler' : 'Nouvel examen' }}
-          </button>
-        </div>
+        </ng-template>
 
         <!-- Création examen -->
         @if (showCreate()) {
           <form [formGroup]="form" (ngSubmit)="createExam()" class="panga-card p-6 mb-6">
             <panga-section-header icon="add" title="Nouvel examen" />
             <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Classe</mat-label>
                 <mat-select formControlName="classId" (selectionChange)="loadCourses($event.value)">
                   @for (c of classes(); track c.id) {
-                    <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+                    <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Cours</mat-label>
                 <mat-select formControlName="nationalProgramSlotId">
                   @for (c of courses(); track c.slotId) {
@@ -167,7 +195,7 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type</mat-label>
                 <mat-select formControlName="examType">
                   @for (o of examTypes; track o.value) {
@@ -175,11 +203,11 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" class="lg:col-span-2">
+              <mat-form-field appearance="outline" class="lg:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Nom de l'examen</mat-label>
                 <input matInput formControlName="name" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Période</mat-label>
                 <mat-select formControlName="term">
                   @for (o of terms; track o.value) {
@@ -188,27 +216,27 @@ interface CourseRef {
                 </mat-select>
               </mat-form-field>
               <panga-date-field class="w-full" label="Date" formControlName="examDate" />
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Début</mat-label>
                 <input matInput type="time" formControlName="startTime" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Fin</mat-label>
                 <input matInput type="time" formControlName="endTime" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Durée (min)</mat-label>
                 <input matInput type="number" formControlName="durationMinutes" min="1" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Note max</mat-label>
                 <input matInput type="number" formControlName="maxScore" min="0" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Note de passage</mat-label>
                 <input matInput type="number" formControlName="passingScore" min="0" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Coefficient</mat-label>
                 <input matInput type="number" formControlName="coefficient" min="0" />
               </mat-form-field>
@@ -216,7 +244,7 @@ interface CourseRef {
             <div class="flex justify-end mt-2">
               <button
                 mat-flat-button
-                class="rounded-xl!"
+                class="rounded-xl! exams-cta"
                 type="submit"
                 [disabled]="form.invalid || saving()"
               >
@@ -234,7 +262,7 @@ interface CourseRef {
             [count]="meta()?.total ?? exams().length"
           />
           @if (loading()) {
-            <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+            <panga-skeleton-table />
           } @else if (exams().length === 0) {
             <panga-empty-state
               icon="quiz"
@@ -246,7 +274,7 @@ interface CourseRef {
               @for (e of exams(); track e.id) {
                 <a
                   [routerLink]="['/', 'exams', e.id]"
-                  class="flex items-center gap-4 px-5 py-3 hover:bg-(--background) transition-colors"
+                  class="exam-row flex items-center gap-4 px-5 py-3"
                 >
                   <div
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
@@ -297,7 +325,11 @@ interface CourseRef {
             title="Sessions d'examen"
             [count]="sessions().length"
           >
-            <button mat-flat-button class="rounded-xl!" (click)="showSession.set(!showSession())">
+            <button
+              mat-flat-button
+              class="rounded-xl! exams-cta"
+              (click)="showSession.set(!showSession())"
+            >
               <mat-icon fontSet="material-symbols-outlined">{{
                 showSession() ? 'close' : 'add'
               }}</mat-icon>
@@ -346,7 +378,7 @@ interface CourseRef {
               <div class="flex items-end">
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
+                  class="rounded-xl! exams-cta"
                   type="submit"
                   [disabled]="sessionForm.invalid || saving()"
                 >
@@ -357,11 +389,15 @@ interface CourseRef {
           }
 
           @if (sessions().length === 0) {
-            <p class="text-sm text-(--text-muted)">Aucune session.</p>
+            <panga-empty-state
+              icon="event_available"
+              title="Aucune session"
+              description="Créez une session pour organiser les examens."
+            />
           } @else {
             <div class="flex flex-col gap-3">
               @for (s of sessions(); track s.id) {
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="session-card rounded-2xl border border-(--border) p-4">
                   <button
                     type="button"
                     class="appearance-none border-0 bg-transparent p-0 w-full text-left"
@@ -425,7 +461,7 @@ interface CourseRef {
                         </mat-form-field>
                         <button
                           mat-flat-button
-                          class="rounded-xl!"
+                          class="rounded-xl! exams-cta"
                           [disabled]="!selectedRoomIds().length || saving()"
                           (click)="onGenerateSeating(s.id)"
                         >
@@ -492,7 +528,7 @@ interface CourseRef {
                           <div class="flex items-end lg:col-span-5">
                             <button
                               mat-flat-button
-                              class="rounded-xl!"
+                              class="rounded-xl! exams-cta"
                               type="submit"
                               [disabled]="sessionSupForm.invalid || saving()"
                             >
@@ -503,7 +539,7 @@ interface CourseRef {
                       }
 
                       @if (loadingSeating()) {
-                        <p class="text-sm text-(--text-muted)">Chargement du placement…</p>
+                        <panga-skeleton-table [rows]="3" />
                       } @else if (seatingRooms().length === 0) {
                         <p class="text-sm text-(--text-muted)">
                           Aucun placement généré pour l'instant.
@@ -511,7 +547,7 @@ interface CourseRef {
                       } @else {
                         <div class="grid gap-3 sm:grid-cols-2">
                           @for (room of seatingRooms(); track room.roomId) {
-                            <div class="rounded-xl border border-(--border) p-3">
+                            <div class="room-card rounded-xl border border-(--border) p-3">
                               <p class="text-sm font-medium text-(--text)">{{ roomLabel(room) }}</p>
                               <p class="text-xs text-(--text-muted) mb-1">
                                 {{ room.students?.length ?? 0 }} élève(s)
@@ -541,7 +577,11 @@ interface CourseRef {
             title="Salles d'examen"
             [count]="rooms().length"
           >
-            <button mat-flat-button class="rounded-xl!" (click)="showRoom.set(!showRoom())">
+            <button
+              mat-flat-button
+              class="rounded-xl! exams-cta"
+              (click)="showRoom.set(!showRoom())"
+            >
               <mat-icon fontSet="material-symbols-outlined">{{
                 showRoom() ? 'close' : 'add'
               }}</mat-icon>
@@ -555,15 +595,15 @@ interface CourseRef {
               (ngSubmit)="createRoom()"
               class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-5"
             >
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Numéro</mat-label>
                 <input matInput formControlName="roomNumber" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Nom</mat-label>
                 <input matInput formControlName="roomName" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type</mat-label>
                 <mat-select formControlName="roomType">
                   @for (o of roomTypes; track o.value) {
@@ -571,14 +611,14 @@ interface CourseRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Capacité</mat-label>
                 <input matInput type="number" formControlName="capacity" min="1" />
               </mat-form-field>
               <div class="flex items-end">
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
+                  class="rounded-xl! exams-cta"
                   type="submit"
                   [disabled]="roomForm.invalid || saving()"
                 >
@@ -589,11 +629,15 @@ interface CourseRef {
           }
 
           @if (rooms().length === 0) {
-            <p class="text-sm text-(--text-muted)">Aucune salle.</p>
+            <panga-empty-state
+              icon="meeting_room"
+              title="Aucune salle"
+              description="Ajoutez une salle d'examen pour le placement."
+            />
           } @else {
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               @for (r of rooms(); track r.id) {
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="room-card rounded-2xl border border-(--border) p-4">
                   <div class="flex items-center justify-between gap-2">
                     <p class="font-medium text-(--text) truncate">
                       {{ r.roomName || r.roomNumber }}
@@ -618,6 +662,53 @@ interface CourseRef {
       }
     }
   `,
+  styles: [
+    `
+      button.exams-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.exams-cta .mat-icon,
+      button.exams-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.exams-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: transparent;
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+      }
+      .exam-row {
+        transition: background 0.15s ease;
+      }
+      .exam-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+      .session-card,
+      .room-card {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      .session-card:hover,
+      .room-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        background: color-mix(in srgb, var(--brand-500) 4%, var(--surface));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+    `,
+  ],
 })
 export class ExamsList {
   private readonly examsApi = inject(ExamsService);
@@ -626,7 +717,9 @@ export class ExamsList {
   private readonly teachersApi = inject(TeachersService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
+  protected readonly classLabel = classLabel;
   protected readonly terms = TERM_OPTIONS;
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
   protected readonly statuses = EXAM_STATUS_OPTIONS;
@@ -660,10 +753,20 @@ export class ExamsList {
   protected readonly seatingRooms = signal<SeatingRoomRoster[]>([]);
   protected readonly loadingSeating = signal(false);
 
-  protected readonly filterClass = new FormControl('', { nonNullable: true });
+  protected readonly filterClassId = signal('');
   protected readonly filterTerm = new FormControl('', { nonNullable: true });
   protected readonly filterType = new FormControl('', { nonNullable: true });
   protected readonly filterStatus = new FormControl('', { nonNullable: true });
+
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected();
+    const yearPart = year ? ` · Année ${year}` : '';
+    const cls = this.classes().find((c) => c.id === this.filterClassId());
+    if (cls) {
+      return `Sessions, salles & épreuves · ${classLabel(cls as unknown as Record<string, unknown>)}${yearPart}`;
+    }
+    return `Sessions, salles & épreuves${yearPart}`;
+  });
 
   protected readonly form = new FormGroup({
     classId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -731,9 +834,14 @@ export class ExamsList {
     });
   }
 
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
+  }
+
   /* -------------------------------- Examens --------------------------------- */
 
-  onClassChange(): void {
+  selectFilterClass(id: string): void {
+    this.filterClassId.set(id);
     this.reload();
   }
 
@@ -746,7 +854,7 @@ export class ExamsList {
     this.loading.set(true);
     this.examsApi
       .list({
-        classId: this.filterClass.value || undefined,
+        classId: this.filterClassId() || undefined,
         term: this.filterTerm.value || undefined,
         examType: this.filterType.value || undefined,
         status: this.filterStatus.value || undefined,
@@ -968,12 +1076,11 @@ export class ExamsList {
     return examLabel(SEATING_MODE_OPTIONS, m || 'by_class');
   }
   protected teacherName(t: Teacher): string {
-    const u = (t.user ?? {}) as Record<string, unknown>;
-    return (
-      `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
-      (t.employeeNumber as string) ||
-      t.id
-    );
+    const label = personLabel((t.user ?? t) as unknown as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return t.employeeNumber || 'Enseignant';
   }
   protected roomLabel(room: SeatingRoomRoster): string {
     return room.room?.roomName || room.room?.roomNumber || 'Salle';
@@ -982,12 +1089,11 @@ export class ExamsList {
     return (room.supervisors ?? [])
       .map((sup) => {
         const t = (sup.teacher ?? {}) as Record<string, unknown>;
-        const u = (t['user'] ?? {}) as Record<string, unknown>;
-        return (
-          `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
-          (t['employeeNumber'] as string) ||
-          'Surveillant'
-        );
+        const label = personLabel((t['user'] ?? t) as Record<string, unknown>);
+        if (label && label !== 'Parent') {
+          return label;
+        }
+        return (t['employeeNumber'] as string) || 'Surveillant';
       })
       .join(', ');
   }

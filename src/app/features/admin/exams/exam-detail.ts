@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -19,6 +18,8 @@ import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
+import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 import type { Student, Teacher } from '../models/admin.models';
 import type { Exam, ExamResult, ExamRoom, ExamSupervisor } from '../models/exam.models';
 import {
@@ -28,6 +29,7 @@ import {
   examLabel,
   examStatusTone,
 } from '../../../core/models/exam.enums';
+import { personLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 @Component({
@@ -40,7 +42,6 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatProgressSpinnerModule,
     MatSelectModule,
     MatSlideToggleModule,
     MatTooltipModule,
@@ -48,6 +49,8 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     EmptyState,
     SectionHeader,
     StatusBadge,
+    Skeleton,
+    SkeletonTable,
   ],
   template: `
     <a
@@ -61,7 +64,11 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     </a>
 
     @if (loading()) {
-      <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      <div class="flex flex-col gap-4">
+        <panga-skeleton width="100%" height="8rem" radius="1.5rem" />
+        <panga-skeleton width="12rem" height="2.25rem" radius="0.75rem" />
+        <panga-skeleton-table />
+      </div>
     } @else if (exam(); as e) {
       <div
         class="relative overflow-hidden rounded-3xl p-6 mb-5 text-white"
@@ -79,12 +86,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
             <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
               {{ e.name }}
             </h1>
-            <p class="text-sm opacity-90">
-              {{ courseLabel(e) }} · {{ typeLabel(e.examType) }}
-              @if (e.examDate) {
-                · {{ e.examDate }} {{ e.startTime }}–{{ e.endTime }}
-              }
-            </p>
+            <p class="text-sm opacity-90">{{ headerSubtitle() }}</p>
           </div>
           <div class="flex flex-col items-end gap-2">
             <panga-status-badge
@@ -100,12 +102,13 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
       </div>
 
       <!-- Onglets -->
-      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
+      <div class="flex gap-1 mb-4 p-1 rounded-xl border border-(--border) w-fit bg-(--surface)">
         @for (t of tabs; track t.key) {
           <button
-            class="px-4 py-2 rounded-lg text-sm font-medium"
-            [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-            [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-medium border"
+            [class.tab-active]="tab() === t.key"
+            [class.tab-idle]="tab() !== t.key"
             (click)="selectTab(t.key)"
           >
             {{ t.label }}
@@ -120,7 +123,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
               @if (isAdmin()) {
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
+                  class="rounded-xl! exams-cta"
                   [disabled]="publishing() || e.isResultsPublished"
                   (click)="publish()"
                 >
@@ -144,7 +147,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
               </p>
               <div class="divide-y divide-(--border) -mx-5">
                 @for (s of roster(); track s.id) {
-                  <div class="flex items-center gap-4 px-5 py-2.5">
+                  <div class="result-row flex items-center gap-4 px-5 py-2.5">
                     <panga-avatar [name]="studentName(s)" [size]="34" />
                     <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
                       studentName(s)
@@ -234,7 +237,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
                 }
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
+                  class="rounded-xl! exams-cta"
                   type="submit"
                   [disabled]="supForm.invalid || savingSup()"
                 >
@@ -248,7 +251,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (sup of supervisors(); track sup.id) {
-                  <div class="flex items-center gap-3 px-5 py-2.5">
+                  <div class="result-row flex items-center gap-3 px-5 py-2.5">
                     <panga-avatar [name]="supervisorName(sup)" [size]="32" />
                     <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
                       supervisorName(sup)
@@ -279,40 +282,47 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           <section class="panga-card p-5">
             <panga-section-header icon="bar_chart" title="Statistiques" />
             @if (loadingStats()) {
-              <p class="text-sm text-(--text-muted) py-6 text-center">Calcul…</p>
+              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                @for (_ of [1, 2, 3, 4, 5, 6]; track $index) {
+                  <div class="rounded-2xl border border-(--border) p-4 flex flex-col gap-2">
+                    <panga-skeleton width="40%" height="0.75rem" />
+                    <panga-skeleton width="55%" height="1.75rem" />
+                  </div>
+                }
+              </div>
             } @else {
               <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Moyenne</p>
                   <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('averageScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Note max</p>
                   <p class="text-2xl font-semibold text-(--success)">
                     {{ stat('highestScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Note min</p>
                   <p class="text-2xl font-semibold text-(--danger)">
                     {{ stat('lowestScore') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Taux de réussite</p>
                   <p class="text-2xl font-semibold text-(--brand-700)">
                     {{ pctStat('passRate') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Présents</p>
                   <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('studentsPresent') }}
                   </p>
                 </div>
-                <div class="rounded-2xl border border-(--border) p-4">
+                <div class="stat-card rounded-2xl border border-(--border) p-4">
                   <p class="text-xs text-(--text-muted)">Absents</p>
                   <p class="text-2xl font-semibold text-(--text)">
                     {{ stat('studentsAbsent') }}
@@ -333,6 +343,51 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
       </div>
     }
   `,
+  styles: [
+    `
+      button.exams-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.exams-cta .mat-icon,
+      button.exams-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.exams-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: transparent;
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+      }
+      .result-row {
+        transition: background 0.15s ease;
+      }
+      .result-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+      .stat-card {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      .stat-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        background: color-mix(in srgb, var(--brand-500) 4%, var(--surface));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+    `,
+  ],
 })
 export class ExamDetail {
   private readonly route = inject(ActivatedRoute);
@@ -376,6 +431,21 @@ export class ExamDetail {
   protected readonly roster = computed(() => {
     const classId = this.exam()?.classId;
     return this.allStudents().filter((s) => s.classInstanceId === classId);
+  });
+
+  protected readonly headerSubtitle = computed(() => {
+    const e = this.exam();
+    const year = this.sy.selected() || e?.schoolYear;
+    const yearPart = year ? ` · Année ${year}` : '';
+    if (!e) {
+      return `Détail de l'examen${yearPart}`;
+    }
+    const course = this.courseLabel(e);
+    const type = this.typeLabel(e.examType);
+    const when = e.examDate
+      ? ` · ${e.examDate}${e.startTime ? ` ${e.startTime}–${e.endTime}` : ''}`
+      : '';
+    return `${course} · ${type}${when}${yearPart}`;
   });
 
   protected readonly supForm = new FormGroup({
@@ -566,24 +636,26 @@ export class ExamDetail {
   /* -------------------------------- Helpers --------------------------------- */
 
   protected studentName(s: Student): string {
-    return `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.id;
+    const label = personLabel(s as unknown as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return s.studentNumber || s.matricule || 'Élève';
   }
   protected teacherName(t: Teacher): string {
-    const u = (t.user ?? {}) as Record<string, unknown>;
-    return (
-      `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
-      (t.employeeNumber as string) ||
-      t.id
-    );
+    const label = personLabel((t.user ?? t) as unknown as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return t.employeeNumber || 'Enseignant';
   }
   protected supervisorName(sup: ExamSupervisor): string {
     const t = (sup.teacher ?? {}) as Record<string, unknown>;
-    const u = (t['user'] ?? {}) as Record<string, unknown>;
-    return (
-      `${(u['firstName'] as string) ?? ''} ${(u['lastName'] as string) ?? ''}`.trim() ||
-      (t['employeeNumber'] as string) ||
-      'Surveillant'
-    );
+    const label = personLabel((t['user'] ?? t) as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return (t['employeeNumber'] as string) || 'Surveillant';
   }
   protected courseLabel(e: Exam): string {
     return e.nationalProgramSlot?.labelFr ?? e.nationalProgramSlot?.programCode ?? 'Cours';

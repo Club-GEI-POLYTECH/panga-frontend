@@ -1,6 +1,8 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -9,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,11 +23,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
 import { DateField } from '../../../shared/ui/date-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { AcademicsService } from '../services/academics.service';
 import { ClassesService } from '../services/classes.service';
@@ -37,6 +42,7 @@ import { CurriculumService } from '../../super-admin/services/curriculum.service
 import type { ClassInstance, Period, Teacher } from '../models/admin.models';
 import type { NationalProgram } from '../../super-admin/models/platform.models';
 import type { ClassSubject, CourseOverviewRow, LessonLogEntry } from '../models/course.models';
+import { classLabel, personLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 import { periodLabel } from '../../../core/models/grade.enums';
 
@@ -57,6 +63,7 @@ interface SlotRow {
   selector: 'panga-course-journal',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     MatButtonModule,
     MatCheckboxModule,
@@ -72,23 +79,28 @@ interface SlotRow {
     DateField,
     SectionHeader,
     StatusBadge,
+    Skeleton,
   ],
   template: `
-    <panga-page-header
-      icon="auto_stories"
-      title="Journal de cours"
-      subtitle="Cahier de texte & avancement des programmes"
-    />
+    <panga-page-header icon="auto_stories" title="Journal de cours" [subtitle]="headerSubtitle()">
+      @if (canEdit() && classInstanceId()) {
+        <button mat-flat-button class="rounded-xl! journal-cta" (click)="toggleForm()">
+          <mat-icon fontSet="material-symbols-outlined">{{
+            showForm() ? 'close' : 'add'
+          }}</mat-icon>
+          {{ showForm() ? 'Annuler' : 'Nouvelle séance' }}
+        </button>
+      }
+    </panga-page-header>
 
-    <!-- Filtres -->
-    <div class="panga-card p-5 mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-end gap-3">
-      <mat-form-field appearance="outline" class="w-full sm:w-37.5">
-        <mat-label>Année scolaire</mat-label>
-        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
-      </mat-form-field>
-
+    <!-- Contexte -->
+    <div class="panga-card p-4 mb-6 flex flex-wrap items-center gap-3">
       @if (isParent()) {
-        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:flex-1 sm:min-w-55"
+          subscriptSizing="dynamic"
+        >
           <mat-label>Enfant</mat-label>
           <mat-select [value]="studentId()" (selectionChange)="selectStudent($event.value)">
             @for (c of children(); track c.studentId) {
@@ -97,18 +109,44 @@ interface SlotRow {
           </mat-select>
         </mat-form-field>
       } @else {
-        <mat-form-field appearance="outline" class="w-full sm:flex-1 sm:min-w-55">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:flex-1 sm:min-w-55"
+          subscriptSizing="dynamic"
+        >
           <mat-label>Classe</mat-label>
           <mat-select [value]="classInstanceId()" (selectionChange)="selectClass($event.value)">
             @for (c of classes(); track c.id) {
-              <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+              <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
       }
 
+      <div class="sm:hidden shrink-0">
+        <button mat-stroked-button class="rounded-xl!" (click)="openFilters(filtersTpl)">
+          <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+          Filtrer
+        </button>
+      </div>
+
+      <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+        <ng-container [ngTemplateOutlet]="filtersTpl" />
+      </div>
+    </div>
+
+    <ng-template #filtersTpl>
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
+        <mat-label>Année scolaire</mat-label>
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
+      </mat-form-field>
+
       @if (periods().length) {
-        <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-45">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:w-auto sm:min-w-45"
+          subscriptSizing="dynamic"
+        >
           <mat-label>Période</mat-label>
           <mat-select [value]="periodId()" (selectionChange)="selectPeriod($event.value)">
             <mat-option [value]="''">Toutes les périodes</mat-option>
@@ -120,7 +158,11 @@ interface SlotRow {
       }
 
       @if (subjects().length) {
-        <mat-form-field appearance="outline" class="w-full sm:w-auto sm:min-w-45">
+        <mat-form-field
+          appearance="outline"
+          class="w-full sm:w-auto sm:min-w-45"
+          subscriptSizing="dynamic"
+        >
           <mat-label>Cours</mat-label>
           <mat-select
             [value]="courseFilterId()"
@@ -133,7 +175,7 @@ interface SlotRow {
           </mat-select>
         </mat-form-field>
       }
-    </div>
+    </ng-template>
 
     @if (!hasContext()) {
       <div class="panga-card">
@@ -177,7 +219,7 @@ interface SlotRow {
             </button>
             <button
               mat-flat-button
-              class="rounded-xl! w-full sm:w-auto"
+              class="rounded-xl! journal-cta w-full sm:w-auto"
               [disabled]="!programCtrl.value || busyProgram()"
               (click)="assignProgram()"
               matTooltip="Lier le programme à cette classe (instance)"
@@ -243,7 +285,7 @@ interface SlotRow {
                 <div class="flex flex-wrap items-center gap-2 mt-4">
                   <button
                     mat-flat-button
-                    class="rounded-xl!"
+                    class="rounded-xl! journal-cta"
                     [disabled]="openingCourses() || !includedCount()"
                     (click)="openCourses()"
                   >
@@ -305,7 +347,23 @@ interface SlotRow {
         </panga-section-header>
 
         @if (loadingOverview()) {
-          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+          <div class="grid gap-4 sm:grid-cols-3 mb-5">
+            @for (_ of [1, 2, 3]; track $index) {
+              <div class="rounded-2xl border border-(--border) p-4 space-y-3">
+                <panga-skeleton width="40%" height="0.75rem" />
+                <panga-skeleton width="55%" height="1.75rem" />
+              </div>
+            }
+          </div>
+          <div class="space-y-3">
+            @for (_ of [1, 2, 3]; track $index) {
+              <div class="rounded-2xl border border-(--border) p-4 space-y-3">
+                <panga-skeleton width="45%" height="1rem" />
+                <panga-skeleton width="100%" height="0.625rem" radius="999px" />
+                <panga-skeleton width="70%" height="0.75rem" />
+              </div>
+            }
+          </div>
         } @else if (overview().length === 0) {
           <panga-empty-state
             icon="trending_up"
@@ -314,15 +372,15 @@ interface SlotRow {
           />
         } @else {
           <div class="grid gap-4 sm:grid-cols-3 mb-5">
-            <div class="rounded-2xl border border-(--border) p-4">
+            <div class="stat-tile rounded-2xl border border-(--border) p-4">
               <p class="text-xs text-(--text-muted)">Heures prévues</p>
               <p class="text-2xl font-semibold text-(--text)">{{ totalPlanned() }}</p>
             </div>
-            <div class="rounded-2xl border border-(--border) p-4">
+            <div class="stat-tile rounded-2xl border border-(--border) p-4">
               <p class="text-xs text-(--text-muted)">Heures réalisées</p>
               <p class="text-2xl font-semibold text-(--brand-700)">{{ totalDelivered() }}</p>
             </div>
-            <div class="rounded-2xl border border-(--border) p-4">
+            <div class="stat-tile rounded-2xl border border-(--border) p-4">
               <p class="text-xs text-(--text-muted)">Heures restantes</p>
               <p class="text-2xl font-semibold text-(--text)">{{ totalRemaining() }}</p>
             </div>
@@ -330,7 +388,7 @@ interface SlotRow {
 
           <div class="space-y-4">
             @for (row of overview(); track row.classSubjectId) {
-              <div class="rounded-2xl border border-(--border) p-4">
+              <div class="progress-card rounded-2xl border border-(--border) p-4">
                 <div class="flex items-center justify-between gap-3 mb-2">
                   <div class="min-w-0">
                     <p class="font-medium text-(--text) truncate">{{ row.subjectLabel }}</p>
@@ -400,7 +458,7 @@ interface SlotRow {
             </mat-form-field>
             <button
               mat-flat-button
-              class="rounded-xl! w-full sm:w-auto"
+              class="rounded-xl! journal-cta w-full sm:w-auto"
               type="button"
               [disabled]="!bulkTeacher() || bulkAssigning()"
               (click)="assignAll()"
@@ -510,7 +568,7 @@ interface SlotRow {
             </mat-form-field>
             <button
               mat-flat-button
-              class="rounded-xl! w-full sm:w-auto"
+              class="rounded-xl! journal-cta w-full sm:w-auto"
               type="submit"
               [disabled]="targetForm.invalid || savingTarget()"
             >
@@ -533,12 +591,14 @@ interface SlotRow {
           title="Séances enregistrées"
           [count]="entriesMeta()?.total ?? entries().length"
         >
-          @if (canEdit() && classInstanceId()) {
-            <button mat-flat-button class="rounded-xl!" (click)="toggleForm()">
-              <mat-icon fontSet="material-symbols-outlined">{{
-                showForm() ? 'close' : 'add'
-              }}</mat-icon>
-              {{ showForm() ? 'Annuler' : 'Nouvelle séance' }}
+          @if (canEdit() && classInstanceId() && !showForm()) {
+            <button
+              mat-stroked-button
+              class="rounded-xl! hidden sm:inline-flex"
+              (click)="toggleForm()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+              Nouvelle séance
             </button>
           }
         </panga-section-header>
@@ -554,7 +614,7 @@ interface SlotRow {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Période</mat-label>
                 <mat-select formControlName="periodId">
                   @for (p of periods(); track p.id) {
@@ -567,7 +627,7 @@ interface SlotRow {
                 label="Date de la séance"
                 formControlName="lessonDate"
               />
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Durée (heures)</mat-label>
                 <input
                   matInput
@@ -578,19 +638,19 @@ interface SlotRow {
                   step="any"
                 />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Titre / objet de la séance</mat-label>
                 <input matInput formControlName="title" maxlength="255" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Contenu / résumé</mat-label>
                 <textarea matInput rows="2" formControlName="summary" maxlength="5000"></textarea>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Devoirs</mat-label>
                 <textarea matInput rows="2" formControlName="homework" maxlength="5000"></textarea>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Compétences travaillées</mat-label>
                 <textarea
                   matInput
@@ -603,7 +663,7 @@ interface SlotRow {
             <div class="flex justify-end gap-2">
               <button
                 mat-flat-button
-                class="rounded-xl!"
+                class="rounded-xl! journal-cta"
                 type="submit"
                 [disabled]="entryForm.invalid || savingEntry()"
               >
@@ -614,17 +674,29 @@ interface SlotRow {
         }
 
         @if (loadingEntries()) {
-          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+          <div class="space-y-3 py-2">
+            @for (_ of [1, 2, 3]; track $index) {
+              <div class="flex items-start gap-3">
+                <panga-skeleton width="40px" height="40px" radius="0.75rem" />
+                <div class="flex-1 space-y-2">
+                  <panga-skeleton width="50%" height="0.95rem" />
+                  <panga-skeleton width="35%" height="0.75rem" />
+                </div>
+              </div>
+            }
+          </div>
         } @else if (entries().length === 0) {
           <panga-empty-state
             icon="event_note"
             title="Aucune séance"
             description="Aucune séance enregistrée pour ce contexte."
+            [actionLabel]="canEdit() ? 'Nouvelle séance' : ''"
+            (action)="toggleForm()"
           />
         } @else {
           <div class="divide-y divide-(--border) -mx-5">
             @for (e of entries(); track e.id) {
-              <div class="px-5 py-3 flex items-start gap-3">
+              <div class="entry-row px-5 py-3 flex items-start gap-3">
                 <div
                   class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white"
                   style="background: var(--brand-gradient)"
@@ -682,6 +754,35 @@ interface SlotRow {
       </section>
     }
   `,
+  styles: [
+    `
+      button.journal-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.journal-cta .mat-icon,
+      button.journal-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.journal-cta:disabled {
+        opacity: 0.55;
+      }
+      .stat-tile,
+      .progress-card,
+      .entry-row {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      .progress-card:hover,
+      .entry-row:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        background: color-mix(in srgb, var(--brand-500) 4%, var(--surface));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+    `,
+  ],
 })
 export class CourseJournal {
   private readonly store = inject(AuthStore);
@@ -694,7 +795,9 @@ export class CourseJournal {
   private readonly parents = inject(ParentsService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
+  protected readonly classLabel = classLabel;
   protected readonly role = this.store.role;
   protected readonly isAdmin = computed(
     () => this.role() === 'admin' || this.role() === 'super_admin',
@@ -797,6 +900,22 @@ export class CourseJournal {
     this.isParent() ? !!this.studentId() : !!this.classInstanceId(),
   );
 
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected() || this.schoolYear.value;
+    const yearPart = year ? ` · Année ${year}` : '';
+    if (this.isParent()) {
+      const child = this.children().find((c) => c.studentId === this.studentId());
+      return child
+        ? `Cahier de texte · ${child.name}${yearPart}`
+        : `Cahier de texte & avancement${yearPart}`;
+    }
+    const cls = this.classes().find((c) => c.id === this.classInstanceId());
+    if (cls) {
+      return `Cahier de texte · ${classLabel(cls as unknown as Record<string, unknown>)}${yearPart}`;
+    }
+    return `Cahier de texte & avancement des programmes${yearPart}`;
+  });
+
   protected readonly totalPlanned = computed(() =>
     round(this.overview().reduce((s, r) => s + r.plannedHours, 0)),
   );
@@ -836,6 +955,10 @@ export class CourseJournal {
   }
 
   /* ------------------------------- Sélection ------------------------------- */
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
+  }
 
   selectClass(id: string): void {
     this.classInstanceId.set(id);
@@ -1130,10 +1253,11 @@ export class CourseJournal {
 
   /** Libellé lisible d'un enseignant (le backend imbrique l'identité sous `user`). */
   protected teacherLabel(t: Teacher): string {
-    const user = (t.user ?? (t as Record<string, unknown>)) as Record<string, unknown>;
-    const full =
-      `${(user['firstName'] as string) ?? ''} ${(user['lastName'] as string) ?? ''}`.trim();
-    return full || (user['name'] as string) || (t.employeeNumber ?? '—');
+    const label = personLabel(t as unknown as Record<string, unknown>);
+    if (label && label !== 'Parent') {
+      return label;
+    }
+    return t.employeeNumber ?? 'Enseignant';
   }
 
   /* ------------------------- Cours ouverts (inline) ------------------------- */
@@ -1341,13 +1465,26 @@ export class CourseJournal {
   }
 
   private enrichRow(r: CourseOverviewRow): CourseOverviewRow {
-    if (r.subjectLabel && r.subjectLabel !== '—') {
-      return r;
-    }
     const cs = this.subjects().find(
       (s) => s.id === r.classSubjectId || s.nationalProgramSlotId === r.classSubjectId,
     );
-    return { ...r, subjectLabel: cs ? this.subjectLabel(cs) : r.subjectLabel };
+    let subjectLabel = r.subjectLabel;
+    if (!subjectLabel || subjectLabel === '—') {
+      subjectLabel = cs ? this.subjectLabel(cs) : r.subjectLabel;
+    }
+    let teacherName = r.teacherName;
+    if ((!teacherName || looksLikeId(teacherName)) && cs?.teacher) {
+      const label = personLabel(cs.teacher);
+      if (label && label !== 'Parent') {
+        teacherName = label;
+      }
+    } else if (teacherName && looksLikeId(teacherName) && cs?.teacherId) {
+      const t = this.teachers().find((x) => x.id === cs.teacherId);
+      if (t) {
+        teacherName = this.teacherLabel(t);
+      }
+    }
+    return { ...r, subjectLabel, teacherName };
   }
 
   private enrichEntry(e: LessonLogEntry): LessonLogEntry {
@@ -1397,12 +1534,18 @@ function extractChildren(profile: Record<string, unknown>): ChildRef[] {
       // Cas join : { student: {...} }.
       const s = (o['student'] ?? o) as Record<string, unknown>;
       const id = String(s['id'] ?? s['studentId'] ?? '');
+      const label = personLabel(s);
       const name =
-        `${s['firstName'] ?? ''} ${s['lastName'] ?? ''}`.trim() ||
-        (s['fullName'] as string) ||
-        (s['name'] as string) ||
-        id;
+        label && label !== 'Parent'
+          ? label
+          : String(s['studentNumber'] ?? s['matricule'] ?? 'Élève');
       return { studentId: id, name };
     })
     .filter((c) => c.studentId);
+}
+
+/** Heuristique : UUID / id technique affiché à la place d'un nom. */
+function looksLikeId(v: string): boolean {
+  const s = v.trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 }

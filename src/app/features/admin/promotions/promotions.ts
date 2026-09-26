@@ -1,6 +1,8 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
   computed,
   effect,
   inject,
@@ -10,6 +12,7 @@ import {
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,10 +27,12 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { extractApiError } from '../../../core/http/api.util';
 import { Avatar } from '../../../shared/ui/avatar';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 import type { PaginationMeta } from '../../../core/models/api.models';
 import { ErrorCode } from '../../../core/models/api.models';
 import type { ClassInstance, Student } from '../models/admin.models';
@@ -44,12 +49,19 @@ import {
   enrollmentTone,
   promotionLabel,
 } from '../../../core/models/promotion.enums';
+import { classLabel, personLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+
+/** Heuristique : UUID / id technique affiché à la place d'un nom. */
+function looksLikeId(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
+}
 
 @Component({
   selector: 'panga-promotions',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -64,17 +76,14 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
     Paginator,
     SectionHeader,
     StatusBadge,
+    Skeleton,
   ],
   template: `
-    <panga-page-header
-      icon="workspace_premium"
-      title="Promotions"
-      subtitle="Décisions de fin d'année (passage / redoublement)"
-    />
+    <panga-page-header icon="workspace_premium" title="Promotions" [subtitle]="headerSubtitle()" />
 
     <!-- Contexte -->
-    <div class="panga-card p-5 mb-6">
-      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+    <div class="panga-card p-4 mb-6">
+      <div class="flex flex-wrap items-center gap-3">
         <mat-form-field
           appearance="outline"
           class="w-full sm:flex-1 sm:min-w-55"
@@ -83,47 +92,41 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
           <mat-label>Classe</mat-label>
           <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
             @for (c of classes(); track c.id) {
-              <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+              <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
             }
           </mat-select>
         </mat-form-field>
-        <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
-          <mat-label>Année scolaire</mat-label>
-          <input
-            matInput
-            [formControl]="schoolYear"
-            placeholder="Année en cours"
-            (blur)="reload()"
-          />
-        </mat-form-field>
-        <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
-          <mat-label>Seuil (%)</mat-label>
-          <input
-            matInput
-            type="number"
-            [formControl]="threshold"
-            min="0"
-            max="100"
-            placeholder="50"
-          />
-        </mat-form-field>
+
+        <div class="sm:hidden shrink-0">
+          <button mat-stroked-button class="rounded-xl!" (click)="openFilters(filtersTpl)">
+            <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+            Filtrer
+          </button>
+        </div>
+
+        <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+          <ng-container [ngTemplateOutlet]="filtersTpl" />
+        </div>
+
         @if (isAdmin() && classId()) {
-          <button
-            mat-stroked-button
-            class="rounded-xl! w-full sm:w-auto"
-            (click)="compute()"
-            [disabled]="busy()"
-          >
-            <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
-          </button>
-          <button
-            mat-flat-button
-            class="rounded-xl! w-full sm:w-auto"
-            (click)="finalize()"
-            [disabled]="busy() || !hasDraft()"
-          >
-            <mat-icon fontSet="material-symbols-outlined">lock</mat-icon> Finaliser
-          </button>
+          <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+            <button
+              mat-stroked-button
+              class="rounded-xl! flex-1 sm:flex-none"
+              (click)="compute()"
+              [disabled]="busy()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
+            </button>
+            <button
+              mat-flat-button
+              class="rounded-xl! promotions-cta flex-1 sm:flex-none"
+              (click)="finalize()"
+              [disabled]="busy() || !hasDraft()"
+            >
+              <mat-icon fontSet="material-symbols-outlined">lock</mat-icon> Finaliser
+            </button>
+          </div>
         }
       </div>
 
@@ -152,6 +155,24 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         </div>
       }
     </div>
+
+    <ng-template #filtersTpl>
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
+        <mat-label>Année scolaire</mat-label>
+        <input matInput [formControl]="schoolYear" placeholder="Année en cours" (blur)="reload()" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="w-full sm:w-37.5" subscriptSizing="dynamic">
+        <mat-label>Seuil (%)</mat-label>
+        <input
+          matInput
+          type="number"
+          [formControl]="threshold"
+          min="0"
+          max="100"
+          placeholder="50"
+        />
+      </mat-form-field>
+    </ng-template>
 
     @if (incompleteNotes(); as notes) {
       <div class="panga-card p-4 mb-6 border border-(--danger)!">
@@ -248,7 +269,18 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         </panga-section-header>
 
         @if (loading()) {
-          <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+          <div class="space-y-3 py-2">
+            @for (_ of [1, 2, 3, 4, 5]; track $index) {
+              <div class="flex items-center gap-3 px-1">
+                <panga-skeleton width="38px" height="38px" radius="999px" />
+                <div class="min-w-0 flex-1 space-y-2">
+                  <panga-skeleton width="40%" height="0.9rem" />
+                  <panga-skeleton width="55%" height="0.7rem" />
+                </div>
+                <panga-skeleton width="4.5rem" height="1.4rem" radius="999px" />
+              </div>
+            }
+          </div>
         } @else if (decisions().length === 0) {
           <panga-empty-state
             icon="how_to_reg"
@@ -258,7 +290,7 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
         } @else {
           <div class="divide-y divide-(--border) -mx-5">
             @for (d of decisions(); track d.id || $index) {
-              <div class="flex flex-col gap-1.5 px-5 py-3">
+              <div class="decision-row flex flex-col gap-1.5 px-5 py-3">
                 <div class="flex items-center gap-4">
                   <panga-avatar [name]="studentName(d)" [size]="38" />
                   <p class="min-w-0 flex-1 text-sm font-medium text-(--text) truncate">
@@ -320,6 +352,27 @@ import { SchoolYearStore } from '../../../core/school-year/school-year.store';
       </p>
     }
   `,
+  styles: [
+    `
+      button.promotions-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.promotions-cta .mat-icon,
+      button.promotions-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.promotions-cta:disabled {
+        opacity: 0.55;
+      }
+      .decision-row {
+        transition: background 0.15s ease;
+      }
+      .decision-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+    `,
+  ],
 })
 export class Promotions {
   private readonly promotionsApi = inject(PromotionsService);
@@ -328,7 +381,9 @@ export class Promotions {
   private readonly store = inject(AuthStore);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
+  protected readonly classLabel = classLabel;
   protected readonly decisionOptions = PROMOTION_DECISION_OPTIONS;
   protected readonly isAdmin = computed(
     () => this.store.role() === 'admin' || this.store.role() === 'super_admin',
@@ -364,6 +419,16 @@ export class Promotions {
     this.decisions().some((d) => d.status !== 'finalized'),
   );
 
+  protected readonly headerSubtitle = computed(() => {
+    const cls = this.classes().find((c) => c.id === this.classId());
+    const year = this.schoolYear.value || this.sy.selected();
+    const yearPart = year ? ` · Année ${year}` : '';
+    if (cls) {
+      return `Décisions de fin d'année · ${classLabel(cls as unknown as Record<string, unknown>)}${yearPart}`;
+    }
+    return `Décisions de fin d'année (passage / redoublement)${yearPart}`;
+  });
+
   constructor() {
     // Synchronise le champ année sur le sélecteur global et recharge.
     effect(() => {
@@ -376,6 +441,10 @@ export class Promotions {
         this.reload();
       });
     });
+  }
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
   }
 
   selectClass(id: string): void {
@@ -566,20 +635,28 @@ export class Promotions {
     const threshold = d.passThreshold != null ? Number(d.passThreshold) : 50;
     return avg >= threshold ? 'var(--success)' : 'var(--danger)';
   }
+
+  /** Nom lisible — jamais d'UUID / studentId brut. */
   protected studentName(d: PromotionDecision): string {
-    const s = (d.student ?? {}) as Record<string, unknown>;
-    const fromRel = `${(s['firstName'] as string) ?? ''} ${(s['lastName'] as string) ?? ''}`.trim();
-    if (fromRel) {
-      return fromRel;
+    if (d.student) {
+      const fromRel = personLabel(d.student as unknown as Record<string, unknown>);
+      if (fromRel && fromRel !== 'Parent' && !looksLikeId(fromRel)) {
+        return fromRel;
+      }
     }
-    if (d.studentName) {
-      return d.studentName;
+    if (typeof d.studentName === 'string' && d.studentName.trim() && !looksLikeId(d.studentName)) {
+      return d.studentName.trim();
     }
-    const match = this.students().find((x) => x.id === d.studentId);
-    return match
-      ? `${match.firstName || ''} ${match.lastName || ''}`.trim() || d.studentId!
-      : (d.studentId ?? '—');
+    const match = d.studentId ? this.students().find((x) => x.id === d.studentId) : undefined;
+    if (match) {
+      const fromList = personLabel(match as unknown as Record<string, unknown>);
+      if (fromList && fromList !== 'Parent' && !looksLikeId(fromList)) {
+        return fromList;
+      }
+    }
+    return 'Élève';
   }
+
   protected decisionLabel(v: string | undefined): string {
     return promotionLabel(PROMOTION_DECISION_OPTIONS, v);
   }
@@ -619,9 +696,13 @@ export class Promotions {
     if (decision) {
       return this.studentName(decision);
     }
-    const match = this.students().find((x) => x.id === e.studentId);
-    return match
-      ? `${match.firstName || ''} ${match.lastName || ''}`.trim() || e.studentId
-      : e.studentId;
+    const match = e.studentId ? this.students().find((x) => x.id === e.studentId) : undefined;
+    if (match) {
+      const label = personLabel(match as unknown as Record<string, unknown>);
+      if (label && label !== 'Parent' && !looksLikeId(label)) {
+        return label;
+      }
+    }
+    return 'Élève';
   }
 }

@@ -1,6 +1,9 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  TemplateRef,
+  computed,
   effect,
   inject,
   signal,
@@ -8,6 +11,7 @@ import {
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
+import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,11 +20,15 @@ import { ReportsService, type ClassStats } from './reports.service';
 import { ClassesService } from '../services/classes.service';
 import type { ClassInstance } from '../models/admin.models';
 import { TERM_OPTIONS } from '../../../core/models/grade.enums';
+import { classLabel } from '../shared/labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { FilterSheetContent } from '../../../shared/ui/filter-sheet';
 import { KpiCard } from '../../../shared/ui/kpi-card';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
+import { SkeletonCard } from '../../../shared/skeleton/skeleton-card';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 interface Bracket {
@@ -42,6 +50,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   selector: 'panga-reports',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    NgTemplateOutlet,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -51,26 +60,50 @@ function downloadBlob(blob: Blob, filename: string): void {
     SectionHeader,
     EmptyState,
     KpiCard,
+    Skeleton,
+    SkeletonCard,
   ],
   template: `
-    <panga-page-header icon="analytics" title="Rapports" subtitle="Statistiques par classe">
+    <panga-page-header icon="analytics" title="Rapports" [subtitle]="headerSubtitle()">
       @if (classId()) {
-        <button mat-stroked-button class="rounded-xl!" (click)="exportExcel()">
+        <button mat-flat-button class="rounded-xl! reports-cta" (click)="exportExcel()">
           <mat-icon fontSet="material-symbols-outlined">file_download</mat-icon> Export Excel
         </button>
       }
     </panga-page-header>
 
-    <div class="panga-card p-4 mb-4 flex flex-wrap items-center gap-3">
-      <mat-form-field appearance="outline" class="flex-1 min-w-45" subscriptSizing="dynamic">
+    <div class="panga-card p-4 mb-6 flex flex-wrap items-center gap-3">
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-45"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
-            <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
-      <mat-form-field appearance="outline" class="flex-1 min-w-36" subscriptSizing="dynamic">
+
+      <div class="sm:hidden shrink-0">
+        <button mat-stroked-button class="rounded-xl!" (click)="openFilters(filtersTpl)">
+          <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+          Filtrer
+        </button>
+      </div>
+
+      <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
+        <ng-container [ngTemplateOutlet]="filtersTpl" />
+      </div>
+    </div>
+
+    <ng-template #filtersTpl>
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-36"
+        subscriptSizing="dynamic"
+      >
         <mat-label>Trimestre</mat-label>
         <mat-select [value]="term()" (selectionChange)="setTerm($event.value)">
           <mat-option [value]="''">Annuel</mat-option>
@@ -79,7 +112,7 @@ function downloadBlob(blob: Blob, filename: string): void {
           }
         </mat-select>
       </mat-form-field>
-    </div>
+    </ng-template>
 
     @if (!classId()) {
       <div class="panga-card">
@@ -90,7 +123,20 @@ function downloadBlob(blob: Blob, filename: string): void {
         />
       </div>
     } @else if (loading()) {
-      <p class="text-sm text-(--text-muted) py-6 text-center">Calcul en cours…</p>
+      <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
+        @for (_ of [1, 2, 3, 4]; track $index) {
+          <panga-skeleton-card />
+        }
+      </section>
+      <div class="panga-card p-5 space-y-3">
+        @for (_ of [1, 2, 3, 4]; track $index) {
+          <div class="flex items-center gap-3">
+            <panga-skeleton width="5rem" height="0.75rem" />
+            <panga-skeleton width="100%" height="1.25rem" radius="0.5rem" />
+            <panga-skeleton width="2rem" height="0.85rem" />
+          </div>
+        }
+      </div>
     } @else {
       <!-- KPIs -->
       <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
@@ -101,15 +147,15 @@ function downloadBlob(blob: Blob, filename: string): void {
       </section>
 
       <section class="grid gap-4 sm:grid-cols-3 mb-6">
-        <div class="panga-card p-4">
+        <div class="stat-tile panga-card p-4">
           <p class="text-xs text-(--text-muted)">Médiane</p>
           <p class="text-xl font-semibold text-(--text)">{{ pct(stats()?.median) }}</p>
         </div>
-        <div class="panga-card p-4">
+        <div class="stat-tile panga-card p-4">
           <p class="text-xs text-(--text-muted)">Minimum</p>
           <p class="text-xl font-semibold text-(--text)">{{ pct(stats()?.min) }}</p>
         </div>
-        <div class="panga-card p-4">
+        <div class="stat-tile panga-card p-4">
           <p class="text-xs text-(--text-muted)">Maximum</p>
           <p class="text-xl font-semibold text-(--text)">{{ pct(stats()?.max) }}</p>
         </div>
@@ -149,13 +195,39 @@ function downloadBlob(blob: Blob, filename: string): void {
       </section>
     }
   `,
+  styles: [
+    `
+      button.reports-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.reports-cta .mat-icon,
+      button.reports-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.reports-cta:disabled {
+        opacity: 0.55;
+      }
+      .stat-tile {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .stat-tile:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+    `,
+  ],
 })
 export class Reports {
   private readonly reportsApi = inject(ReportsService);
   private readonly classesApi = inject(ClassesService);
   private readonly notify = inject(NotificationService);
   private readonly sy = inject(SchoolYearStore);
+  private readonly bottomSheet = inject(MatBottomSheet);
 
+  protected readonly classLabel = classLabel;
   protected readonly terms = TERM_OPTIONS;
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly classId = signal('');
@@ -163,6 +235,18 @@ export class Reports {
   protected readonly loading = signal(false);
   protected readonly stats = signal<ClassStats | null>(null);
   protected readonly brackets = signal<Bracket[]>([]);
+
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected() || this.year();
+    const yearPart = year ? ` · Année ${year}` : '';
+    const cls = this.classes().find((c) => c.id === this.classId());
+    if (cls) {
+      const termOpt = this.terms.find((t) => t.value === this.term());
+      const termPart = termOpt ? ` · ${termOpt.label}` : this.term() ? '' : ' · Annuel';
+      return `Statistiques · ${classLabel(cls as unknown as Record<string, unknown>)}${termPart}${yearPart}`;
+    }
+    return `Statistiques par classe${yearPart}`;
+  });
 
   private year(): string {
     return this.sy.filter() || this.sy.current();
@@ -173,6 +257,10 @@ export class Reports {
       this.sy.selected();
       untracked(() => this.loadClasses());
     });
+  }
+
+  openFilters(template: TemplateRef<unknown>): void {
+    this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
   }
 
   private loadClasses(): void {

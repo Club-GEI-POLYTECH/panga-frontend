@@ -51,8 +51,11 @@ import {
   periodLabel,
 } from '../../../core/models/grade.enums';
 import type { EnumOption } from '../../../core/models/school.enums';
+import { classLabel } from '../shared/labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 import { AuthStore } from '../../../core/auth/auth.store';
+import { KpiCard } from '../../../shared/ui/kpi-card';
+import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 
 interface CourseRef {
   slotId: string;
@@ -87,14 +90,16 @@ const STATUS_TONE: Record<string, BadgeTone> = {
     NgTemplateOutlet,
     Avatar,
     EmptyState,
+    KpiCard,
     PageHeader,
     Paginator,
     DateField,
     SectionHeader,
     StatusBadge,
+    SkeletonTable,
   ],
   template: `
-    <panga-page-header icon="grade" title="Notes" subtitle="Saisie, périodes & moyennes">
+    <panga-page-header icon="grade" title="Notes" [subtitle]="headerSubtitle()">
       <button mat-stroked-button class="rounded-xl!" [matMenuTriggerFor]="excelMenu">
         <mat-icon fontSet="material-symbols-outlined">table_view</mat-icon> Excel
       </button>
@@ -127,19 +132,20 @@ const STATUS_TONE: Record<string, BadgeTone> = {
         <mat-label>Classe</mat-label>
         <mat-select [value]="classId()" (selectionChange)="selectClass($event.value)">
           @for (c of classes(); track c.id) {
-            <mat-option [value]="c.id">{{ c.template?.name || c.id }}</mat-option>
+            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
-      <button
-        mat-icon-button
-        class="sm:hidden shrink-0"
-        (click)="openFilters(schoolYearTpl)"
-        matTooltip="Année scolaire"
-        aria-label="Année scolaire"
-      >
-        <mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
-      </button>
+      <div class="sm:hidden shrink-0">
+        <button
+          mat-icon-button
+          (click)="openFilters(schoolYearTpl)"
+          matTooltip="Année scolaire"
+          aria-label="Année scolaire"
+        >
+          <mat-icon fontSet="material-symbols-outlined">tune</mat-icon>
+        </button>
+      </div>
       <div class="hidden sm:block w-37.5 shrink-0">
         <ng-container [ngTemplateOutlet]="schoolYearTpl" />
       </div>
@@ -176,18 +182,22 @@ const STATUS_TONE: Record<string, BadgeTone> = {
           }
         </panga-section-header>
         @if (periods().length === 0) {
-          <p class="text-sm text-(--text-muted)">
-            Aucune période. Cliquez sur « Générer » pour créer les périodes de l'année.
-          </p>
+          <panga-empty-state
+            [compact]="true"
+            icon="event"
+            title="Aucune période"
+            description="Générez les périodes de l'année pour activer la saisie."
+            [actionLabel]="isClassTutor() ? 'Générer' : ''"
+            (action)="seedPeriods()"
+          />
         } @else {
           <div
             class="flex flex-nowrap overflow-x-auto -mx-5 px-5 gap-2 sm:flex-wrap sm:overflow-visible sm:mx-0 sm:px-0"
           >
             @for (p of periods(); track p.id) {
               <div
-                class="flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2"
-                [class.opacity-60]="p.isLocked"
-                [style.border-color]="p.isLocked ? 'var(--warning)' : 'var(--border)'"
+                class="period-chip flex shrink-0 items-center gap-2 rounded-xl border px-3 py-2"
+                [class.period-chip--locked]="p.isLocked"
               >
                 <span class="material-symbols-outlined text-[18px] text-(--brand-500)">
                   {{ p.periodType === 'exam' ? 'quiz' : 'menu_book' }}
@@ -217,13 +227,19 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       </section>
 
       <!-- Onglets -->
-      <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
+      <div
+        class="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1"
+        role="tablist"
+        aria-label="Sections notes"
+      >
         @for (t of tabs; track t.key) {
           <button
-            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            [class.bg-surface]="tab() === t.key"
-            [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-            [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+            type="button"
+            role="tab"
+            class="shrink-0 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors border"
+            [attr.aria-selected]="tab() === t.key"
+            [class.tab-active]="tab() === t.key"
+            [class.tab-idle]="tab() !== t.key"
             (click)="tab.set(t.key)"
           >
             {{ t.label }}
@@ -284,16 +300,18 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 description="Cette classe n'a pas d'élèves inscrits."
               />
             } @else {
-              <div class="divide-y divide-(--border) -mx-5 mb-4">
+              <div class="grid gap-2 mb-4">
                 @for (s of classStudents(); track s.id) {
-                  <div class="flex items-center gap-3 px-5 py-2.5">
-                    <panga-avatar [name]="studentName(s)" [size]="34" />
-                    <span class="flex-1 min-w-0 text-sm text-(--text) truncate">{{
+                  <div
+                    class="score-row flex items-center gap-3 rounded-2xl border border-(--border) px-3.5 py-2.5"
+                  >
+                    <panga-avatar [name]="studentName(s)" [size]="36" class="shrink-0" />
+                    <span class="flex-1 min-w-0 text-sm font-medium text-(--text) truncate">{{
                       studentName(s)
                     }}</span>
                     <input
                       type="number"
-                      class="w-24 rounded-lg border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-right text-(--text) focus:outline-none focus:ring-2 focus:ring-(--brand-400) disabled:opacity-50"
+                      class="score-input w-24 rounded-xl border border-(--border) bg-(--surface) px-3 py-1.5 text-sm text-right text-(--text) tabular-nums focus:outline-none disabled:opacity-50"
                       [value]="scores()[s.id] || ''"
                       (input)="setScore(s.id, $event)"
                       [disabled]="!!selectedBulkPeriod()?.isLocked"
@@ -310,12 +328,14 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 </p>
                 <button
                   mat-flat-button
-                  class="rounded-xl!"
+                  class="rounded-xl! grades-cta"
                   [disabled]="!canSubmitBulk() || savingBulk()"
                   (click)="submitBulk()"
                 >
                   <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
-                  Enregistrer {{ filledCount() }} note(s)
+                  {{
+                    savingBulk() ? 'Enregistrement…' : 'Enregistrer ' + filledCount() + ' note(s)'
+                  }}
                 </button>
               </div>
             }
@@ -334,14 +354,16 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   : (gradesMeta()?.total ?? displayedGrades().length)
               "
             >
-              <button
-                mat-stroked-button
-                class="rounded-xl! sm:hidden"
-                (click)="openFilters(gradeFiltersTpl)"
-              >
-                <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
-                Filtrer
-              </button>
+              <div class="sm:hidden shrink-0">
+                <button
+                  mat-stroked-button
+                  class="rounded-xl!"
+                  (click)="openFilters(gradeFiltersTpl)"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+                  Filtrer
+                </button>
+              </div>
               <div class="hidden sm:flex sm:flex-wrap items-center gap-2">
                 <ng-container [ngTemplateOutlet]="gradeFiltersTpl" />
               </div>
@@ -394,7 +416,13 @@ const STATUS_TONE: Record<string, BadgeTone> = {
             </ng-template>
 
             @if (editing(); as g) {
-              <div class="rounded-2xl border border-(--brand-300) bg-(--brand-50) p-4 mb-4">
+              <div
+                class="rounded-2xl border p-4 mb-4"
+                style="
+                  border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+                  background: color-mix(in srgb, var(--brand-500) 8%, transparent);
+                "
+              >
                 <p class="text-sm font-medium text-(--text) mb-3">
                   Modifier la note — {{ gradeStudent(g) }} · {{ courseLabel(g) }}
                 </p>
@@ -412,58 +440,81 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   <button mat-button (click)="editing.set(null)">Annuler</button>
                   <button
                     mat-flat-button
-                    class="rounded-xl!"
+                    class="rounded-xl! grades-cta"
                     [disabled]="savingEdit()"
                     (click)="saveEdit()"
                   >
-                    Enregistrer
+                    {{ savingEdit() ? 'Enregistrement…' : 'Enregistrer' }}
                   </button>
                 </div>
               </div>
             }
 
             @if (loadingGrades()) {
-              <p class="text-sm text-(--text-muted) py-6 text-center">Chargement…</p>
+              <panga-skeleton-table />
+            } @else if (gradesLoadError()) {
+              <panga-empty-state
+                icon="error"
+                title="Impossible de charger les notes"
+                description="Vérifiez votre connexion puis réessayez."
+                actionLabel="Réessayer"
+                (action)="reloadGrades()"
+              />
             } @else if (displayedGrades().length === 0) {
               <panga-empty-state
                 icon="grade"
                 title="Aucune note"
-                description="Aucune note pour ce filtre."
+                description="Saisissez des notes ou élargissez les filtres."
+                actionLabel="Aller à la saisie"
+                (action)="tab.set('entry')"
               />
             } @else {
-              <div class="divide-y divide-(--border) -mx-5">
+              <div class="grid gap-2">
                 @for (g of displayedGrades(); track g.id) {
-                  <div
-                    class="flex items-center gap-3 px-5 py-3 cursor-pointer active:bg-(--background)"
+                  <article
+                    class="grade-card flex items-center gap-3 rounded-2xl border border-(--border) p-3 cursor-pointer"
                     role="button"
                     tabindex="0"
                     (click)="openGradeDetails(g, gradeDetailsTpl)"
                     (keydown.enter)="openGradeDetails(g, gradeDetailsTpl)"
                   >
-                    <panga-avatar [name]="gradeStudent(g)" [size]="36" />
+                    <panga-avatar [name]="gradeStudent(g)" [size]="40" class="shrink-0" />
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-(--text) truncate">
-                        {{ gradeStudent(g) }}
-                      </p>
-                      <p class="text-xs text-(--text-muted) truncate hidden sm:block">
+                      <p
+                        class="text-[11px] font-semibold uppercase tracking-wide truncate"
+                        style="color: var(--brand-deep)"
+                      >
                         {{ courseLabel(g) }}
-                        @if (gradePeriodLabel(g); as pl) {
-                          · {{ pl }}
-                        }
                       </p>
+                      <h3
+                        class="text-sm font-semibold text-(--text) truncate mt-0.5"
+                        style="font-family: Urbanist, sans-serif"
+                      >
+                        {{ gradeStudent(g) }}
+                      </h3>
+                      @if (gradePeriodLabel(g); as pl) {
+                        <p class="text-xs text-(--text-muted) mt-0.5 truncate">{{ pl }}</p>
+                      }
+                      <div class="mt-1.5 flex flex-wrap items-center gap-1.5">
+                        <span
+                          class="chip"
+                          [class.chip--success]="g.status === 'published'"
+                          [class.chip--warning]="g.status === 'archived' || g.status === 'disputed'"
+                          [class.chip--neutral]="!g.status || g.status === 'draft'"
+                        >
+                          {{ statusLabel(g.status) }}
+                        </span>
+                      </div>
                     </div>
-                    <panga-status-badge
-                      [label]="statusLabel(g.status)"
-                      [tone]="statusTone(g.status)"
-                      [dot]="false"
-                      class="hidden sm:inline-flex shrink-0"
-                    />
                     <div class="text-right shrink-0">
-                      <span class="text-base font-semibold text-(--text)">{{ num(g.score) }}</span>
-                      <span class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</span>
+                      <p class="text-lg font-semibold tabular-nums text-(--text)">
+                        {{ num(g.score) }}
+                      </p>
+                      <p class="text-xs text-(--text-muted)">/{{ num(g.maxScore) || 20 }}</p>
                     </div>
                     <button
                       mat-icon-button
+                      class="shrink-0"
                       [matMenuTriggerFor]="rowMenu"
                       (click)="$event.stopPropagation()"
                       aria-label="Actions"
@@ -480,7 +531,7 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                         <span>Supprimer</span>
                       </button>
                     </mat-menu>
-                  </div>
+                  </article>
                 }
               </div>
 
@@ -554,11 +605,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 </mat-form-field>
                 <button
                   mat-flat-button
-                  class="rounded-xl! w-full sm:w-auto"
+                  class="rounded-xl! grades-cta w-full sm:w-auto"
                   [disabled]="loadingAverages() || !avgScope()"
                   (click)="loadAverages(true)"
                 >
-                  <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon> Calculer
+                  <mat-icon fontSet="material-symbols-outlined">calculate</mat-icon>
+                  {{ loadingAverages() ? 'Calcul…' : 'Calculer' }}
                 </button>
               </div>
             </panga-section-header>
@@ -576,38 +628,27 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                 "
               />
             } @else {
-              <div class="grid gap-4 sm:grid-cols-2 mb-5">
-                <div class="rounded-2xl border border-(--border) p-4">
-                  <p class="text-xs text-(--text-muted)">Moyenne générale</p>
-                  <p class="text-2xl font-semibold" [style.color]="avgColor(classAveragePercent())">
-                    {{ over20(classAveragePercent()) }}
-                    <span class="text-sm text-(--text-muted)">/20</span>
-                    <span class="text-sm text-(--text-muted)">
-                      · {{ pctOr(classAveragePercent()) }}</span
-                    >
-                  </p>
-                </div>
-                <div class="rounded-2xl border border-(--border) p-4">
-                  <p class="text-xs text-(--text-muted)">Effectif</p>
-                  <p class="text-2xl font-semibold text-(--text)">
-                    {{ proclamation()?.studentCount ?? ranking().length }}
-                  </p>
-                </div>
-              </div>
-
-              <div class="grid gap-4 sm:grid-cols-3 mb-5">
-                <div class="rounded-2xl border border-(--border) p-4">
-                  <p class="text-xs text-(--text-muted)">Réussite &gt; 75 %</p>
-                  <p class="text-2xl font-semibold text-(--success)">{{ tranche75().length }}</p>
-                </div>
-                <div class="rounded-2xl border border-(--border) p-4">
-                  <p class="text-xs text-(--text-muted)">Entre 50 % et 75 %</p>
-                  <p class="text-2xl font-semibold text-(--brand-700)">{{ tranche50().length }}</p>
-                </div>
-                <div class="rounded-2xl border border-(--border) p-4">
-                  <p class="text-xs text-(--text-muted)">En échec &lt; 50 %</p>
-                  <p class="text-2xl font-semibold text-(--danger)">{{ trancheLow().length }}</p>
-                </div>
+              <div class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-5">
+                <panga-kpi-card
+                  label="Moyenne /20"
+                  [value]="over20(classAveragePercent())"
+                  icon="grade"
+                />
+                <panga-kpi-card
+                  label="Effectif"
+                  [value]="proclamation()?.studentCount ?? ranking().length"
+                  icon="groups"
+                />
+                <panga-kpi-card
+                  label="Réussite > 75 %"
+                  [value]="tranche75().length"
+                  icon="emoji_events"
+                />
+                <panga-kpi-card
+                  label="En échec < 50 %"
+                  [value]="trancheLow().length"
+                  icon="warning"
+                />
               </div>
 
               @if (ranking().length === 0) {
@@ -617,22 +658,30 @@ const STATUS_TONE: Record<string, BadgeTone> = {
                   description="Aucune note pour cette portée."
                 />
               } @else {
-                <div class="divide-y divide-(--border) -mx-5">
+                <div class="grid gap-2">
                   @for (r of ranking(); track r.studentId || $index; let i = $index) {
-                    <div class="flex items-start gap-3 px-5 py-3">
+                    <div
+                      class="rank-card flex items-center gap-3 rounded-2xl border border-(--border) p-3"
+                    >
                       <span
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold"
                         [style.background]="rankBg(i)"
                         [style.color]="rankFg(i)"
                       >
                         {{ r.rank || i + 1 }}
                       </span>
-                      <panga-avatar [name]="rankName(r)" [size]="32" />
+                      <panga-avatar [name]="rankName(r)" [size]="36" class="shrink-0" />
                       <div class="min-w-0 flex-1">
-                        <p class="text-sm font-medium text-(--text) truncate">
+                        <p
+                          class="text-sm font-semibold text-(--text) truncate"
+                          style="font-family: Urbanist, sans-serif"
+                        >
                           {{ rankName(r) }}
                         </p>
-                        <p class="text-sm font-semibold" [style.color]="avgColor(r.averagePercent)">
+                        <p
+                          class="text-sm font-semibold mt-0.5"
+                          [style.color]="avgColor(r.averagePercent)"
+                        >
                           {{ over20(r.averagePercent) }}/20
                           <span class="mx-1 text-(--text-muted) font-normal">·</span>
                           {{ pct(r.averagePercent) }}%
@@ -648,6 +697,85 @@ const STATUS_TONE: Record<string, BadgeTone> = {
       }
     }
   `,
+  styles: [
+    `
+      button.grades-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.grades-cta .mat-icon,
+      button.grades-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.grades-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+      .period-chip {
+        border-color: var(--border);
+      }
+      .period-chip--locked {
+        opacity: 0.7;
+        border-color: var(--warning) !important;
+      }
+      .score-row,
+      .grade-card,
+      .rank-card {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .score-row:hover,
+      .grade-card:hover,
+      .rank-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+      .score-input:focus {
+        border-color: color-mix(in srgb, var(--brand-500) 55%, var(--border));
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-500) 18%, transparent);
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border-radius: 999px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1.2;
+        border: 1px solid transparent;
+      }
+      .chip--success {
+        color: var(--success);
+        background: color-mix(in srgb, var(--success) 14%, transparent);
+        border-color: color-mix(in srgb, var(--success) 28%, transparent);
+      }
+      .chip--warning {
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+      }
+      .chip--neutral {
+        color: var(--text-muted);
+        background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+        border-color: color-mix(in srgb, var(--text-muted) 22%, transparent);
+      }
+    `,
+  ],
 })
 export class GradesList {
   private readonly gradesApi = inject(GradesService);
@@ -673,6 +801,7 @@ export class GradesList {
     return !!uid && !!cls?.classTeacherId && cls.classTeacherId === uid;
   });
 
+  protected readonly classLabel = classLabel;
   protected readonly examTypes = EXAM_TYPE_OPTIONS;
   protected readonly tabs = [
     { key: 'entry' as const, label: 'Saisie' },
@@ -747,7 +876,7 @@ export class GradesList {
   /** Libellé de la classe sélectionnée (contexte affiché dans le popup de détails). */
   protected readonly selectedClassLabel = computed(() => {
     const c = this.classes().find((x) => x.id === this.classId());
-    return c?.template?.name || c?.id || '—';
+    return c ? classLabel(c as unknown as Record<string, unknown>) : '—';
   });
 
   /** Termes réellement présents dans la classe (primaire → trimestres, etc.). */
@@ -774,7 +903,13 @@ export class GradesList {
   });
   protected readonly gradesMeta = signal<PaginationMeta | null>(null);
   protected readonly loadingGrades = signal(false);
+  protected readonly gradesLoadError = signal(false);
   private page = 1;
+
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected() || this.schoolYear.value;
+    return year ? 'Saisie, périodes & moyennes · Année ' + year : 'Saisie, périodes & moyennes';
+  });
 
   protected readonly editing = signal<Grade | null>(null);
   protected readonly editScore = new FormControl<number | null>(null);
@@ -1014,6 +1149,7 @@ export class GradesList {
 
   private loadGrades(): void {
     this.loadingGrades.set(true);
+    this.gradesLoadError.set(false);
     this.gradesApi
       .list({
         classId: this.classId(),
@@ -1033,6 +1169,7 @@ export class GradesList {
           this.grades.set([]);
           this.gradesMeta.set(null);
           this.loadingGrades.set(false);
+          this.gradesLoadError.set(true);
         },
       });
   }
@@ -1069,6 +1206,9 @@ export class GradesList {
   }
 
   deleteGrade(g: Grade): void {
+    if (!confirm('Supprimer la note de ' + this.gradeStudent(g) + ' ?')) {
+      return;
+    }
     this.gradesApi.remove(g.id).subscribe({
       next: () => {
         this.notify.success('Note supprimée.');
@@ -1196,7 +1336,7 @@ export class GradesList {
   }
   protected avgColor(v: unknown): string {
     const p = this.pct(v);
-    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-700)' : 'var(--danger)';
+    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-deep)' : 'var(--danger)';
   }
   protected rankBg(i: number): string {
     return i < 3

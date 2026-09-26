@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { ClassesService } from '../services/classes.service';
 import type { SchoolOption, SchoolSubOption } from '../models/admin.models';
 import { NotificationService } from '../../../shared/ui/notification.service';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 
@@ -21,6 +22,7 @@ import { SectionHeader } from '../../../shared/ui/section-header';
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    EmptyState,
     PageHeader,
     SectionHeader,
   ],
@@ -76,12 +78,17 @@ import { SectionHeader } from '../../../shared/ui/section-header';
             }
           </ul>
         } @else {
-          <p class="text-sm text-(--text-muted) mb-4">Aucune option.</p>
+          <panga-empty-state
+            [compact]="true"
+            icon="category"
+            title="Aucune option"
+            description="Ajoutez une filière (ex. Scientifique)."
+          />
         }
         <form
           [formGroup]="optionForm"
           (ngSubmit)="addOption()"
-          class="flex flex-wrap items-start gap-2"
+          class="flex flex-wrap items-start gap-2 mt-4"
         >
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-40">
             <mat-label>Nouvelle option</mat-label>
@@ -89,7 +96,7 @@ import { SectionHeader } from '../../../shared/ui/section-header';
           </mat-form-field>
           <button
             mat-flat-button
-            class="rounded-xl! mt-1!"
+            class="rounded-xl! options-cta mt-1!"
             type="submit"
             [disabled]="optionForm.invalid"
           >
@@ -141,7 +148,7 @@ import { SectionHeader } from '../../../shared/ui/section-header';
             </mat-form-field>
             <button
               mat-flat-button
-              class="rounded-xl! mt-1!"
+              class="rounded-xl! options-cta mt-1!"
               type="submit"
               [disabled]="subForm.invalid"
             >
@@ -152,6 +159,21 @@ import { SectionHeader } from '../../../shared/ui/section-header';
       </section>
     </div>
   `,
+  styles: [
+    `
+      button.options-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.options-cta .mat-icon,
+      button.options-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.options-cta:disabled {
+        opacity: 0.55;
+      }
+    `,
+  ],
 })
 export class ClassOptions {
   private readonly classesApi = inject(ClassesService);

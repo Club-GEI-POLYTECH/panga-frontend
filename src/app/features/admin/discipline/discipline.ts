@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { catchError, of } from 'rxjs';
+import { catchError, forkJoin, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,6 +31,7 @@ import { EmptyState } from '../../../shared/ui/empty-state';
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { DateField } from '../../../shared/ui/date-field';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 import {
@@ -95,15 +96,10 @@ interface ChildRef {
     KpiCard,
     StatusBadge,
     DateField,
+    Skeleton,
   ],
   template: `
-    <panga-page-header
-      icon="gavel"
-      title="Discipline"
-      [subtitle]="
-        isParent() ? 'Suivi du comportement de vos enfants' : 'Incidents, sanctions & récompenses'
-      "
-    />
+    <panga-page-header icon="gavel" title="Discipline" [subtitle]="headerSubtitle()" />
 
     <!-- ===================== Vue parent (lecture seule) ==================== -->
     @if (isParent()) {
@@ -121,13 +117,14 @@ interface ChildRef {
     } @else {
       <!-- ================== Vue gestion (admin / enseignant) ================= -->
       <div
-        class="flex gap-1 mb-5 p-1 rounded-xl bg-(--background) w-fit border border-(--border) overflow-x-auto"
+        class="flex gap-1 mb-5 p-1 rounded-xl w-fit border border-(--border) overflow-x-auto bg-(--surface)"
       >
         @for (t of tabs; track t.key) {
           <button
-            class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap"
-            [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-            [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+            type="button"
+            class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap border"
+            [class.tab-active]="tab() === t.key"
+            [class.tab-idle]="tab() !== t.key"
             (click)="tab.set(t.key)"
           >
             {{ t.label }}
@@ -158,7 +155,7 @@ interface ChildRef {
               (ngSubmit)="addIncident()"
               class="grid gap-3 sm:grid-cols-2"
             >
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Élève</mat-label>
                 <mat-select
                   formControlName="studentId"
@@ -169,7 +166,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Classe</mat-label>
                 <mat-select formControlName="classId">
                   @for (c of classes(); track c.id) {
@@ -177,7 +174,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Gravité</mat-label>
                 <mat-select formControlName="severity">
                   @for (o of severities; track o.value) {
@@ -185,7 +182,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type d'incident</mat-label>
                 <mat-select formControlName="incidentType">
                   @for (o of incidentTypes; track o.value) {
@@ -194,12 +191,18 @@ interface ChildRef {
                 </mat-select>
               </mat-form-field>
               <panga-date-field label="Date" formControlName="incidentDate" />
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Description</mat-label>
                 <textarea matInput rows="2" formControlName="description"></textarea>
               </mat-form-field>
               <div class="sm:col-span-2 flex justify-end">
-                <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                <button
+                  mat-flat-button
+                  class="rounded-xl! discipline-cta"
+                  type="submit"
+                  [disabled]="saving()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">report</mat-icon>
                   Signaler
                 </button>
               </div>
@@ -207,7 +210,19 @@ interface ChildRef {
           </section>
           <section class="panga-card p-5">
             <panga-section-header icon="warning" title="Incidents" [count]="incidents().length" />
-            @if (incidents().length === 0) {
+            @if (loadingLists()) {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (_ of skeletonRows; track $index) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <panga-skeleton width="40%" height="0.875rem" />
+                      <panga-skeleton width="70%" height="0.75rem" />
+                    </div>
+                    <panga-skeleton width="4rem" height="1.5rem" radius="999px" />
+                  </div>
+                }
+              </div>
+            } @else if (incidents().length === 0) {
               <panga-empty-state
                 icon="warning"
                 title="Aucun incident"
@@ -216,7 +231,7 @@ interface ChildRef {
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (i of incidents(); track i.id) {
-                  <div class="flex items-center gap-3 px-5 py-3">
+                  <div class="list-row flex items-center gap-3 px-5 py-3">
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">
                         {{ resolveName(i.studentId, i.studentName) }}
@@ -282,7 +297,7 @@ interface ChildRef {
               (ngSubmit)="addAction()"
               class="grid gap-3 sm:grid-cols-2"
             >
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Élève</mat-label>
                 <mat-select
                   formControlName="studentId"
@@ -293,7 +308,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Classe</mat-label>
                 <mat-select formControlName="classId">
                   @for (c of classes(); track c.id) {
@@ -301,7 +316,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type</mat-label>
                 <mat-select formControlName="actionType">
                   @for (o of actionTypes; track o.value) {
@@ -310,16 +325,22 @@ interface ChildRef {
                 </mat-select>
               </mat-form-field>
               <panga-date-field label="Date de l'action" formControlName="actionDate" />
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Raison</mat-label>
                 <input matInput formControlName="reason" placeholder="Motif de la sanction" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Description</mat-label>
                 <textarea matInput rows="2" formControlName="description"></textarea>
               </mat-form-field>
               <div class="sm:col-span-2 flex justify-end">
-                <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                <button
+                  mat-flat-button
+                  class="rounded-xl! discipline-cta"
+                  type="submit"
+                  [disabled]="saving()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">gavel</mat-icon>
                   Appliquer
                 </button>
               </div>
@@ -331,12 +352,24 @@ interface ChildRef {
               title="Sanctions appliquées"
               [count]="actions().length"
             />
-            @if (actions().length === 0) {
+            @if (loadingLists()) {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (_ of skeletonRows; track $index) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <panga-skeleton width="40%" height="0.875rem" />
+                      <panga-skeleton width="65%" height="0.75rem" />
+                    </div>
+                    <panga-skeleton width="4rem" height="1.5rem" radius="999px" />
+                  </div>
+                }
+              </div>
+            } @else if (actions().length === 0) {
               <panga-empty-state icon="policy" title="Aucune sanction" description="—" />
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (a of actions(); track a.id) {
-                  <div class="flex items-center gap-3 px-5 py-3">
+                  <div class="list-row flex items-center gap-3 px-5 py-3">
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">
                         {{ resolveName(a.studentId, a.studentName) }}
@@ -396,7 +429,7 @@ interface ChildRef {
               (ngSubmit)="addReward()"
               class="grid gap-3 sm:grid-cols-2"
             >
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Élève</mat-label>
                 <mat-select
                   formControlName="studentId"
@@ -407,7 +440,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Classe</mat-label>
                 <mat-select formControlName="classId">
                   @for (c of classes(); track c.id) {
@@ -415,7 +448,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type</mat-label>
                 <mat-select formControlName="rewardType">
                   @for (o of rewardTypes; track o.value) {
@@ -423,7 +456,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Niveau</mat-label>
                 <mat-select formControlName="level">
                   @for (o of rewardLevels; track o.value) {
@@ -431,17 +464,23 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Titre</mat-label>
                 <input matInput formControlName="title" />
               </mat-form-field>
               <panga-date-field label="Date d'attribution" formControlName="awardDate" />
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Points</mat-label>
                 <input matInput type="number" formControlName="pointsAwarded" min="0" />
               </mat-form-field>
               <div class="sm:col-span-2 flex justify-end">
-                <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                <button
+                  mat-flat-button
+                  class="rounded-xl! discipline-cta"
+                  type="submit"
+                  [disabled]="saving()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">emoji_events</mat-icon>
                   Attribuer
                 </button>
               </div>
@@ -453,12 +492,24 @@ interface ChildRef {
               title="Récompenses"
               [count]="rewards().length"
             />
-            @if (rewards().length === 0) {
+            @if (loadingLists()) {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (_ of skeletonRows; track $index) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <panga-skeleton width="40%" height="0.875rem" />
+                      <panga-skeleton width="55%" height="0.75rem" />
+                    </div>
+                    <panga-skeleton width="4rem" height="1.5rem" radius="999px" />
+                  </div>
+                }
+              </div>
+            } @else if (rewards().length === 0) {
               <panga-empty-state icon="emoji_events" title="Aucune récompense" description="—" />
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (r of rewards(); track r.id) {
-                  <div class="flex items-center gap-3 px-5 py-3">
+                  <div class="list-row flex items-center gap-3 px-5 py-3">
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">
                         {{ resolveName(r.studentId, r.studentName) }}
@@ -495,11 +546,11 @@ interface ChildRef {
                 (ngSubmit)="addSanction()"
                 class="grid gap-3 sm:grid-cols-2"
               >
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Nom</mat-label>
                   <input matInput formControlName="name" />
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Type d'action</mat-label>
                   <mat-select formControlName="actionType">
                     @for (o of actionTypes; track o.value) {
@@ -507,7 +558,7 @@ interface ChildRef {
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Niveau</mat-label>
                   <mat-select formControlName="level">
                     @for (o of sanctionLevels; track o.value) {
@@ -515,7 +566,7 @@ interface ChildRef {
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic">
                   <mat-label>Catégorie</mat-label>
                   <mat-select formControlName="category">
                     @for (o of sanctionCategories; track o.value) {
@@ -523,12 +574,22 @@ interface ChildRef {
                     }
                   </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="outline" class="sm:col-span-2">
+                <mat-form-field
+                  appearance="outline"
+                  class="sm:col-span-2"
+                  subscriptSizing="dynamic"
+                >
                   <mat-label>Description</mat-label>
                   <input matInput formControlName="description" />
                 </mat-form-field>
                 <div class="sm:col-span-2 flex justify-end">
-                  <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                  <button
+                    mat-flat-button
+                    class="rounded-xl! discipline-cta"
+                    type="submit"
+                    [disabled]="saving()"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
                     Ajouter
                   </button>
                 </div>
@@ -541,12 +602,24 @@ interface ChildRef {
               title="Catalogue de sanctions"
               [count]="sanctions().length"
             />
-            @if (sanctions().length === 0) {
+            @if (loadingLists()) {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (_ of skeletonRows; track $index) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <panga-skeleton width="45%" height="0.875rem" />
+                      <panga-skeleton width="60%" height="0.75rem" />
+                    </div>
+                    <panga-skeleton width="4rem" height="1.5rem" radius="999px" />
+                  </div>
+                }
+              </div>
+            } @else if (sanctions().length === 0) {
               <panga-empty-state icon="rule" title="Catalogue vide" description="—" />
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (s of sanctions(); track s.id) {
-                  <div class="flex items-center gap-3 px-5 py-3">
+                  <div class="list-row flex items-center gap-3 px-5 py-3">
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">{{ s.name }}</p>
                       <p class="text-xs text-(--text-muted) truncate">
@@ -589,7 +662,7 @@ interface ChildRef {
               (ngSubmit)="addMeeting()"
               class="grid gap-3 sm:grid-cols-2"
             >
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Élève</mat-label>
                 <mat-select
                   formControlName="studentId"
@@ -600,7 +673,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Classe</mat-label>
                 <mat-select formControlName="classId">
                   @for (c of classes(); track c.id) {
@@ -608,7 +681,7 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Type de réunion</mat-label>
                 <mat-select formControlName="meetingType">
                   @for (o of meetingTypes; track o.value) {
@@ -616,16 +689,16 @@ interface ChildRef {
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Sujet</mat-label>
                 <input matInput formControlName="subject" />
               </mat-form-field>
               <panga-date-field label="Date" formControlName="meetingDate" />
-              <mat-form-field appearance="outline">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
                 <mat-label>Heure</mat-label>
                 <input matInput type="time" formControlName="meetingTime" />
               </mat-form-field>
-              <mat-form-field appearance="outline" class="sm:col-span-2">
+              <mat-form-field appearance="outline" class="sm:col-span-2" subscriptSizing="dynamic">
                 <mat-label>Ordre du jour</mat-label>
                 <textarea matInput rows="2" formControlName="agenda"></textarea>
               </mat-form-field>
@@ -682,7 +755,13 @@ interface ChildRef {
               </div>
 
               <div class="sm:col-span-2 flex justify-end">
-                <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="saving()">
+                <button
+                  mat-flat-button
+                  class="rounded-xl! discipline-cta"
+                  type="submit"
+                  [disabled]="saving()"
+                >
+                  <mat-icon fontSet="material-symbols-outlined">event</mat-icon>
                   Planifier
                 </button>
               </div>
@@ -690,12 +769,24 @@ interface ChildRef {
           </section>
           <section class="panga-card p-5">
             <panga-section-header icon="groups" title="Réunions" [count]="meetings().length" />
-            @if (meetings().length === 0) {
+            @if (loadingLists()) {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (_ of skeletonRows; track $index) {
+                  <div class="flex items-center gap-3 px-5 py-3">
+                    <div class="min-w-0 flex-1 space-y-2">
+                      <panga-skeleton width="50%" height="0.875rem" />
+                      <panga-skeleton width="70%" height="0.75rem" />
+                    </div>
+                    <panga-skeleton width="4rem" height="1.5rem" radius="999px" />
+                  </div>
+                }
+              </div>
+            } @else if (meetings().length === 0) {
               <panga-empty-state icon="groups" title="Aucune réunion" description="—" />
             } @else {
               <div class="divide-y divide-(--border) -mx-5">
                 @for (m of meetings(); track m.id) {
-                  <div class="flex items-center gap-3 px-5 py-3">
+                  <div class="list-row flex items-center gap-3 px-5 py-3">
                     <div class="min-w-0 flex-1">
                       <p class="text-sm font-medium text-(--text) truncate">
                         {{ m.subject || meetingTypeLabel(m.meetingType) }}
@@ -760,6 +851,15 @@ interface ChildRef {
             description="Sélectionnez un élève pour voir son rapport de comportement."
           />
         </div>
+      } @else if (loadingReport()) {
+        <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
+          @for (_ of [1, 2, 3, 4]; track $index) {
+            <div class="rounded-2xl border border-(--border) p-4 space-y-3">
+              <panga-skeleton width="40%" height="0.75rem" />
+              <panga-skeleton width="55%" height="1.75rem" />
+            </div>
+          }
+        </section>
       } @else if (report(); as r) {
         <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
           <panga-kpi-card
@@ -788,7 +888,7 @@ interface ChildRef {
             />
             <div class="divide-y divide-(--border) -mx-5">
               @for (rw of r.rewards!; track rw.id) {
-                <div class="flex items-center justify-between gap-3 px-5 py-2.5">
+                <div class="list-row flex items-center justify-between gap-3 px-5 py-2.5">
                   <span class="text-sm text-(--text) truncate">{{
                     rw.title || rw.rewardType
                   }}</span>
@@ -803,6 +903,40 @@ interface ChildRef {
       }
     </ng-template>
   `,
+  styles: [
+    `
+      button.discipline-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.discipline-cta .mat-icon,
+      button.discipline-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.discipline-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: transparent;
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+      }
+      .list-row {
+        transition: background 0.15s ease;
+      }
+      .list-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+    `,
+  ],
 })
 export class Discipline {
   private readonly api = inject(DisciplineService);
@@ -825,6 +959,7 @@ export class Discipline {
   protected readonly meetingTypes = DISCIPLINARY_MEETING_TYPE_OPTIONS;
   protected readonly meetingStatuses = MEETING_STATUS_OPTIONS;
   protected readonly classLabel = classLabel;
+  protected readonly skeletonRows = [1, 2, 3, 4];
   protected readonly tabs = [
     { key: 'report' as const, label: 'Rapport élève' },
     { key: 'incidents' as const, label: 'Incidents' },
@@ -841,6 +976,8 @@ export class Discipline {
 
   protected readonly tab = signal<Tab>('report');
   protected readonly saving = signal(false);
+  protected readonly loadingLists = signal(false);
+  protected readonly loadingReport = signal(false);
 
   protected readonly students = signal<Student[]>([]);
   protected readonly classes = signal<ClassInstance[]>([]);
@@ -862,6 +999,27 @@ export class Discipline {
       m.set(s.id, s);
     }
     return m;
+  });
+
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected();
+    const yearPart = year ? ` · Année ${year}` : '';
+    if (this.isParent()) {
+      const child = this.children().find((c) => c.id === this.reportStudentId());
+      return child
+        ? `Suivi comportement · ${child.label}${yearPart}`
+        : `Suivi du comportement de vos enfants${yearPart}`;
+    }
+    const t = this.tab();
+    const tabLabel = this.tabs.find((x) => x.key === t)?.label ?? 'Discipline';
+    if (t === 'report') {
+      const sid = this.reportStudentId();
+      if (sid) {
+        return `Rapport élève · ${this.resolveName(sid)}${yearPart}`;
+      }
+      return `Rapport élève${yearPart}`;
+    }
+    return `${tabLabel} · incidents, sanctions & récompenses${yearPart}`;
   });
 
   protected readonly incidentForm = new FormGroup({
@@ -968,35 +1126,40 @@ export class Discipline {
 
   /** Recharge les listes de gestion (incidents/actions/récompenses/catalogue). */
   private reload(): void {
-    this.api
-      .incidents({ limit: 100 })
-      .pipe(catchError(() => of({ items: [] })))
-      .subscribe((r) => this.incidents.set(r.items));
-    this.api
-      .actions({ limit: 100 })
-      .pipe(catchError(() => of({ items: [] })))
-      .subscribe((r) => this.actions.set(r.items));
-    this.api
-      .rewards({ limit: 100 })
-      .pipe(catchError(() => of({ items: [] })))
-      .subscribe((r) => this.rewards.set(r.items));
-    this.api
-      .sanctions()
-      .pipe(catchError(() => of({ items: [] })))
-      .subscribe((r) => this.sanctions.set(r.items));
-    this.api
-      .meetings({ limit: 100 })
-      .pipe(catchError(() => of({ items: [] })))
-      .subscribe((r) => this.meetings.set(r.items));
+    this.loadingLists.set(true);
+    forkJoin({
+      incidents: this.api.incidents({ limit: 100 }).pipe(catchError(() => of({ items: [] }))),
+      actions: this.api.actions({ limit: 100 }).pipe(catchError(() => of({ items: [] }))),
+      rewards: this.api.rewards({ limit: 100 }).pipe(catchError(() => of({ items: [] }))),
+      sanctions: this.api.sanctions().pipe(catchError(() => of({ items: [] }))),
+      meetings: this.api.meetings({ limit: 100 }).pipe(catchError(() => of({ items: [] }))),
+    }).subscribe({
+      next: (r) => {
+        this.incidents.set(r.incidents.items);
+        this.actions.set(r.actions.items);
+        this.rewards.set(r.rewards.items);
+        this.sanctions.set(r.sanctions.items);
+        this.meetings.set(r.meetings.items);
+        this.loadingLists.set(false);
+      },
+      error: () => this.loadingLists.set(false),
+    });
   }
 
   loadReport(studentId: string): void {
     this.reportStudentId.set(studentId);
     this.report.set(null);
+    this.loadingReport.set(true);
     this.api
       .studentReport(studentId)
       .pipe(catchError(() => of(null)))
-      .subscribe((r) => this.report.set(r));
+      .subscribe({
+        next: (r) => {
+          this.report.set(r);
+          this.loadingReport.set(false);
+        },
+        error: () => this.loadingReport.set(false),
+      });
   }
 
   /* --------------------------------- Actions -------------------------------- */
@@ -1167,14 +1330,22 @@ export class Discipline {
 
   /* --------------------------------- Helpers -------------------------------- */
   protected studentName(s: Student): string {
-    return personLabel(s as unknown as Record<string, unknown>);
+    const label = personLabel(s as unknown as Record<string, unknown>);
+    if (label && !looksLikeId(label) && label !== 'Parent') {
+      return label;
+    }
+    return s.studentNumber || s.matricule || 'Élève';
   }
+  /** Nom lisible — jamais d'UUID / studentId brut. */
   protected resolveName(studentId?: string, studentName?: string): string {
-    if (studentName) {
-      return studentName;
+    if (studentName?.trim() && !looksLikeId(studentName)) {
+      return studentName.trim();
     }
     const s = studentId ? this.studentsById().get(studentId) : undefined;
-    return s ? this.studentName(s) : (studentId ?? '—');
+    if (s) {
+      return this.studentName(s);
+    }
+    return 'Élève';
   }
   protected sevLabel(v?: string): string {
     return INCIDENT_SEVERITY_OPTIONS.find((o) => o.value === v)?.label ?? v ?? '—';
@@ -1224,4 +1395,9 @@ export class Discipline {
   protected meetingStatusTone(v?: string): BadgeTone {
     return MEETING_STATUS_TONE[v ?? ''] ?? 'neutral';
   }
+}
+
+/** Heuristique : UUID / id technique affiché à la place d'un nom. */
+function looksLikeId(v: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.trim());
 }

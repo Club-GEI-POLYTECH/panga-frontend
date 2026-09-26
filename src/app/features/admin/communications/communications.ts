@@ -20,12 +20,27 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { clientMeta, pageSlice } from '../../../shared/ui/client-pagination';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
 
 const PRIORITY_TONE: Record<string, BadgeTone> = {
   high: 'danger',
   urgent: 'danger',
   normal: 'info',
   low: 'neutral',
+};
+
+const PRIORITY_LABEL: Record<string, string> = {
+  low: 'Basse',
+  normal: 'Normale',
+  high: 'Haute',
+  urgent: 'Urgente',
+};
+
+const AUDIENCE_LABEL: Record<string, string> = {
+  all: 'Tous',
+  teachers: 'Enseignants',
+  parents: 'Parents',
+  students: 'Élèves',
 };
 
 @Component({
@@ -44,11 +59,12 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
     Paginator,
     SectionHeader,
     StatusBadge,
+    Skeleton,
   ],
   template: `
-    <panga-page-header icon="forum" title="Communications" subtitle="Annonces et notifications">
+    <panga-page-header icon="forum" title="Communications" [subtitle]="headerSubtitle()">
       @if (isAdmin() || (isSuperAdmin() && schoolId())) {
-        <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
+        <button mat-flat-button class="rounded-xl! comms-cta" (click)="showForm.set(!showForm())">
           <mat-icon fontSet="material-symbols-outlined">{{
             showForm() ? 'close' : 'campaign'
           }}</mat-icon>
@@ -77,16 +93,16 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
       <form [formGroup]="form" (ngSubmit)="publish()" class="panga-card p-6 mb-6">
         <panga-section-header icon="campaign" title="Nouvelle annonce" />
         <div class="grid gap-4">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Titre</mat-label>
             <input matInput formControlName="title" />
           </mat-form-field>
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
             <mat-label>Contenu</mat-label>
             <textarea matInput rows="3" formControlName="content"></textarea>
           </mat-form-field>
           <div class="grid gap-4 sm:grid-cols-2">
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Audience</mat-label>
               <mat-select formControlName="targetAudience">
                 <mat-option value="all">Tous</mat-option>
@@ -95,7 +111,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
                 <mat-option value="students">Élèves</mat-option>
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>Priorité</mat-label>
               <mat-select formControlName="priority">
                 <mat-option value="low">Basse</mat-option>
@@ -106,8 +122,13 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
           </div>
         </div>
         <div class="flex justify-end mt-2">
-          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
-            Publier
+          <button
+            mat-flat-button
+            class="rounded-xl! comms-cta"
+            type="submit"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Publication…' : 'Publier' }}
           </button>
         </div>
       </form>
@@ -116,7 +137,17 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
     <div class="grid gap-6 lg:grid-cols-3">
       <section class="lg:col-span-2">
         <panga-section-header icon="campaign" title="Annonces" [count]="announcements().length" />
-        @if (announcements().length) {
+        @if (loadingAnnouncements()) {
+          <div class="flex flex-col gap-3">
+            @for (_ of [1, 2, 3]; track $index) {
+              <div class="panga-card p-5 space-y-3">
+                <panga-skeleton width="55%" height="1.1rem" />
+                <panga-skeleton width="90%" height="0.85rem" />
+                <panga-skeleton width="40%" height="0.75rem" />
+              </div>
+            }
+          </div>
+        } @else if (announcements().length) {
           <mat-form-field appearance="outline" class="w-full mb-3" subscriptSizing="dynamic">
             <mat-label>Rechercher</mat-label>
             <mat-icon matPrefix fontSet="material-symbols-outlined">search</mat-icon>
@@ -124,12 +155,12 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
           </mat-form-field>
           <div class="flex flex-col gap-3">
             @for (a of visibleAnnouncements(); track a.id) {
-              <div class="panga-card p-5">
+              <div class="announce-card panga-card p-5">
                 <div class="flex items-start justify-between gap-3">
                   <p class="font-semibold text-(--text)">{{ a.title || 'Annonce' }}</p>
                   @if (a.priority) {
                     <panga-status-badge
-                      [label]="a.priority"
+                      [label]="priorityLabel(a.priority)"
                       [tone]="priorityTone(a.priority)"
                       [dot]="false"
                     />
@@ -146,7 +177,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
                   @if (a.targetAudience) {
                     <span class="inline-flex items-center gap-1">
                       <span class="material-symbols-outlined text-[14px]">group</span>
-                      {{ a.targetAudience }}
+                      {{ audienceLabel(a.targetAudience) }}
                     </span>
                   }
                   @if (a.createdAt) {
@@ -176,6 +207,8 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
               icon="campaign"
               title="Aucune annonce"
               description="Aucune annonce publiée."
+              [actionLabel]="isAdmin() || (isSuperAdmin() && schoolId()) ? 'Nouvelle annonce' : ''"
+              (action)="showForm.set(true)"
             />
           </div>
         }
@@ -185,7 +218,7 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
         <panga-section-header icon="notifications" title="Mes notifications" />
         <div class="panga-card divide-y divide-(--border)">
           @for (n of notifications(); track n.id) {
-            <div class="px-4 py-3">
+            <div class="notif-row px-4 py-3">
               <div class="flex items-center gap-2">
                 @if (!n.read) {
                   <span
@@ -215,6 +248,35 @@ const PRIORITY_TONE: Record<string, BadgeTone> = {
       </section>
     </div>
   `,
+  styles: [
+    `
+      button.comms-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.comms-cta .mat-icon,
+      button.comms-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.comms-cta:disabled {
+        opacity: 0.55;
+      }
+      .announce-card,
+      .notif-row {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          background 0.15s ease;
+      }
+      .announce-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+      .notif-row:hover {
+        background: color-mix(in srgb, var(--brand-500) 4%, transparent);
+      }
+    `,
+  ],
 })
 export class Communications {
   private readonly comms = inject(CommunicationsService);
@@ -229,6 +291,7 @@ export class Communications {
   protected readonly schoolId = signal('');
 
   protected readonly announcements = signal<Announcement[]>([]);
+  protected readonly loadingAnnouncements = signal(false);
   /** Pagination + recherche client de la liste des annonces. */
   protected readonly page = signal(1);
   protected readonly searchCtrl = new FormControl('', { nonNullable: true });
@@ -248,6 +311,18 @@ export class Communications {
   protected readonly submitting = signal(false);
   protected readonly showForm = signal(false);
   protected readonly isAdmin = computed(() => this.store.role() === 'admin');
+
+  protected readonly headerSubtitle = computed(() => {
+    const n = this.announcements().length;
+    if (this.isSuperAdmin()) {
+      const school = this.schools().find((s) => s.id === this.schoolId());
+      if (school) {
+        return `Annonces · ${this.schoolLabel(school)}${n ? ` · ${n}` : ''}`;
+      }
+      return 'Annonces et notifications · Choisissez une école';
+    }
+    return n ? `Annonces et notifications · ${n}` : 'Annonces et notifications';
+  });
 
   protected readonly form = this.fb.nonNullable.group({
     title: ['', Validators.required],
@@ -275,6 +350,12 @@ export class Communications {
   protected priorityTone(p: string): BadgeTone {
     return PRIORITY_TONE[p] ?? 'neutral';
   }
+  protected priorityLabel(p: string): string {
+    return PRIORITY_LABEL[p] ?? p;
+  }
+  protected audienceLabel(a: string): string {
+    return AUDIENCE_LABEL[a] ?? a;
+  }
 
   /** École cible passée aux endpoints (super_admin uniquement). */
   private targetSchoolId(): string | undefined {
@@ -282,7 +363,10 @@ export class Communications {
   }
 
   protected schoolLabel(s: PlatformSchool): string {
-    const name = s.displayName || s.name || s.code || s.id;
+    const name = s.displayName || s.name || s.code;
+    if (!name) {
+      return 'École';
+    }
     return s.code && s.code !== name ? `${name} (${s.code})` : name;
   }
 
@@ -296,12 +380,19 @@ export class Communications {
     // Super_admin sans école sélectionnée : ne pas appeler (400 garanti).
     if (this.isSuperAdmin() && !this.schoolId()) {
       this.announcements.set([]);
+      this.loadingAnnouncements.set(false);
       return;
     }
+    this.loadingAnnouncements.set(true);
     this.comms.announcements(this.targetSchoolId()).subscribe({
       next: (r) => {
         this.announcements.set(r.items);
         this.page.set(1);
+        this.loadingAnnouncements.set(false);
+      },
+      error: () => {
+        this.announcements.set([]);
+        this.loadingAnnouncements.set(false);
       },
     });
   }

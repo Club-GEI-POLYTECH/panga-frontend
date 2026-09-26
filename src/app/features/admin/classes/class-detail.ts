@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ClassesService } from '../services/classes.service';
@@ -33,9 +32,12 @@ import type { EnumOption } from '../../../core/models/school.enums';
 import { classLabel, personLabel } from '../shared/labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { KeyValue } from '../../../shared/ui/key-value';
+import { KpiCard } from '../../../shared/ui/kpi-card';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import type { BadgeTone } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
+import { SkeletonCard } from '../../../shared/skeleton/skeleton-card';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'number' | 'select';
@@ -119,10 +121,11 @@ const FROM_TEMPLATE = new Set(
   GROUPS.flatMap((g) => g.fields.filter((f) => f.fromTemplate).map((f) => f.key)),
 );
 
-function statusTone(status?: string): BadgeTone {
-  if (status === 'active') return 'success';
-  if (status === 'archived' || status === 'closed') return 'neutral';
-  return 'warning';
+function statusLabel(status?: string): string {
+  if (!status) {
+    return '';
+  }
+  return CLASS_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? status;
 }
 
 const BOARD_TYPE_OPTIONS: EnumOption[] = [
@@ -170,12 +173,15 @@ const PHYS_KEYS = [
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatProgressSpinnerModule,
     MatSelectModule,
     MatTooltipModule,
     Avatar,
+    EmptyState,
     KeyValue,
+    KpiCard,
     SectionHeader,
+    Skeleton,
+    SkeletonCard,
   ],
   template: `
     <a
@@ -189,7 +195,25 @@ const PHYS_KEYS = [
     </a>
 
     @if (loading()) {
-      <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      <div class="mb-5">
+        <panga-skeleton width="100%" height="8rem" radius="1.5rem" />
+      </div>
+      <div class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-4 mb-5">
+        @for (_ of [1, 2, 3, 4]; track $index) {
+          <panga-skeleton-card />
+        }
+      </div>
+      <panga-skeleton-card />
+    } @else if (loadError()) {
+      <div class="panga-card p-6">
+        <panga-empty-state
+          icon="error"
+          title="Impossible de charger la classe"
+          description="Vérifiez votre connexion puis réessayez."
+          actionLabel="Réessayer"
+          (action)="reload()"
+        />
+      </div>
     } @else {
       <div
         class="relative overflow-hidden rounded-3xl p-6 mb-5 text-white"
@@ -199,395 +223,589 @@ const PHYS_KEYS = [
           class="absolute -right-8 -bottom-10 h-40 w-40 rounded-full opacity-15"
           style="background:#fff"
         ></div>
-        <div class="relative flex flex-wrap items-center gap-4">
-          <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 shrink-0">
-            <span class="material-symbols-outlined text-3xl">meeting_room</span>
-          </div>
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
-              {{ name() }}
-            </h1>
-            <p class="text-sm opacity-90">
-              {{ cls()?.schoolYear }}
-              @if (teacherName()) {
-                · {{ teacherName() }}
-              }
-            </p>
-          </div>
-          <div class="flex items-center gap-2">
-            @if (cls()?.status) {
-              <span class="rounded-full bg-white/15 px-2.5 py-1 text-xs">{{ cls()?.status }}</span>
-            }
-            <button
-              mat-icon-button
-              class="text-white!"
-              (click)="remove()"
-              matTooltip="Archiver"
-              aria-label="Archiver"
+        <div class="relative flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <div
+              class="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 shrink-0"
             >
-              <mat-icon fontSet="material-symbols-outlined">archive</mat-icon>
-            </button>
+              <span class="material-symbols-outlined text-3xl">meeting_room</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
+                {{ name() }}
+              </h1>
+              <p class="text-sm opacity-90">
+                {{ cls()?.schoolYear }}
+                @if (teacherName()) {
+                  · {{ teacherName() }}
+                }
+              </p>
+              <div class="flex flex-wrap items-center gap-2 mt-2.5 text-xs">
+                @if (statusLabel(cls()?.status)) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                    {{ statusLabel(cls()?.status) }}
+                  </span>
+                }
+                <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                  <span class="material-symbols-outlined text-[14px]">school</span>
+                  {{ cls()?.currentEnrollment ?? 0 }} élèves
+                </span>
+                @if (cls()?.roomNumber) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                    <span class="material-symbols-outlined text-[14px]">door_front</span>
+                    {{ cls()?.roomNumber }}
+                  </span>
+                }
+              </div>
+            </div>
           </div>
+          <button
+            mat-stroked-button
+            class="rounded-xl! hero-danger self-start sm:self-center shrink-0"
+            (click)="remove()"
+            matTooltip="Archiver la classe"
+          >
+            <mat-icon fontSet="material-symbols-outlined">archive</mat-icon>
+            Archiver
+          </button>
         </div>
       </div>
 
-      <!-- KPIs -->
       <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-4 mb-5">
-        <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-(--text)">
-            {{ cls()?.currentEnrollment ?? 0 }}
-          </p>
-          <p class="text-xs text-(--text-muted)">Élèves inscrits</p>
-        </div>
-        <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-(--text)">
-            {{ cls()?.template?.capacity ?? '—' }}
-          </p>
-          <p class="text-xs text-(--text-muted)">Capacité</p>
-        </div>
-        <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-(--text)">{{ courses().length }}</p>
-          <p class="text-xs text-(--text-muted)">Cours</p>
-        </div>
-        <div class="panga-card p-4 text-center">
-          <p class="text-2xl font-semibold text-(--text)">{{ slots().length }}</p>
-          <p class="text-xs text-(--text-muted)">Créneaux</p>
-        </div>
+        <panga-kpi-card
+          label="Élèves inscrits"
+          [value]="cls()?.currentEnrollment ?? 0"
+          icon="school"
+        />
+        <panga-kpi-card label="Capacité" [value]="cls()?.template?.capacity ?? '—'" icon="groups" />
+        <panga-kpi-card label="Cours" [value]="courses().length" icon="menu_book" />
+        <panga-kpi-card label="Créneaux" [value]="slots().length" icon="calendar_month" />
       </section>
 
-      <!-- Formulaire éditable -->
-      <form [formGroup]="form" (ngSubmit)="save()">
-        @for (group of groups; track group.title) {
-          <div class="panga-card p-5 mb-4">
-            <panga-section-header [icon]="group.icon" [title]="group.title" />
-            @if (sharedGroup(group)) {
-              <div
-                class="flex items-start gap-2 mb-4 rounded-xl px-3 py-2 text-xs"
-                style="
-                  background: color-mix(in srgb, var(--warning) 12%, transparent);
-                  color: var(--text);
-                "
+      <div
+        class="flex gap-2 overflow-x-auto pb-3 mb-4 -mx-1 px-1"
+        role="tablist"
+        aria-label="Sections de la classe"
+      >
+        @for (t of pageTabs; track t.id) {
+          <button
+            type="button"
+            role="tab"
+            class="shrink-0 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors border"
+            [attr.aria-selected]="pageTab() === t.id"
+            [class.tab-active]="pageTab() === t.id"
+            [class.tab-idle]="pageTab() !== t.id"
+            (click)="pageTab.set(t.id)"
+          >
+            <span class="inline-flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">{{ t.icon }}</span>
+              {{ t.label }}
+              @if (t.id === 'schedule' && slots().length) {
+                <span class="tab-count">{{ slots().length }}</span>
+              }
+              @if (t.id === 'roster' && students().length) {
+                <span class="tab-count">{{ students().length }}</span>
+              }
+            </span>
+          </button>
+        }
+      </div>
+
+      @if (pageTab() === 'dossier') {
+        <form [formGroup]="form" (ngSubmit)="save()">
+          <div
+            class="flex gap-2 overflow-x-auto pb-3 mb-2 -mx-1 px-1"
+            role="tablist"
+            aria-label="Sections du dossier classe"
+          >
+            @for (group of groups; track group.title; let i = $index) {
+              <button
+                type="button"
+                role="tab"
+                class="shrink-0 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors border"
+                [attr.aria-selected]="formTab() === i"
+                [class.tab-active]="formTab() === i"
+                [class.tab-idle]="formTab() !== i"
+                (click)="formTab.set(i)"
               >
-                <mat-icon
-                  fontSet="material-symbols-outlined"
-                  class="text-base! shrink-0"
-                  style="color: var(--warning)"
-                  >info</mat-icon
-                >
-                <span>
-                  Ces champs appartiennent au <strong>modèle de classe</strong>, partagé par toutes
-                  ses années scolaires. Les modifier (nom, niveau, cycle…) affecte aussi les autres
-                  années qui utilisent ce modèle.
+                <span class="inline-flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">{{ group.icon }}</span>
+                  {{ group.title }}
                 </span>
+              </button>
+            }
+          </div>
+
+          @for (group of groups; track group.title; let i = $index) {
+            @if (formTab() === i) {
+              <div class="panga-card p-5 mb-4">
+                <panga-section-header [icon]="group.icon" [title]="group.title" />
+                @if (sharedGroup(group)) {
+                  <div
+                    class="flex items-start gap-2 mb-4 rounded-xl px-3 py-2 text-xs"
+                    style="
+                    background: color-mix(in srgb, var(--warning) 12%, transparent);
+                    color: var(--text);
+                  "
+                  >
+                    <mat-icon
+                      fontSet="material-symbols-outlined"
+                      class="text-base! shrink-0"
+                      style="color: var(--warning)"
+                      >info</mat-icon
+                    >
+                    <span>
+                      Ces champs appartiennent au <strong>modèle de classe</strong>, partagé par
+                      toutes ses années scolaires. Les modifier (nom, niveau, cycle…) affecte aussi
+                      les autres années qui utilisent ce modèle.
+                    </span>
+                  </div>
+                }
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  @for (f of group.fields; track f.key) {
+                    <mat-form-field appearance="outline">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            <mat-option [value]="''">—</mat-option>
+                            @if (f.teachers) {
+                              @for (t of teachers(); track t.id) {
+                                <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
+                              }
+                            } @else if (f.subOptions) {
+                              @for (s of subOptions(); track s.id) {
+                                <mat-option [value]="s.id">{{ s.name }}</mat-option>
+                              }
+                            } @else {
+                              @for (o of f.options ?? []; track o.value) {
+                                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                              }
+                            }
+                          </mat-select>
+                        }
+                        @case ('number') {
+                          <input matInput type="number" [formControlName]="f.key" />
+                        }
+                        @default {
+                          <input matInput [formControlName]="f.key" />
+                        }
+                      }
+                    </mat-form-field>
+                  }
+                </div>
               </div>
             }
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              @for (f of group.fields; track f.key) {
-                <mat-form-field appearance="outline">
-                  <mat-label>{{ f.label }}</mat-label>
-                  @switch (f.type) {
-                    @case ('select') {
-                      <mat-select [formControlName]="f.key">
-                        <mat-option [value]="''">—</mat-option>
-                        @if (f.teachers) {
-                          @for (t of teachers(); track t.id) {
-                            <mat-option [value]="t.id">{{ teacherLabel(t) }}</mat-option>
-                          }
-                        } @else if (f.subOptions) {
-                          @for (s of subOptions(); track s.id) {
-                            <mat-option [value]="s.id">{{ s.name }}</mat-option>
-                          }
-                        } @else {
-                          @for (o of f.options ?? []; track o.value) {
-                            <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                          }
-                        }
-                      </mat-select>
-                    }
-                    @case ('number') {
-                      <input matInput type="number" [formControlName]="f.key" />
-                    }
-                    @default {
-                      <input matInput [formControlName]="f.key" />
-                    }
-                  }
-                </mat-form-field>
+          }
+
+          <div class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div class="flex gap-2">
+              <button
+                mat-stroked-button
+                type="button"
+                class="rounded-xl!"
+                [disabled]="formTab() === 0"
+                (click)="formTab.set(formTab() - 1)"
+              >
+                Précédent
+              </button>
+              @if (formTab() < groups.length - 1) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="rounded-xl!"
+                  (click)="formTab.set(formTab() + 1)"
+                >
+                  Suivant
+                </button>
               }
             </div>
-          </div>
-        }
-        <div class="sticky bottom-4 z-10 flex justify-end mb-6">
-          <button
-            mat-flat-button
-            class="rounded-xl! shadow-lg"
-            type="submit"
-            [disabled]="saving() || form.pristine"
-          >
-            <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
-            {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
-          </button>
-        </div>
-      </form>
-
-      <!-- Emploi du temps -->
-      <section class="panga-card p-5 mb-4">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <panga-section-header
-            icon="calendar_month"
-            title="Emploi du temps"
-            [count]="slots().length"
-          />
-          <div class="flex flex-wrap gap-2">
-            <button mat-stroked-button class="rounded-xl!" (click)="addSlot()">
-              <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créneau
-            </button>
             <button
               mat-flat-button
-              class="rounded-xl!"
-              (click)="saveSlots()"
-              [disabled]="savingSlots()"
+              class="rounded-xl! shadow-lg save-cta"
+              type="submit"
+              [disabled]="saving() || form.pristine"
             >
-              {{ savingSlots() ? '…' : 'Enregistrer la grille' }}
+              <mat-icon fontSet="material-symbols-outlined">save</mat-icon>
+              {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
             </button>
           </div>
-        </div>
-        @if (!courses().length) {
-          <p class="text-xs text-(--warning) mb-3">
-            Aucun cours ouvert sur cette classe — ouvrez d'abord les cours (Journal de cours) pour
-            pouvoir les rattacher aux créneaux.
-          </p>
-        }
-        @if (slots().length === 0) {
-          <p class="text-sm text-(--text-muted) py-4 text-center">
-            Aucun créneau. Ajoutez-en pour bâtir la grille.
-          </p>
-        } @else {
-          <div class="flex flex-col gap-2">
-            @for (slot of slots(); track $index) {
-              <div
-                class="grid grid-cols-2 sm:grid-cols-[1.2fr_1fr_1fr_1.6fr_1fr_auto] gap-2 items-center"
+        </form>
+      }
+
+      @if (pageTab() === 'schedule') {
+        <!-- Emploi du temps -->
+        <section class="panga-card p-5 mb-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <panga-section-header
+              icon="calendar_month"
+              title="Emploi du temps"
+              [count]="slots().length"
+            />
+            <div class="flex flex-wrap gap-2">
+              <button mat-stroked-button class="rounded-xl!" (click)="addSlot()">
+                <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créneau
+              </button>
+              <button
+                mat-flat-button
+                class="rounded-xl! save-cta"
+                (click)="saveSlots()"
+                [disabled]="savingSlots()"
               >
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Jour</mat-label>
-                  <mat-select
-                    [value]="slot.weekdayIso"
-                    (selectionChange)="patchSlot($index, 'weekdayIso', $event.value)"
-                  >
-                    @for (w of weekdays; track w.value) {
-                      <mat-option [value]="w.value">{{ w.label }}</mat-option>
+                {{ savingSlots() ? '…' : 'Enregistrer la grille' }}
+              </button>
+            </div>
+          </div>
+          @if (!courses().length) {
+            <p
+              class="text-xs mb-3 rounded-xl px-3 py-2"
+              style="background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--text)"
+            >
+              Aucun cours ouvert sur cette classe — ouvrez d'abord les cours (Journal de cours) pour
+              pouvoir les rattacher aux créneaux.
+            </p>
+          }
+          @if (slots().length === 0) {
+            <panga-empty-state
+              [compact]="true"
+              icon="calendar_month"
+              title="Aucun créneau"
+              description="Ajoutez des créneaux pour bâtir l'emploi du temps."
+              actionLabel="Ajouter un créneau"
+              (action)="addSlot()"
+            />
+          } @else {
+            <div class="flex flex-col gap-2">
+              @for (slot of slots(); track $index) {
+                <div
+                  class="slot-row rounded-2xl border border-(--border) p-3 grid grid-cols-2 sm:grid-cols-[1.2fr_1fr_1fr_1.6fr_1fr_auto] gap-2 items-center"
+                >
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Jour</mat-label>
+                    <mat-select
+                      [value]="slot.weekdayIso"
+                      (selectionChange)="patchSlot($index, 'weekdayIso', $event.value)"
+                    >
+                      @for (w of weekdays; track w.value) {
+                        <mat-option [value]="w.value">{{ w.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Début</mat-label>
+                    <input
+                      matInput
+                      type="time"
+                      [value]="slot.startTime"
+                      (change)="patchSlot($index, 'startTime', $any($event.target).value)"
+                    />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Fin</mat-label>
+                    <input
+                      matInput
+                      type="time"
+                      [value]="slot.endTime"
+                      (change)="patchSlot($index, 'endTime', $any($event.target).value)"
+                    />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Cours</mat-label>
+                    <mat-select
+                      [value]="slot.classSubjectId || ''"
+                      (selectionChange)="patchSlotCourse($index, $event.value)"
+                    >
+                      <mat-option [value]="''">— (aucun)</mat-option>
+                      @for (c of courses(); track c.id) {
+                        <mat-option [value]="c.id">{{ courseLabel(c) }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <mat-label>Salle</mat-label>
+                    <input
+                      matInput
+                      [value]="slot.room || ''"
+                      (change)="patchSlot($index, 'room', $any($event.target).value)"
+                    />
+                  </mat-form-field>
+                  <button mat-icon-button (click)="removeSlot($index)" aria-label="Retirer">
+                    <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)"
+                      >delete</mat-icon
+                    >
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (pageTab() === 'physical') {
+        <!-- Aspects physiques -->
+        <section class="panga-card p-5 mb-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <panga-section-header icon="chair" title="Aspects physiques" />
+            <button
+              mat-flat-button
+              class="rounded-xl! save-cta"
+              (click)="savePhysical()"
+              [disabled]="savingPhys()"
+            >
+              {{ savingPhys() ? '…' : 'Enregistrer' }}
+            </button>
+          </div>
+          <form [formGroup]="physForm" class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Bancs</mat-label>
+              <input matInput type="number" formControlName="numberOfBenches" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Places</mat-label>
+              <input matInput type="number" formControlName="numberOfSeats" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Type de tableau</mat-label>
+              <mat-select formControlName="boardType">
+                <mat-option [value]="''">—</mat-option>
+                @for (o of boardTypes; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Nb tableaux</mat-label>
+              <input matInput type="number" formControlName="boardCount" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Poubelles</mat-label>
+              <mat-select formControlName="hasWastebaskets">
+                <mat-option [value]="''">—</mat-option>
+                <mat-option [value]="'true'">Oui</mat-option>
+                <mat-option [value]="'false'">Non</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
+              <mat-label>Nb poubelles</mat-label>
+              <input matInput type="number" formControlName="wastebasketCount" />
+            </mat-form-field>
+            @for (e of equipment; track e.key) {
+              <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                <mat-label>{{ e.label }}</mat-label>
+                <input matInput type="number" [formControlName]="e.key" />
+              </mat-form-field>
+            }
+          </form>
+        </section>
+      }
+
+      @if (pageTab() === 'promote') {
+        <!-- Promotion / passage -->
+        <section class="panga-card p-5 mb-4">
+          <panga-section-header icon="trending_up" title="Promotion / passage d'année" />
+          <form
+            [formGroup]="promoteForm"
+            (ngSubmit)="promote()"
+            class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            <mat-form-field appearance="outline">
+              <mat-label>Action</mat-label>
+              <mat-select formControlName="action">
+                @for (o of promotionActions; track o.value) {
+                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Classe de destination</mat-label>
+              <mat-select formControlName="toClassInstanceId">
+                @for (c of otherClasses(); track c.id) {
+                  <mat-option [value]="c.id">{{ classLabelOf(c) }} ({{ c.schoolYear }})</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Année de destination</mat-label>
+              <input matInput formControlName="toSchoolYear" placeholder="2025-2026" />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Motif</mat-label>
+              <input matInput formControlName="reason" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="sm:col-span-2 lg:col-span-4">
+              <mat-label>Élèves concernés</mat-label>
+              <mat-select formControlName="studentIds" multiple>
+                @for (st of students(); track $index) {
+                  <mat-option [value]="str(st['id'])">{{ studentName(st) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
+              <button
+                mat-flat-button
+                class="rounded-xl! save-cta"
+                type="submit"
+                [disabled]="promoting()"
+              >
+                Enregistrer la promotion
+              </button>
+            </div>
+          </form>
+
+          @if (history().length) {
+            <div class="mt-5">
+              <p class="text-sm font-medium text-(--text) mb-2">Historique</p>
+              <ul class="divide-y divide-(--border)">
+                @for (h of history(); track $index) {
+                  <li class="flex items-center justify-between gap-2 py-2 text-sm">
+                    <span class="text-(--text)"
+                      >{{ str(h['action']) }} → {{ str(h['toSchoolYear']) }}</span
+                    >
+                    <span class="text-xs text-(--text-muted)">{{ str(h['reason']) }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+      }
+
+      @if (pageTab() === 'roster') {
+        <!-- Cours & élèves -->
+        <section class="grid gap-4 lg:grid-cols-2 mb-4">
+          <div class="panga-card p-5">
+            <panga-section-header icon="menu_book" title="Cours" [count]="courses().length" />
+            @if (courses().length) {
+              @for (c of courses(); track c.id) {
+                <div
+                  class="roster-item flex items-center justify-between gap-2 rounded-2xl border border-(--border) p-3 mb-2 last:mb-0"
+                >
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-(--text) truncate">{{ courseLabel(c) }}</p>
+                    @if (str(c['roomNumber'])) {
+                      <p class="text-xs text-(--text-muted) mt-0.5">
+                        Salle {{ str(c['roomNumber']) }}
+                      </p>
                     }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Début</mat-label>
-                  <input
-                    matInput
-                    type="time"
-                    [value]="slot.startTime"
-                    (change)="patchSlot($index, 'startTime', $any($event.target).value)"
-                  />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Fin</mat-label>
-                  <input
-                    matInput
-                    type="time"
-                    [value]="slot.endTime"
-                    (change)="patchSlot($index, 'endTime', $any($event.target).value)"
-                  />
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Cours</mat-label>
-                  <mat-select
-                    [value]="slot.classSubjectId || ''"
-                    (selectionChange)="patchSlotCourse($index, $event.value)"
-                  >
-                    <mat-option [value]="''">— (aucun)</mat-option>
-                    @for (c of courses(); track c.id) {
-                      <mat-option [value]="c.id">{{ courseLabel(c) }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Salle</mat-label>
-                  <input
-                    matInput
-                    [value]="slot.room || ''"
-                    (change)="patchSlot($index, 'room', $any($event.target).value)"
-                  />
-                </mat-form-field>
-                <button mat-icon-button (click)="removeSlot($index)" aria-label="Retirer">
-                  <mat-icon fontSet="material-symbols-outlined" class="text-(--danger)"
-                    >delete</mat-icon
-                  >
-                </button>
-              </div>
+                  </div>
+                  <span class="text-xs font-semibold shrink-0 chip-hours">
+                    {{ c.hoursPerWeek ?? '—' }} h/sem
+                  </span>
+                </div>
+              }
+            } @else {
+              <panga-empty-state
+                [compact]="true"
+                icon="menu_book"
+                title="Aucun cours"
+                description="Les cours ouverts apparaîtront ici."
+              />
             }
           </div>
-        }
-      </section>
-
-      <!-- Aspects physiques -->
-      <section class="panga-card p-5 mb-4">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <panga-section-header icon="chair" title="Aspects physiques" />
-          <button
-            mat-flat-button
-            class="rounded-xl!"
-            (click)="savePhysical()"
-            [disabled]="savingPhys()"
-          >
-            {{ savingPhys() ? '…' : 'Enregistrer' }}
-          </button>
-        </div>
-        <form [formGroup]="physForm" class="grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Bancs</mat-label>
-            <input matInput type="number" formControlName="numberOfBenches" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Places</mat-label>
-            <input matInput type="number" formControlName="numberOfSeats" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Type de tableau</mat-label>
-            <mat-select formControlName="boardType">
-              <mat-option [value]="''">—</mat-option>
-              @for (o of boardTypes; track o.value) {
-                <mat-option [value]="o.value">{{ o.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Nb tableaux</mat-label>
-            <input matInput type="number" formControlName="boardCount" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Poubelles</mat-label>
-            <mat-select formControlName="hasWastebaskets">
-              <mat-option [value]="''">—</mat-option>
-              <mat-option [value]="'true'">Oui</mat-option>
-              <mat-option [value]="'false'">Non</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Nb poubelles</mat-label>
-            <input matInput type="number" formControlName="wastebasketCount" />
-          </mat-form-field>
-          @for (e of equipment; track e.key) {
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>{{ e.label }}</mat-label>
-              <input matInput type="number" [formControlName]="e.key" />
-            </mat-form-field>
-          }
-        </form>
-      </section>
-
-      <!-- Promotion / passage -->
-      <section class="panga-card p-5 mb-4">
-        <panga-section-header icon="trending_up" title="Promotion / passage d'année" />
-        <form
-          [formGroup]="promoteForm"
-          (ngSubmit)="promote()"
-          class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-        >
-          <mat-form-field appearance="outline">
-            <mat-label>Action</mat-label>
-            <mat-select formControlName="action">
-              @for (o of promotionActions; track o.value) {
-                <mat-option [value]="o.value">{{ o.label }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Classe de destination</mat-label>
-            <mat-select formControlName="toClassInstanceId">
-              @for (c of otherClasses(); track c.id) {
-                <mat-option [value]="c.id">{{ classLabelOf(c) }} ({{ c.schoolYear }})</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Année de destination</mat-label>
-            <input matInput formControlName="toSchoolYear" placeholder="2025-2026" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Motif</mat-label>
-            <input matInput formControlName="reason" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="sm:col-span-2 lg:col-span-4">
-            <mat-label>Élèves concernés</mat-label>
-            <mat-select formControlName="studentIds" multiple>
+          <div class="panga-card p-5">
+            <panga-section-header icon="groups" title="Élèves" [count]="students().length" />
+            @if (students().length) {
               @for (st of students(); track $index) {
-                <mat-option [value]="str(st['id'])">{{ studentName(st) }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-          <div class="sm:col-span-2 lg:col-span-4 flex justify-end">
-            <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="promoting()">
-              Enregistrer la promotion
-            </button>
-          </div>
-        </form>
-
-        @if (history().length) {
-          <div class="mt-5">
-            <p class="text-sm font-medium text-(--text) mb-2">Historique</p>
-            <ul class="divide-y divide-(--border)">
-              @for (h of history(); track $index) {
-                <li class="flex items-center justify-between gap-2 py-2 text-sm">
-                  <span class="text-(--text)"
-                    >{{ str(h['action']) }} → {{ str(h['toSchoolYear']) }}</span
+                <a
+                  [routerLink]="['/', 'students', str(st['id'])]"
+                  class="roster-item flex items-center gap-3 rounded-2xl border border-(--border) p-2.5 mb-2 last:mb-0 no-underline"
+                >
+                  <panga-avatar [name]="studentName(st)" [size]="34" />
+                  <span class="text-sm font-medium text-(--text) truncate flex-1">{{
+                    studentName(st)
+                  }}</span>
+                  <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted) shrink-0"
+                    >chevron_right</mat-icon
                   >
-                  <span class="text-xs text-(--text-muted)">{{ str(h['reason']) }}</span>
-                </li>
+                </a>
               }
-            </ul>
+            } @else {
+              <panga-empty-state
+                [compact]="true"
+                icon="groups"
+                title="Aucun élève"
+                description="Aucun élève n'est inscrit dans cette classe."
+              />
+            }
           </div>
-        }
-      </section>
-
-      <!-- Cours & élèves -->
-      <section class="grid gap-4 lg:grid-cols-2 mb-4">
-        <div class="panga-card p-5">
-          <panga-section-header icon="menu_book" title="Cours" [count]="courses().length" />
-          @for (c of courses(); track c.id) {
-            <div
-              class="flex items-center justify-between gap-2 py-2 border-b border-(--border) last:border-0"
-            >
-              <span class="text-sm text-(--text) truncate">{{ courseLabel(c) }}</span>
-              <span class="text-xs text-(--text-muted) shrink-0">
-                {{ c.hoursPerWeek ?? '—' }} h/sem
-                @if (str(c['roomNumber'])) {
-                  · {{ str(c['roomNumber']) }}
-                }
-              </span>
-            </div>
-          } @empty {
-            <p class="text-sm text-(--text-muted)">Aucun cours ouvert.</p>
-          }
-        </div>
-        <div class="panga-card p-5">
-          <panga-section-header icon="groups" title="Élèves" [count]="students().length" />
-          @for (st of students(); track $index) {
-            <div class="flex items-center gap-3 py-2 border-b border-(--border) last:border-0">
-              <panga-avatar [name]="studentName(st)" [size]="30" />
-              <span class="text-sm text-(--text) truncate">{{ studentName(st) }}</span>
-            </div>
-          } @empty {
-            <p class="text-sm text-(--text-muted)">Aucun élève inscrit.</p>
-          }
-        </div>
-      </section>
-
-      @if (stats()) {
-        <section class="panga-card p-5">
-          <panga-section-header icon="insights" title="Statistiques" />
-          <panga-key-value [data]="stats()" />
         </section>
+
+        @if (stats()) {
+          <section class="panga-card p-5 mt-4">
+            <panga-section-header icon="insights" title="Statistiques" />
+            <panga-key-value [data]="stats()" />
+          </section>
+        }
       }
     }
   `,
+  styles: [
+    `
+      button.hero-danger {
+        background: transparent !important;
+        color: #ffffff !important;
+        border-color: color-mix(in srgb, #fff 45%, transparent) !important;
+      }
+      button.hero-danger .mat-icon,
+      button.hero-danger .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.hero-danger:hover:not(:disabled) {
+        background: color-mix(in srgb, #fff 14%, transparent) !important;
+      }
+      button.save-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.save-cta .mat-icon,
+      button.save-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.save-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+      .tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 1.25rem;
+        height: 1.25rem;
+        padding: 0 0.35rem;
+        border-radius: 999px;
+        font-size: 0.6875rem;
+        font-weight: 700;
+        background: color-mix(in srgb, currentColor 18%, transparent);
+      }
+      .slot-row,
+      .roster-item {
+        transition: border-color 0.15s ease;
+      }
+      .slot-row:hover,
+      .roster-item:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+      .chip-hours {
+        color: var(--brand-deep);
+        background: color-mix(in srgb, var(--brand-500) 14%, transparent);
+        border-radius: 999px;
+        padding: 0.25rem 0.55rem;
+      }
+    `,
+  ],
 })
 export class ClassDetail {
   private readonly route = inject(ActivatedRoute);
@@ -608,7 +826,18 @@ export class ClassDetail {
   }
   protected readonly weekdays = WEEKDAY_OPTIONS;
   protected readonly promotionActions = PROMOTION_ACTION_OPTIONS;
-  protected readonly tone = statusTone;
+  protected readonly statusLabel = statusLabel;
+  protected readonly formTab = signal(0);
+  protected readonly pageTab = signal<'dossier' | 'schedule' | 'physical' | 'promote' | 'roster'>(
+    'dossier',
+  );
+  protected readonly pageTabs = [
+    { id: 'dossier' as const, icon: 'badge', label: 'Dossier' },
+    { id: 'schedule' as const, icon: 'calendar_month', label: 'Emploi du temps' },
+    { id: 'physical' as const, icon: 'chair', label: 'Salle' },
+    { id: 'promote' as const, icon: 'trending_up', label: 'Promotion' },
+    { id: 'roster' as const, icon: 'groups', label: 'Effectif' },
+  ];
   protected readonly classLabelOf = (c: ClassInstance): string =>
     classLabel(c as unknown as Record<string, unknown>);
 
@@ -624,6 +853,7 @@ export class ClassDetail {
   protected readonly allClasses = signal<ClassInstance[]>([]);
   protected readonly history = signal<Record<string, unknown>[]>([]);
   protected readonly loading = signal(true);
+  protected readonly loadError = signal(false);
   protected readonly saving = signal(false);
   protected readonly savingSlots = signal(false);
   protected readonly promoting = signal(false);
@@ -751,7 +981,9 @@ export class ClassDetail {
     return v === null || v === undefined ? '' : String(v);
   }
 
-  private reload(): void {
+  protected reload(): void {
+    this.loading.set(true);
+    this.loadError.set(false);
     this.classesApi.get(this.id).subscribe({
       next: (c) => {
         this.cls.set(c);
@@ -759,7 +991,10 @@ export class ClassDetail {
         this.patchPhys(c);
         this.loading.set(false);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.loading.set(false);
+        this.loadError.set(true);
+      },
     });
   }
 
@@ -864,6 +1099,9 @@ export class ClassDetail {
   }
 
   remove(): void {
+    if (!confirm(`Archiver la classe « ${this.name()} » ?`)) {
+      return;
+    }
     this.classesApi.remove(this.id).subscribe({
       next: () => {
         this.notify.success('Classe archivée.');
