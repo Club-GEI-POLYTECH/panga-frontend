@@ -100,11 +100,18 @@
           </div>
         }
 
-        <!-- Profil (pied de barre) -->
+        <!-- Profil (pied de barre) — cliquable vers /profile -->
         <div class="p-3 shrink-0">
           @if (rail()) {
             <div class="flex flex-col items-center gap-1">
-              <div class="relative shrink-0">
+              <a
+                routerLink="/profile"
+                class="relative shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-(--brand-500)"
+                matTooltip="Mon profil"
+                matTooltipPosition="right"
+                aria-label="Mon profil"
+                (click)="closeOnMobile()"
+              >
                 <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="40" />
                 @if (isActive()) {
                   <span
@@ -112,7 +119,7 @@
                     style="background: var(--success); border-color: var(--surface)"
                   ></span>
                 }
-              </div>
+              </a>
               <button
                 mat-icon-button
                 (click)="logout()"
@@ -127,24 +134,34 @@
             </div>
           } @else {
             <div
-              class="flex items-center gap-3 rounded-2xl p-2.5"
+              class="flex items-center gap-2 rounded-2xl p-2"
               style="background: color-mix(in srgb, var(--brand-500) 7%, transparent)"
             >
-              <div class="relative shrink-0">
-                <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="40" />
-                @if (isActive()) {
-                  <span
-                    class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"
-                    style="background: var(--success); border-color: var(--surface)"
-                  ></span>
-                }
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium truncate text-(--text)">
-                  {{ store.fullName() }}
-                </p>
-                <p class="text-xs truncate text-(--text-muted)">{{ roleKey() | transloco }}</p>
-              </div>
+              <a
+                routerLink="/profile"
+                class="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-0.5 hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-(--brand-500)"
+                (click)="closeOnMobile()"
+              >
+                <div class="relative shrink-0">
+                  <panga-avatar
+                    [name]="store.fullName()"
+                    [imageUrl]="avatars.myUrl()"
+                    [size]="40"
+                  />
+                  @if (isActive()) {
+                    <span
+                      class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"
+                      style="background: var(--success); border-color: var(--surface)"
+                    ></span>
+                  }
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium truncate text-(--text)">
+                    {{ store.fullName() }}
+                  </p>
+                  <p class="text-xs truncate text-(--text-muted)">{{ roleKey() | transloco }}</p>
+                </div>
+              </a>
               <button
                 mat-icon-button
                 (click)="logout()"
@@ -251,12 +268,12 @@
 
           <button
             mat-icon-button
-            (click)="theme.toggle()"
-            matTooltip="Mode clair/sombre"
-            aria-label="Mode clair/sombre"
+            [matMenuTriggerFor]="themeMenu"
+            [matTooltip]="theme.mode() === 'dark' ? 'Thème : sombre' : 'Thème : clair (par défaut)'"
+            aria-label="Changer le thème"
           >
             <mat-icon fontSet="material-symbols-outlined">
-              {{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}
+              {{ theme.mode() === 'dark' ? 'dark_mode' : 'light_mode' }}
             </mat-icon>
           </button>
 
@@ -294,6 +311,27 @@
             </button>
           </div>
         </mat-menu>
+
+        <mat-menu #themeMenu="matMenu" class="panga-menu" xPosition="before">
+          <div class="w-52 py-1">
+            <p class="px-4 pt-1 pb-1.5 text-[11px] uppercase tracking-wide text-(--text-muted)">
+              Apparence
+            </p>
+            <button mat-menu-item (click)="theme.set('light')">
+              <mat-icon fontSet="material-symbols-outlined">
+                {{ theme.mode() === 'light' ? 'check' : 'light_mode' }}
+              </mat-icon>
+              <span>Clair (par défaut)</span>
+            </button>
+            <button mat-menu-item (click)="theme.set('dark')">
+              <mat-icon fontSet="material-symbols-outlined">
+                {{ theme.mode() === 'dark' ? 'check' : 'dark_mode' }}
+              </mat-icon>
+              <span>Sombre</span>
+            </button>
+          </div>
+        </mat-menu>
+
         <mat-menu #notifMenu="matMenu" class="panga-menu" xPosition="before">
           <div class="w-80 max-w-[92vw]">
             <div class="flex items-center justify-between px-4 py-3 border-b border-(--border)">
@@ -436,9 +474,31 @@
               }
             </div>
 
+            <p class="px-4 pt-2.5 pb-1 text-[11px] uppercase tracking-wide text-(--text-muted)">
+              Apparence
+            </p>
+            <button mat-menu-item (click)="theme.set('light')">
+              <mat-icon fontSet="material-symbols-outlined">
+                {{ theme.mode() === 'light' ? 'check' : 'light_mode' }}
+              </mat-icon>
+              <span>Clair (par défaut)</span>
+            </button>
+            <button mat-menu-item (click)="theme.set('dark')">
+              <mat-icon fontSet="material-symbols-outlined">
+                {{ theme.mode() === 'dark' ? 'check' : 'dark_mode' }}
+              </mat-icon>
+              <span>Sombre</span>
+            </button>
+
+            <div class="border-t border-(--border) my-1"></div>
+
             <a mat-menu-item routerLink="/profile">
               <mat-icon fontSet="material-symbols-outlined">person</mat-icon>
               <span>{{ 'nav.profile' | transloco }}</span>
+            </a>
+            <a mat-menu-item routerLink="/profile" fragment="appearance">
+              <mat-icon fontSet="material-symbols-outlined">palette</mat-icon>
+              <span>Préférences d'affichage</span>
             </a>
             <button mat-menu-item (click)="logout()">
               <mat-icon fontSet="material-symbols-outlined">logout</mat-icon>

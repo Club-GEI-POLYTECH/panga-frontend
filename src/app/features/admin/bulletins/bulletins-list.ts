@@ -327,6 +327,13 @@ function isPublished(b: Bulletin): boolean {
               <button
                 mat-stroked-button
                 class="rounded-xl! w-full sm:w-auto"
+                (click)="printPreview()"
+              >
+                <mat-icon fontSet="material-symbols-outlined">print</mat-icon> Imprimer
+              </button>
+              <button
+                mat-stroked-button
+                class="rounded-xl! w-full sm:w-auto"
                 (click)="closePreview()"
               >
                 <mat-icon fontSet="material-symbols-outlined">close</mat-icon> Fermer
@@ -345,7 +352,7 @@ function isPublished(b: Bulletin): boolean {
             />
           } @else if (preview(); as p) {
             @if (p.ministerialSnapshot) {
-              <div class="mt-4">
+              <div class="mt-4" id="bulletin-print-root">
                 <panga-bulletin-official
                   [snapshot]="p.ministerialSnapshot"
                   [studentName]="previewName()"
@@ -755,6 +762,37 @@ export class BulletinsList {
     this.preview.set(null);
     this.previewStudent.setValue('', { emitEvent: false });
   }
+
+  /** Impression navigateur de l'aperçu officiel (identique à l'écran). */
+  printPreview(): void {
+    const root = document.getElementById('bulletin-print-root');
+    if (!root) {
+      this.notify.error('Aperçu indisponible.');
+      return;
+    }
+    const win = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=800');
+    if (!win) {
+      this.notify.error('Autorisez les pop-ups pour imprimer.');
+      return;
+    }
+    const name = this.previewName().replace(/[<>&"]/g, '');
+    win.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"/>
+      <title>Bulletin — ${name}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        body { font-family: system-ui, sans-serif; color: #0f172a; margin: 0; padding: 8px; }
+        table { border-collapse: collapse; width: 100%; font-size: 11px; }
+        th, td { border: 1px solid #cbd5e1; padding: 3px 6px; }
+        th { text-align: center; color: #64748b; font-weight: 600; }
+        .preview-badge { display: none !important; }
+      </style></head><body>${root.innerHTML}</body></html>`);
+    win.document.close();
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 250);
+  }
+
   protected previewName(): string {
     const p = this.preview();
     if (!p) {

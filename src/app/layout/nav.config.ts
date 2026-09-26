@@ -29,9 +29,6 @@ export interface NavSection {
   items: NavItem[];
 }
 
-const ALL: Role[] = ['super_admin', 'admin', 'teacher', 'parent', 'student'];
-
-/** Ordre des groupes dans la barre latérale. */
 const GROUP_ORDER: NavGroup[] = ['main', 'gestion', 'pedagogie', 'communication'];
 
 /** Navigation principale, filtrée par permission/rôle puis regroupée. */
@@ -138,6 +135,13 @@ export const NAV_ITEMS: NavItem[] = [
     labelKey: 'nav.scolarite',
     icon: 'menu_book',
     path: 'ma-scolarite',
+    roles: ['student'],
+    group: 'pedagogie',
+  },
+  {
+    labelKey: 'nav.myCourses',
+    icon: 'auto_stories',
+    path: 'mes-cours',
     roles: ['student'],
     group: 'pedagogie',
   },
@@ -258,10 +262,12 @@ export const NAV_ITEMS: NavItem[] = [
     group: 'pedagogie',
   },
   {
+    // Annonces admin / enseignants / parents. L'élève a `mes-services` +
+    // `mes-notifications` (espace personnel) — pas l'UI de gestion.
     labelKey: 'nav.communications',
     icon: 'forum',
     path: 'communications',
-    roles: ALL,
+    roles: ['super_admin', 'admin', 'teacher', 'parent'],
     group: 'communication',
   },
   {
@@ -275,19 +281,27 @@ export const NAV_ITEMS: NavItem[] = [
 ];
 
 /**
- * Une entrée est-elle visible ? Si elle porte une `permission`, on interroge le
- * prédicat RBAC `can` ; sinon on retombe sur le rôle (entrées personnelles).
+ * Une entrée est-elle visible ?
+ * - `super_admin` : uniquement ses entrées plateforme.
+ * - Sinon : le rôle doit être dans `item.roles` **et**, si une `permission` est
+ *   déclarée, `can(permission)` doit aussi être vrai.
+ *   → Empêche un élève (ou parent) qui aurait une permission RBAC trop large
+ *     d'accéder aux écrans admin de gestion (classes, notes de classe, etc.).
  */
 function isVisible(item: NavItem, role: Role | null, can: (perm: string) => boolean): boolean {
-  // super_admin : contexte plateforme cross-tenant → uniquement ses entrées
-  // dédiées, même s'il possède `manage` (donc `can`) sur toutes les ressources.
+  if (!role) {
+    return false;
+  }
   if (role === 'super_admin') {
     return item.roles.includes('super_admin');
+  }
+  if (!item.roles.includes(role)) {
+    return false;
   }
   if (item.permission) {
     return can(item.permission);
   }
-  return role !== null && item.roles.includes(role);
+  return true;
 }
 
 export function navForRole(role: Role | null, can: (perm: string) => boolean): NavItem[] {

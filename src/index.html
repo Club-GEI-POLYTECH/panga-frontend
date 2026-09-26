@@ -5,9 +5,18 @@
     <title>Panga — Gestion scolaire</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#222026" />
+    <meta name="theme-color" content="#f6f7f4" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="manifest" href="manifest.webmanifest" />
+
+    <!-- Anti-FOUC : applique le thème sombre avant le paint si déjà choisi. -->
+    <script>
+      try {
+        if (localStorage.getItem('panga.theme') === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    </script>
 
     <!-- Police de marque : Urbanist -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

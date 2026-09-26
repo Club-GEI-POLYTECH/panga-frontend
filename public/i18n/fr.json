@@ -69,7 +69,12 @@
     "country": "Pays",
     "nationality": "Nationalité",
     "memberSince": "Membre depuis",
-    "lastLogin": "Dernière connexion"
+    "lastLogin": "Dernière connexion",
+    "appearance": "Apparence",
+    "appearanceHint": "Le thème clair est le rendu par défaut de Panga. Le sombre reste disponible si vous le préférez.",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "themeDefault": "Thème de base"
   },
   "nav": {
     "groups": {
@@ -93,6 +98,7 @@
     "grades": "Notes",
     "bulletins": "Bulletins",
     "scolarite": "Ma scolarité",
+    "myCourses": "Mes cours",
     "schedule": "Emploi du temps",
     "myPayments": "Mes paiements",
     "myServices": "Mes services",

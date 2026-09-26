@@ -12,12 +12,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
       <aside class="brand-panel" aria-hidden="true">
         <span class="mesh"></span>
         <span class="grid-overlay"></span>
-        <span class="shine"></span>
         <span class="blob blob-1"></span>
         <span class="blob blob-2"></span>
-        <span class="blob blob-3"></span>
-        <span class="ring ring-1"></span>
-        <span class="ring ring-2"></span>
 
         <div class="brand-inner">
           <div class="mark">

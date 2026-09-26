@@ -42,6 +42,7 @@ const IMPLEMENTED = new Set([
   'reports',
   'settings',
   'ma-scolarite',
+  'mes-cours',
   'mes-paiements',
   'mes-notifications',
   'mes-services',
@@ -59,8 +60,10 @@ const moduleRoutes: Routes = NAV_ITEMS.filter(
 ).map((i) => ({
   path: i.path,
   component: PlaceholderPage,
-  // Gating par permission RBAC si l'entrée en a une, sinon repli sur le rôle.
-  canActivate: [i.permission ? permissionGuard(i.permission) : roleGuard(...i.roles)],
+  // Toujours exiger le rôle listé ; la permission RBAC s'ajoute si présente.
+  canActivate: i.permission
+    ? [roleGuard(...i.roles), permissionGuard(i.permission)]
+    : [roleGuard(...i.roles)],
   data: { title: MODULE_TITLES[i.path] ?? i.path },
 }));
 
@@ -75,75 +78,75 @@ const adminRoutes: Routes = [
   },
   {
     path: 'students',
-    canActivate: [permissionGuard('students.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('students.read')],
     loadComponent: () =>
       import('./features/admin/students/students-list').then((m) => m.StudentsList),
   },
   {
     path: 'students/:id',
-    canActivate: [permissionGuard('students.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('students.read')],
     loadComponent: () =>
       import('./features/admin/students/student-detail').then((m) => m.StudentDetail),
   },
   {
     path: 'teachers',
-    canActivate: [permissionGuard('teachers.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('teachers.read')],
     loadComponent: () =>
       import('./features/admin/teachers/teachers-list').then((m) => m.TeachersList),
   },
   {
     path: 'teachers/:id',
-    canActivate: [permissionGuard('teachers.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('teachers.read')],
     loadComponent: () =>
       import('./features/admin/teachers/teacher-detail').then((m) => m.TeacherDetail),
   },
   {
     path: 'parents',
-    canActivate: [permissionGuard('parents.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('parents.read')],
     loadComponent: () => import('./features/admin/parents/parents-list').then((m) => m.ParentsList),
   },
   {
     path: 'parents/:id',
-    canActivate: [permissionGuard('parents.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('parents.read')],
     loadComponent: () =>
       import('./features/admin/parents/parent-detail').then((m) => m.ParentDetail),
   },
   {
     path: 'classes',
-    canActivate: [permissionGuard('classes.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('classes.read')],
     loadComponent: () => import('./features/admin/classes/classes-list').then((m) => m.ClassesList),
   },
   {
     path: 'class-options',
-    canActivate: [permissionGuard('classes.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('classes.read')],
     loadComponent: () =>
       import('./features/admin/classes/class-options').then((m) => m.ClassOptions),
   },
   {
     path: 'classes/:id',
-    canActivate: [permissionGuard('classes.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('classes.read')],
     loadComponent: () => import('./features/admin/classes/class-detail').then((m) => m.ClassDetail),
   },
   {
     path: 'payments',
-    canActivate: [permissionGuard('payments.read')],
+    canActivate: [roleGuard('admin', 'parent'), permissionGuard('payments.read')],
     loadComponent: () =>
       import('./features/admin/payments/payments-list').then((m) => m.PaymentsList),
   },
   {
     path: 'grades',
-    canActivate: [permissionGuard('grades.read')],
+    canActivate: [roleGuard('admin', 'teacher', 'parent'), permissionGuard('grades.read')],
     loadComponent: () => import('./features/admin/grades/grades-list').then((m) => m.GradesList),
   },
   {
     path: 'bulletins',
-    canActivate: [permissionGuard('bulletins.read')],
+    canActivate: [roleGuard('admin', 'teacher', 'parent'), permissionGuard('bulletins.read')],
     loadComponent: () =>
       import('./features/admin/bulletins/bulletins-list').then((m) => m.BulletinsList),
   },
   {
     path: 'attendance',
-    canActivate: [permissionGuard('attendance.read')],
+    canActivate: [roleGuard('admin', 'teacher', 'parent'), permissionGuard('attendance.read')],
     loadComponent: () => import('./features/admin/attendance/attendance').then((m) => m.Attendance),
   },
   {
@@ -155,11 +158,10 @@ const adminRoutes: Routes = [
     loadComponent: () => import('./features/admin/exams/exams-list').then((m) => m.ExamsList),
   },
   {
-    // Détail d'un examen : admin (gestion complète) ET enseignant (saisie des
-    // résultats de ses propres examens) — les actions admin-only sont masquées
-    // dans le composant, le backend scope de toute façon quel examen est visible.
+    // Détail d'un examen : admin (gestion) ET enseignant (saisie de ses résultats).
+    // L'élève consulte via `mes-resultats-examens`.
     path: 'exams/:id',
-    canActivate: [permissionGuard('exams.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('exams.read')],
     loadComponent: () => import('./features/admin/exams/exam-detail').then((m) => m.ExamDetail),
   },
   {
@@ -182,28 +184,28 @@ const adminRoutes: Routes = [
   },
   {
     path: 'course-journal',
-    canActivate: [permissionGuard('course-journal.read')],
+    canActivate: [roleGuard('admin', 'teacher', 'parent'), permissionGuard('course-journal.read')],
     loadComponent: () =>
       import('./features/admin/course-journal/course-journal').then((m) => m.CourseJournal),
   },
   {
     path: 'promotions',
-    canActivate: [permissionGuard('promotions.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('promotions.read')],
     loadComponent: () => import('./features/admin/promotions/promotions').then((m) => m.Promotions),
   },
   {
     path: 'discipline',
-    canActivate: [permissionGuard('discipline.read')],
+    canActivate: [roleGuard('admin', 'teacher', 'parent'), permissionGuard('discipline.read')],
     loadComponent: () => import('./features/admin/discipline/discipline').then((m) => m.Discipline),
   },
   {
     path: 'reports',
-    canActivate: [permissionGuard('reports.read')],
+    canActivate: [roleGuard('admin', 'teacher'), permissionGuard('reports.read')],
     loadComponent: () => import('./features/admin/reports/reports').then((m) => m.Reports),
   },
   {
     path: 'settings',
-    canActivate: [permissionGuard('settings.read')],
+    canActivate: [roleGuard('admin'), permissionGuard('settings.read')],
     loadComponent: () =>
       import('./features/admin/settings/school-year-settings').then((m) => m.SchoolYearSettings),
   },
@@ -212,6 +214,12 @@ const adminRoutes: Routes = [
     canActivate: [roleGuard('student')],
     loadComponent: () =>
       import('./features/student/scolarite/student-scolarite').then((m) => m.StudentScolarite),
+  },
+  {
+    path: 'mes-cours',
+    canActivate: [roleGuard('student')],
+    loadComponent: () =>
+      import('./features/student/cours/student-cours').then((m) => m.StudentCours),
   },
   {
     path: 'mes-paiements',
@@ -240,8 +248,10 @@ const adminRoutes: Routes = [
     loadComponent: () => import('./features/schedule/schedule-view').then((m) => m.ScheduleView),
   },
   {
-    // Accessible à tous les rôles authentifiés (la création est filtrée côté UI/back).
+    // Accessible admin / enseignant / parent (lecture + publication selon rôle).
+    // L'élève communique via `mes-services` / `mes-notifications`.
     path: 'communications',
+    canActivate: [roleGuard('super_admin', 'admin', 'teacher', 'parent')],
     loadComponent: () =>
       import('./features/admin/communications/communications').then((m) => m.Communications),
   },

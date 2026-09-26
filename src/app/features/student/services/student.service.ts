@@ -1,11 +1,22 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { toHttpParams, unwrapEnvelope, unwrapList } from '../../../core/http/api.util';
+import { SKIP_ERROR_TOAST } from '../../../core/http/http-context';
 import { computeSchoolYear } from '../../../core/school-year/school-year.store';
 import type { Bulletin, Grade } from '../../admin/models/admin.models';
 import type { AnnualAverageResult } from '../../admin/models/grade.models';
+import type { CourseOverviewRow, LessonLogEntry } from '../../admin/models/course.models';
+import type {
+  BehaviorIncident,
+  BehaviorReport,
+  DisciplinaryAction,
+  Reward,
+} from '../../admin/discipline/discipline.service';
+
+/** Contexte silencieux : les vues élève gèrent déjà le fallback vide (catchError). */
+const silent = () => new HttpContext().set(SKIP_ERROR_TOAST, true);
 
 /** Contexte élève dérivé de `/students/me` (ownership). */
 export interface StudentContext {
@@ -46,6 +57,7 @@ export class StudentService {
     return this.http
       .get<unknown>(`${this.base}/grades`, {
         params: toHttpParams({ studentId, schoolYear, limit: 200 }),
+        context: silent(),
       })
       .pipe(map((r) => unwrapList<Grade>(r).items));
   }
@@ -55,6 +67,7 @@ export class StudentService {
     return this.http
       .get<unknown>(`${this.base}/grades/students/${studentId}/averages`, {
         params: toHttpParams({ classId, schoolYear }),
+        context: silent(),
       })
       .pipe(map((r) => unwrapEnvelope<StudentAverages>(r)));
   }
@@ -62,7 +75,7 @@ export class StudentService {
   /** Relevés (bulletins) de l'élève. */
   bulletins(studentId: string): Observable<Bulletin[]> {
     return this.http
-      .get<unknown>(`${this.base}/bulletins/students/${studentId}`)
+      .get<unknown>(`${this.base}/bulletins/students/${studentId}`, { context: silent() })
       .pipe(map((r) => unwrapList<Bulletin>(r).items));
   }
 
@@ -77,7 +90,7 @@ export class StudentService {
   /** Présences de l'élève. */
   attendance(studentId: string): Observable<Record<string, unknown>[]> {
     return this.http
-      .get<unknown>(`${this.base}/students/${studentId}/attendance`)
+      .get<unknown>(`${this.base}/students/${studentId}/attendance`, { context: silent() })
       .pipe(map((r) => unwrapList<Record<string, unknown>>(r).items));
   }
 
@@ -86,6 +99,7 @@ export class StudentService {
     return this.http
       .get<unknown>(`${this.base}/subjects/classes/${classId}/schedule`, {
         params: toHttpParams({ schoolYear }),
+        context: silent(),
       })
       .pipe(map((r) => unwrapEnvelope<Record<string, unknown>>(r)));
   }
@@ -168,6 +182,132 @@ export class StudentService {
   markAllNotificationsRead(): Observable<unknown> {
     return this.http.post<unknown>(`${this.base}/notifications/read-all`, {});
   }
+
+  /** Rapport de comportement de l'élève (sanctions / récompenses appliquées). */
+  disciplineReport(studentId: string, schoolYear?: string): Observable<BehaviorReport> {
+    return this.http
+      .get<unknown>(`${this.base}/discipline/students/${studentId}/report`, {
+        params: toHttpParams({ schoolYear }),
+        context: silent(),
+      })
+      .pipe(map((r) => unwrapEnvelope<BehaviorReport>(r)));
+  }
+
+  /** Incidents signalés concernant l'élève (lecture seule, scopé backend). */
+  disciplineIncidents(studentId: string): Observable<BehaviorIncident[]> {
+    return this.http
+      .get<unknown>(`${this.base}/discipline/incidents`, {
+        params: toHttpParams({ studentId, limit: 100 }),
+        context: silent(),
+      })
+      .pipe(map((r) => unwrapList<BehaviorIncident>(r).items));
+  }
+
+  /** Sanctions / mesures disciplinaires appliquées à l'élève. */
+  disciplineActions(studentId: string): Observable<DisciplinaryAction[]> {
+    return this.http
+      .get<unknown>(`${this.base}/discipline/actions`, {
+        params: toHttpParams({ studentId, limit: 100 }),
+        context: silent(),
+      })
+      .pipe(map((r) => unwrapList<DisciplinaryAction>(r).items));
+  }
+
+  /** Récompenses attribuées à l'élève. */
+  disciplineRewards(studentId: string): Observable<Reward[]> {
+    return this.http
+      .get<unknown>(`${this.base}/discipline/rewards`, {
+        params: toHttpParams({ studentId, limit: 100 }),
+        context: silent(),
+      })
+      .pipe(map((r) => unwrapList<Reward>(r).items));
+  }
+
+  /**
+   * Synthèse d'avancement des cours (journal). Côté élève : `studentId` seul
+   * (ownership, comme le parent) — le back résout la classe d'inscription.
+   */
+  courseOverview(query: {
+    studentId: string;
+    schoolYear: string;
+    periodId?: string;
+  }): Observable<CourseOverviewRow[]> {
+    return this.http
+      .get<unknown>(`${this.base}/course-journal/overview`, {
+        params: toHttpParams(query),
+        context: silent(),
+      })
+      .pipe(map((r) => mapOverviewRows(unwrapEnvelope(r))));
+  }
+
+  /** Séances enregistrées (cahier de texte), lecture seule pour l'élève. */
+  courseEntries(query: {
+    studentId: string;
+    schoolYear: string;
+    page?: number;
+    limit?: number;
+  }): Observable<LessonLogEntry[]> {
+    return this.http
+      .get<unknown>(`${this.base}/course-journal/entries`, {
+        params: toHttpParams(query),
+        context: silent(),
+      })
+      .pipe(map((r) => unwrapList<LessonLogEntry>(r).items));
+  }
+}
+
+/** Normalise l'overview journal (mêmes formes variables que le service admin). */
+function mapOverviewRows(raw: unknown): CourseOverviewRow[] {
+  const list = extractOverviewArray(raw);
+  return list.map((item) => {
+    const o = (item ?? {}) as Record<string, unknown>;
+    const planned = num(o['plannedHours'] ?? o['planned']);
+    const delivered = num(o['deliveredHours'] ?? o['delivered'] ?? o['realizedHours']);
+    const remaining =
+      o['remainingHours'] !== undefined
+        ? num(o['remainingHours'])
+        : Math.max(0, planned - delivered);
+    const ratio =
+      o['completionRatio'] !== undefined
+        ? num(o['completionRatio'])
+        : planned > 0
+          ? delivered / planned
+          : 0;
+    return {
+      classSubjectId: String(o['classSubjectId'] ?? o['id'] ?? ''),
+      subjectLabel: String(
+        o['subjectLabel'] ?? o['label'] ?? o['name'] ?? o['programCode'] ?? 'Cours',
+      ),
+      programCode: o['programCode'] !== undefined ? String(o['programCode']) : undefined,
+      teacherName: o['teacherName'] !== undefined ? String(o['teacherName']) : undefined,
+      plannedHours: planned,
+      deliveredHours: delivered,
+      remainingHours: remaining,
+      completionRatio: Math.max(0, Math.min(1, ratio)),
+      entriesCount: o['entriesCount'] !== undefined ? num(o['entriesCount']) : undefined,
+      teacher: o['teacher'],
+    };
+  });
+}
+
+function extractOverviewArray(raw: unknown): unknown[] {
+  if (Array.isArray(raw)) {
+    return raw;
+  }
+  if (raw && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    for (const key of ['rows', 'subjects', 'data', 'items', 'overview', 'results']) {
+      if (Array.isArray(o[key])) {
+        return o[key] as unknown[];
+      }
+    }
+  }
+  return [];
+}
+
+function num(v: unknown): number {
+  const n = typeof v === 'string' ? parseFloat(v) : (v as number);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /** Dérive (studentId, classId, schoolYear) du profil `/students/me`, formes variables. */

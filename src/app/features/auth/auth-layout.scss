@@ -10,7 +10,6 @@
   max-height: 100%;
   display: grid;
   overflow: hidden;
-  // `minmax(0, 1fr)` : évite le scroll horizontal si un enfant est incompressible.
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -58,14 +57,6 @@
   opacity: 0.55;
 }
 
-.shine {
-  position: absolute;
-  inset: -40% -30%;
-  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 14%) 48%, transparent 62%);
-  animation: shine-sweep 9s ease-in-out infinite;
-  pointer-events: none;
-}
-
 .brand-inner {
   position: relative;
   z-index: 1;
@@ -73,7 +64,6 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  // Pas de space-between : le hero occupe le milieu, le pied reste en bas.
   justify-content: flex-start;
   padding: clamp(1.5rem, 3.5vh, 3rem) clamp(1.5rem, 3.5vw, 3.25rem);
   gap: clamp(0.85rem, 2vh, 1.35rem);
@@ -101,7 +91,6 @@
       0 12px 28px -12px rgb(0 0 0 / 50%),
       inset 0 1px 0 rgb(255 255 255 / 35%);
     backdrop-filter: blur(8px);
-    animation: badge-pulse 4.5s ease-in-out infinite;
   }
   .mark-text {
     display: flex;
@@ -164,12 +153,11 @@
   flex: 1 1 0;
   min-height: max(240px, 42vh);
   margin: 0;
-  // Pas de carte / cadre derrière le dessin — juste le SVG sur le dégradé.
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: illus-in 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+  animation: rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
 
   svg {
     display: block;
@@ -251,49 +239,14 @@
   opacity: 0.38;
   animation-delay: -5s;
 }
-.blob-3 {
-  width: 220px;
-  height: 220px;
-  top: 42%;
-  left: 38%;
-  background: var(--brand-400);
-  opacity: 0.22;
-  animation-delay: -9s;
-  filter: blur(55px);
-}
-
-.ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgb(255 255 255 / 16%);
-  pointer-events: none;
-  animation: ring-pulse 10s ease-in-out infinite;
-}
-.ring-1 {
-  width: 280px;
-  height: 280px;
-  top: -60px;
-  left: -40px;
-}
-.ring-2 {
-  width: 420px;
-  height: 420px;
-  bottom: -120px;
-  right: -80px;
-  animation-delay: -4s;
-  border-color: rgb(255 255 255 / 10%);
-}
 
 @keyframes float {
   0%,
   100% {
     transform: translate(0, 0) scale(1);
   }
-  33% {
-    transform: translate(42px, -34px) scale(1.1);
-  }
-  66% {
-    transform: translate(-34px, 28px) scale(0.92);
+  50% {
+    transform: translate(36px, -28px) scale(1.06);
   }
 }
 
@@ -303,33 +256,6 @@
   }
   to {
     transform: translate(-3%, 2%) scale(1.06);
-  }
-}
-
-@keyframes shine-sweep {
-  0%,
-  100% {
-    transform: translateX(-18%) rotate(0.001deg);
-    opacity: 0.35;
-  }
-  50% {
-    transform: translateX(18%) rotate(0.001deg);
-    opacity: 0.7;
-  }
-}
-
-@keyframes badge-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 12px 28px -12px rgb(0 0 0 / 50%),
-      inset 0 1px 0 rgb(255 255 255 / 35%);
-  }
-  50% {
-    box-shadow:
-      0 16px 34px -10px rgb(0 0 0 / 55%),
-      inset 0 1px 0 rgb(255 255 255 / 45%),
-      0 0 0 6px rgb(255 255 255 / 8%);
   }
 }
 
@@ -354,18 +280,6 @@
   }
 }
 
-@keyframes ring-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    opacity: 0.55;
-  }
-  50% {
-    transform: scale(1.06);
-    opacity: 0.9;
-  }
-}
-
 @keyframes rise {
   from {
     opacity: 0;
@@ -377,26 +291,14 @@
   }
 }
 
-@keyframes illus-in {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 /* ------------------------------ Panneau formulaire --------------------------- */
 .form-panel {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   height: 100%;
   min-height: 0;
-  padding: clamp(1.25rem, 3vh, 2.25rem) clamp(1.25rem, 3vw, 2.25rem);
+  padding: clamp(1.25rem, 3vh, 2.25rem);
   overflow: hidden;
   background:
     radial-gradient(
@@ -408,11 +310,6 @@
       800px 420px at -10% 115%,
       color-mix(in srgb, var(--accent-blue) 24%, transparent),
       transparent 70%
-    ),
-    radial-gradient(
-      520px 320px at 50% 50%,
-      color-mix(in srgb, var(--brand-100) 40%, transparent),
-      transparent 75%
     ),
     var(--app-surface-glow, none), var(--background);
 }
@@ -446,14 +343,13 @@
   width: 100%;
   max-width: 440px;
   max-height: 100%;
-  // Padding généreux : la carte respire sans forcer un scroll.
   padding: clamp(1.75rem, 4vh, 2.85rem) clamp(1.6rem, 3.5vw, 2.6rem);
   border-radius: 1.45rem;
   box-shadow:
     0 1px 2px rgb(15 23 42 / 5%),
     0 28px 64px -30px rgb(15 23 42 / 28%),
     0 0 0 1px color-mix(in srgb, var(--brand-300) 18%, transparent);
-  animation: card-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .card::before {
@@ -464,46 +360,13 @@
   border-radius: 1.35rem 1.35rem 0 0;
   background: linear-gradient(
     90deg,
-    transparent 0%,
+    transparent,
     var(--brand-400) 28%,
     var(--accent-blue) 72%,
-    transparent 100%
+    transparent
   );
 }
 
-.card::after {
-  content: '';
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  pointer-events: none;
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--brand-300) 35%, transparent),
-    transparent 35%,
-    transparent 70%,
-    color-mix(in srgb, var(--accent-blue) 28%, transparent)
-  );
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  padding: 1px;
-  opacity: 0.7;
-}
-
-@keyframes card-in {
-  from {
-    opacity: 0;
-    transform: translateY(28px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* Très petits viewports uniquement : on compacte sans aplatir le design. */
 @media (max-height: 700px) {
   .hero > p {
     display: none;
@@ -530,14 +393,11 @@
   .mark,
   .hero,
   .foot,
-  .shine,
   .mesh,
-  .ring,
   .float-a,
   .float-b,
   .float-c,
-  .bar,
-  .mark .badge {
+  .bar {
     animation: none;
   }
 }

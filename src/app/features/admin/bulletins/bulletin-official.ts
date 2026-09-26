@@ -90,7 +90,7 @@ const BLUE = '#3b82f6';
             <p class="text-xs text-(--text-muted)">
               {{ className() }} · Année {{ schoolYear() }}
               <span
-                class="ml-1 rounded border border-(--warning) px-1.5 py-0.5 text-[10px] text-(--warning)"
+                class="ml-1 rounded border border-(--warning) px-1.5 py-0.5 text-[10px] text-(--warning) preview-badge"
                 >Aperçu — non enregistré</span
               >
             </p>

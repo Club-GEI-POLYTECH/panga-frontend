@@ -7,14 +7,31 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { StudentService, extractContext, type StudentContext } from '../services/student.service';
 import type { Bulletin } from '../../admin/models/admin.models';
 import type { AnnualAverageResult, Grade } from '../../admin/models/grade.models';
+import type {
+  BehaviorIncident,
+  BehaviorReport,
+  DisciplinaryAction,
+  Reward,
+} from '../../admin/discipline/discipline.service';
+import {
+  ACTION_TYPE_OPTIONS,
+  INCIDENT_SEVERITY_OPTIONS,
+  INCIDENT_TYPE_OPTIONS,
+  REWARD_TYPE_OPTIONS,
+} from '../../../core/models/discipline.enums';
 import { statusColor, statusLabel } from '../../../core/models/attendance.enums';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { EmptyState } from '../../../shared/ui/empty-state';
+import { KpiCard } from '../../../shared/ui/kpi-card';
 import { PageHeader } from '../../../shared/ui/page-header';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
 import { ScheduleGrid } from '../../../shared/ui/schedule-grid';
 import { normalizeSchedule, type ScheduleSlot } from '../../../shared/schedule';
+
+function enumLabel(options: { value: string; label: string }[], v?: string): string {
+  return options.find((o) => o.value === v)?.label ?? v ?? '—';
+}
 
 @Component({
   selector: 'panga-student-scolarite',
@@ -25,6 +42,7 @@ import { normalizeSchedule, type ScheduleSlot } from '../../../shared/schedule';
     MatIconModule,
     MatProgressSpinnerModule,
     EmptyState,
+    KpiCard,
     PageHeader,
     SectionHeader,
     StatusBadge,
@@ -34,15 +52,18 @@ import { normalizeSchedule, type ScheduleSlot } from '../../../shared/schedule';
     <panga-page-header
       icon="menu_book"
       title="Ma scolarité"
-      subtitle="Notes, bulletins & emploi du temps"
+      subtitle="Notes, bulletins, présence & discipline"
     />
 
-    <div class="flex gap-1 mb-4 p-1 rounded-xl bg-(--background) w-fit border border-(--border)">
+    <div
+      class="flex gap-1 mb-4 p-1 rounded-xl w-fit border border-(--border) overflow-x-auto bg-(--surface)"
+    >
       @for (t of tabs; track t.key) {
         <button
-          class="px-4 py-2 rounded-lg text-sm font-medium"
-          [style.background]="tab() === t.key ? 'var(--surface)' : 'transparent'"
-          [style.color]="tab() === t.key ? 'var(--text)' : 'var(--text-muted)'"
+          type="button"
+          class="px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap border"
+          [class.tab-active]="tab() === t.key"
+          [class.tab-idle]="tab() !== t.key"
           (click)="tab.set(t.key)"
         >
           {{ t.label }}
@@ -238,9 +259,160 @@ import { normalizeSchedule, type ScheduleSlot } from '../../../shared/schedule';
             }
           </section>
         }
+
+        @case ('discipline') {
+          <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
+            <panga-kpi-card
+              label="Incidents"
+              [value]="disciplineReport()?.summary?.totalIncidents ?? incidents().length"
+              icon="warning"
+            />
+            <panga-kpi-card
+              label="Sanctions"
+              [value]="disciplineReport()?.summary?.totalActions ?? actions().length"
+              icon="policy"
+            />
+            <panga-kpi-card
+              label="Récompenses"
+              [value]="disciplineReport()?.summary?.totalRewards ?? rewards().length"
+              icon="emoji_events"
+            />
+            <panga-kpi-card
+              label="Points nets"
+              [value]="disciplineReport()?.summary?.netPoints ?? 0"
+              icon="scoreboard"
+            />
+          </section>
+
+          <section class="panga-card p-5 mb-6">
+            <panga-section-header
+              icon="policy"
+              title="Sanctions appliquées"
+              [count]="actions().length"
+            />
+            @if (actions().length === 0) {
+              <panga-empty-state
+                [compact]="true"
+                icon="policy"
+                title="Aucune sanction"
+                description="Aucune mesure disciplinaire ne vous a été appliquée."
+              />
+            } @else {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (a of actions(); track a.id) {
+                  <div class="px-5 py-3">
+                    <p class="text-sm font-medium text-(--text)">
+                      {{ actionLabel(a.actionType) }}
+                    </p>
+                    <p class="text-xs text-(--text-muted) mt-0.5">
+                      {{ a.reason || a.description || '—' }}
+                      @if (a.startDate) {
+                        · {{ a.startDate | date: 'dd/MM/yyyy' }}
+                      }
+                    </p>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="panga-card p-5 mb-6">
+            <panga-section-header
+              icon="emoji_events"
+              title="Récompenses"
+              [count]="rewards().length"
+            />
+            @if (rewards().length === 0) {
+              <panga-empty-state
+                [compact]="true"
+                icon="emoji_events"
+                title="Aucune récompense"
+                description="Aucune récompense enregistrée pour le moment."
+              />
+            } @else {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (rw of rewards(); track rw.id) {
+                  <div class="flex items-center justify-between gap-3 px-5 py-2.5">
+                    <div class="min-w-0">
+                      <p class="text-sm text-(--text) truncate">
+                        {{ rw.title || rewardLabel(rw.rewardType) }}
+                      </p>
+                      @if (rw.awardDate) {
+                        <p class="text-xs text-(--text-muted)">
+                          {{ rw.awardDate | date: 'dd/MM/yyyy' }}
+                        </p>
+                      }
+                    </div>
+                    @if (rw.pointsAwarded) {
+                      <span class="text-sm font-medium text-(--success)"
+                        >+{{ rw.pointsAwarded }}</span
+                      >
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </section>
+
+          <section class="panga-card p-5">
+            <panga-section-header
+              icon="warning"
+              title="Incidents signalés"
+              [count]="incidents().length"
+            />
+            @if (incidents().length === 0) {
+              <panga-empty-state
+                [compact]="true"
+                icon="warning"
+                title="Aucun incident"
+                description="Aucun incident ne vous concerne."
+              />
+            } @else {
+              <div class="divide-y divide-(--border) -mx-5">
+                @for (i of incidents(); track i.id) {
+                  <div class="flex items-start justify-between gap-3 px-5 py-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-(--text)">
+                        {{ incidentLabel(i.incidentType) }}
+                      </p>
+                      <p class="text-xs text-(--text-muted) mt-0.5 truncate">
+                        {{ i.description || '—' }}
+                        @if (i.incidentDate) {
+                          · {{ i.incidentDate | date: 'dd/MM/yyyy' }}
+                        }
+                      </p>
+                    </div>
+                    <panga-status-badge
+                      [label]="severityLabel(i.severity)"
+                      [tone]="severityTone(i.severity)"
+                      [dot]="false"
+                    />
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
       }
     }
   `,
+  styles: [
+    `
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: transparent;
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+      }
+    `,
+  ],
 })
 export class StudentScolarite {
   private readonly api = inject(StudentService);
@@ -251,8 +423,11 @@ export class StudentScolarite {
     { key: 'bulletins' as const, label: 'Bulletins' },
     { key: 'schedule' as const, label: 'Emploi du temps' },
     { key: 'attendance' as const, label: 'Présences' },
+    { key: 'discipline' as const, label: 'Discipline' },
   ];
-  protected readonly tab = signal<'grades' | 'bulletins' | 'schedule' | 'attendance'>('grades');
+  protected readonly tab = signal<
+    'grades' | 'bulletins' | 'schedule' | 'attendance' | 'discipline'
+  >('grades');
 
   protected readonly loading = signal(true);
   protected readonly subjects = signal<AnnualAverageResult[]>([]);
@@ -261,6 +436,10 @@ export class StudentScolarite {
   protected readonly bulletins = signal<Bulletin[]>([]);
   protected readonly attendance = signal<Record<string, unknown>[]>([]);
   protected readonly scheduleSlots = signal<ScheduleSlot[]>([]);
+  protected readonly disciplineReport = signal<BehaviorReport | null>(null);
+  protected readonly incidents = signal<BehaviorIncident[]>([]);
+  protected readonly actions = signal<DisciplinaryAction[]>([]);
+  protected readonly rewards = signal<Reward[]>([]);
 
   constructor() {
     this.api.me().subscribe({
@@ -282,6 +461,12 @@ export class StudentScolarite {
       schedule: ctx.classId
         ? this.api.schedule(ctx.classId, ctx.schoolYear).pipe(catchError(() => of({})))
         : of({}),
+      disciplineReport: this.api
+        .disciplineReport(ctx.studentId, ctx.schoolYear)
+        .pipe(catchError(() => of(null))),
+      incidents: this.api.disciplineIncidents(ctx.studentId).pipe(catchError(() => of([]))),
+      actions: this.api.disciplineActions(ctx.studentId).pipe(catchError(() => of([]))),
+      rewards: this.api.disciplineRewards(ctx.studentId).pipe(catchError(() => of([]))),
     }).subscribe((r) => {
       if (r.averages) {
         this.subjects.set(r.averages.subjectAverages ?? []);
@@ -292,6 +477,14 @@ export class StudentScolarite {
       this.bulletins.set(r.bulletins);
       this.attendance.set(r.attendance);
       this.scheduleSlots.set(normalizeSchedule(r.schedule));
+      this.disciplineReport.set(r.disciplineReport);
+      this.incidents.set(r.incidents);
+      this.actions.set(r.actions);
+      this.rewards.set(
+        r.rewards.length
+          ? r.rewards
+          : ((r.disciplineReport?.rewards as Reward[] | undefined) ?? []),
+      );
       this.loading.set(false);
     });
   }
@@ -354,5 +547,27 @@ export class StudentScolarite {
   }
   protected asDate(v: unknown): string | null {
     return v ? String(v) : null;
+  }
+
+  protected actionLabel(v?: string): string {
+    return enumLabel(ACTION_TYPE_OPTIONS, v);
+  }
+  protected rewardLabel(v?: string): string {
+    return enumLabel(REWARD_TYPE_OPTIONS, v);
+  }
+  protected incidentLabel(v?: string): string {
+    return enumLabel(INCIDENT_TYPE_OPTIONS, v);
+  }
+  protected severityLabel(v?: string): string {
+    return enumLabel(INCIDENT_SEVERITY_OPTIONS, v);
+  }
+  protected severityTone(v?: string): 'neutral' | 'warning' | 'danger' | 'brand' {
+    if (v === 'critical' || v === 'high') {
+      return 'danger';
+    }
+    if (v === 'medium') {
+      return 'warning';
+    }
+    return 'neutral';
   }
 }

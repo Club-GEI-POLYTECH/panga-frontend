@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -9,7 +9,8 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { TranslocoModule } from '@jsverse/transloco';
+import { ActivatedRoute } from '@angular/router';
+import { TranslocoModule, TranslocoService } from '@jsverse/transloco';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,12 +20,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../core/auth/auth.service';
 import { AuthStore } from '../../core/auth/auth.store';
 import { AvatarService } from '../../core/auth/avatar.service';
+import { ThemeService } from '../../core/theme.service';
 import type { LoginHistoryEntry } from '../../core/models/auth.models';
 import type { SchoolFieldGroup } from '../../core/models/school-fields';
 import { COUNTRY_OPTIONS, TIMEZONE_OPTIONS } from '../../core/models/geo.reference';
 import { NotificationService } from '../../shared/ui/notification.service';
 import { Avatar } from '../../shared/ui/avatar';
 import { EmptyState } from '../../shared/ui/empty-state';
+import { PageHeader } from '../../shared/ui/page-header';
 import { SchoolFieldsForm } from '../../shared/ui/school-fields-form';
 import { StatusBadge } from '../../shared/ui/status-badge';
 import { SkeletonTable } from '../../shared/skeleton/skeleton-table';
@@ -117,19 +120,39 @@ const PROFILE_KEYS = PROFILE_GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     MatTooltipModule,
     Avatar,
     EmptyState,
+    PageHeader,
     SchoolFieldsForm,
     StatusBadge,
     SkeletonTable,
   ],
   providers: [DatePipe],
   templateUrl: './profile.html',
+  styles: [
+    `
+      .theme-tile {
+        border-color: var(--border);
+        background: color-mix(in srgb, var(--text) 2%, var(--surface));
+      }
+      .theme-tile:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 45%, var(--border));
+      }
+      .theme-tile-active {
+        border-color: var(--brand-600);
+        background: color-mix(in srgb, var(--brand-500) 8%, var(--surface));
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand-500) 25%, transparent);
+      }
+    `,
+  ],
 })
-export class Profile {
+export class Profile implements AfterViewInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly notify = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
+  private readonly route = inject(ActivatedRoute);
   protected readonly store = inject(AuthStore);
   protected readonly avatars = inject(AvatarService);
+  protected readonly theme = inject(ThemeService);
 
   protected readonly groups = PROFILE_GROUPS;
   protected readonly submitting = signal(false);
@@ -160,7 +183,6 @@ export class Profile {
     if (current) {
       this.patchInfo(current);
     }
-    // Rafraîchit le profil complet (auth/profile) → préremplit le formulaire.
     this.auth.loadMe().subscribe({
       next: (u) => this.patchInfo(u),
       error: () => undefined,
@@ -174,17 +196,24 @@ export class Profile {
     });
   }
 
-  /** Une tentative de connexion a-t-elle échoué ? (champ backend `isSuccessful`). */
+  ngAfterViewInit(): void {
+    if (this.route.snapshot.fragment === 'appearance') {
+      queueMicrotask(() =>
+        document
+          .getElementById('appearance')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      );
+    }
+  }
+
   protected failed(entry: LoginHistoryEntry): boolean {
     return (entry.isSuccessful ?? entry.success) === false;
   }
 
-  /* ---------------------------- Photo de profil ---------------------------- */
-
   onAvatarSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    input.value = ''; // autorise la re-sélection du même fichier
+    input.value = '';
     if (!file || this.uploadingAvatar()) {
       return;
     }
@@ -201,7 +230,6 @@ export class Profile {
       next: () => {
         this.uploadingAvatar.set(false);
         this.notify.success('Photo de profil mise à jour.');
-        // Rafraîchit le profil (user.avatarUrl) puis casse le cache de l'image.
         this.auth.loadMe().subscribe({ next: () => this.avatars.bump(), error: () => undefined });
       },
       error: () => this.uploadingAvatar.set(false),
@@ -217,7 +245,6 @@ export class Profile {
       next: () => {
         this.uploadingAvatar.set(false);
         this.notify.success('Photo supprimée.');
-        // loadMe met user.avatarUrl à null → l'avatar repasse aux initiales.
         this.auth.loadMe().subscribe({ error: () => undefined });
       },
       error: () => this.uploadingAvatar.set(false),
@@ -229,7 +256,6 @@ export class Profile {
     const value: Record<string, string> = {};
     for (const key of PROFILE_KEYS) {
       const raw = obj[key];
-      // Date ISO → garde la partie AAAA-MM-JJ pour l'édition.
       value[key] =
         key === 'dateOfBirth' && typeof raw === 'string'
           ? raw.slice(0, 10)
@@ -254,6 +280,10 @@ export class Profile {
       next: (u) => {
         this.savingInfo.set(false);
         this.patchInfo(u);
+        const lang = this.infoForm.getRawValue()['preferredLanguage'];
+        if (lang === 'fr' || lang === 'en') {
+          this.transloco.setActiveLang(lang);
+        }
         this.notify.success('Profil mis à jour.');
       },
       error: () => this.savingInfo.set(false),

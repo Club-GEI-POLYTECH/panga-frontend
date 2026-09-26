@@ -69,7 +69,12 @@
     "country": "Country",
     "nationality": "Nationality",
     "memberSince": "Member since",
-    "lastLogin": "Last login"
+    "lastLogin": "Last login",
+    "appearance": "Appearance",
+    "appearanceHint": "Light is Panga’s default look. Dark mode remains available if you prefer it.",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeDefault": "Base theme"
   },
   "nav": {
     "groups": {
@@ -93,6 +98,7 @@
     "grades": "Grades",
     "bulletins": "Report cards",
     "scolarite": "My schooling",
+    "myCourses": "My courses",
     "schedule": "Timetable",
     "myPayments": "My payments",
     "myServices": "My services",

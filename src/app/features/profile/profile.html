@@ -1,10 +1,12 @@
 <ng-container *transloco="let t">
-  <header class="mb-6">
-    <h1 class="text-2xl font-semibold text-(--text)">{{ t('profile.title') }}</h1>
-  </header>
+  <panga-page-header
+    icon="person"
+    [title]="t('profile.title')"
+    subtitle="Identité, sécurité, apparence et historique"
+  />
 
   <!-- En-tête de profil -->
-  <section class="panga-card p-6 mb-4">
+  <section class="panga-card p-6 mb-6">
     <div class="flex items-center gap-4">
       <div class="relative shrink-0">
         <panga-avatar [name]="store.fullName()" [imageUrl]="avatars.myUrl()" [size]="72" />
@@ -91,12 +93,89 @@
     </button>
   </div>
 
-  <div class="grid gap-6 lg:grid-cols-2">
+  <div class="grid gap-6 lg:grid-cols-2 mb-6">
+    <!-- Apparence -->
+    <section id="appearance" class="panga-card p-6 scroll-mt-24">
+      <div class="flex items-center gap-2 mb-1">
+        <mat-icon fontSet="material-symbols-outlined" class="text-(--brand-700)">palette</mat-icon>
+        <h2 class="text-lg font-semibold text-(--text)">{{ t('profile.appearance') }}</h2>
+      </div>
+      <p class="text-sm text-(--text-muted) mb-4">{{ t('profile.appearanceHint') }}</p>
+
+      <div class="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          class="theme-tile rounded-2xl border-2 p-3 text-left transition-all"
+          [class.theme-tile-active]="theme.mode() === 'light'"
+          (click)="theme.set('light')"
+        >
+          <div
+            class="mb-3 h-16 rounded-xl border border-(--border) overflow-hidden"
+            style="background: #f6f7f4"
+          >
+            <div class="h-4" style="background: #fff; border-bottom: 1px solid #ebebeb"></div>
+            <div class="flex gap-1 p-2">
+              <div class="h-8 w-6 rounded" style="background: #e6f6cf"></div>
+              <div class="flex-1 space-y-1">
+                <div class="h-2 rounded" style="background: #ebebeb; width: 70%"></div>
+                <div class="h-2 rounded" style="background: #ebebeb; width: 45%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-medium text-(--text)">{{ t('profile.themeLight') }}</span>
+            @if (theme.mode() === 'light') {
+              <mat-icon fontSet="material-symbols-outlined" class="text-(--brand-700) text-xl!"
+                >check_circle</mat-icon
+              >
+            }
+          </div>
+          <p class="text-[11px] text-(--text-muted) mt-0.5">{{ t('profile.themeDefault') }}</p>
+        </button>
+
+        <button
+          type="button"
+          class="theme-tile rounded-2xl border-2 p-3 text-left transition-all"
+          [class.theme-tile-active]="theme.mode() === 'dark'"
+          (click)="theme.set('dark')"
+        >
+          <div
+            class="mb-3 h-16 rounded-xl overflow-hidden"
+            style="background: #141318; border: 1px solid rgb(235 235 235 / 12%)"
+          >
+            <div
+              class="h-4"
+              style="background: #1b1a1f; border-bottom: 1px solid rgb(235 235 235 / 12%)"
+            ></div>
+            <div class="flex gap-1 p-2">
+              <div class="h-8 w-6 rounded" style="background: #2c3326"></div>
+              <div class="flex-1 space-y-1">
+                <div class="h-2 rounded" style="background: #2a2930; width: 70%"></div>
+                <div class="h-2 rounded" style="background: #2a2930; width: 45%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm font-medium text-(--text)">{{ t('profile.themeDark') }}</span>
+            @if (theme.mode() === 'dark') {
+              <mat-icon fontSet="material-symbols-outlined" class="text-(--brand-700) text-xl!"
+                >check_circle</mat-icon
+              >
+            }
+          </div>
+          <p class="text-[11px] text-(--text-muted) mt-0.5">&nbsp;</p>
+        </button>
+      </div>
+    </section>
+
     <!-- Changement de mot de passe -->
     <section class="panga-card p-6">
-      <h2 class="text-lg font-semibold text-(--text) mb-4">
-        {{ t('profile.changePassword') }}
-      </h2>
+      <div class="flex items-center gap-2 mb-4">
+        <mat-icon fontSet="material-symbols-outlined" class="text-(--brand-700)">lock</mat-icon>
+        <h2 class="text-lg font-semibold text-(--text)">
+          {{ t('profile.changePassword') }}
+        </h2>
+      </div>
       <form [formGroup]="form" (ngSubmit)="changePassword()" class="flex flex-col">
         <mat-form-field appearance="outline" class="w-full">
           <mat-label>{{ t('profile.currentPassword') }}</mat-label>
@@ -142,7 +221,7 @@
   </div>
 
   <!-- Historique de connexion -->
-  <section class="mt-6">
+  <section>
     <h2 class="text-lg font-semibold text-(--text) mb-3">{{ t('profile.loginHistory') }}</h2>
     @if (loadingHistory()) {
       <panga-skeleton-table [rows]="5" [cols]="[1, 2, 3]" />
