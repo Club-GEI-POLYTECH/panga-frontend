@@ -4,11 +4,16 @@ function str(v: unknown): string {
   return typeof v === 'string' && v.trim() ? v.trim() : '';
 }
 
-/** Nom affichable d'un parent / personne (gère `user` imbriqué, e-mail, etc.). */
+/** Nom affichable d'un parent / personne (gère `user` imbriqué, postnom, e-mail…). */
 export function personLabel(p: Record<string, unknown>): string {
   const user = (p['user'] ?? {}) as Record<string, unknown>;
-  const full =
-    `${str(p['firstName']) || str(user['firstName'])} ${str(p['lastName']) || str(user['lastName'])}`.trim();
+  const full = [
+    str(p['firstName']) || str(user['firstName']),
+    str(p['postnom']) || str(user['postnom']),
+    str(p['lastName']) || str(user['lastName']),
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     str(p['fullName']) ||
     str(p['displayName']) ||

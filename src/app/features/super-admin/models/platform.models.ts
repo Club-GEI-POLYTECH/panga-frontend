@@ -137,6 +137,8 @@ export interface BillingMetrics {
   schoolsByPlan: NamedValue[];
   outstanding: number | null;
   invoicesByStatus: NamedValue[];
+  /** Devise ISO des montants (défaut USD côté catalogue). */
+  currency: string;
 }
 
 /* ------------------------------ Plans & tarifs ---------------------------- */

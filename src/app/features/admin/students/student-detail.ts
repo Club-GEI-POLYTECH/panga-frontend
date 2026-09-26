@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
@@ -5,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { StudentsService } from '../services/students.service';
 import { ClassesService } from '../services/classes.service';
@@ -14,7 +14,7 @@ import { GradesService } from '../services/grades.service';
 import { UsersService } from '../services/users.service';
 import type { ClassInstance, Parent, Student } from '../models/admin.models';
 import type { AnnualAverageResult } from '../models/grade.models';
-import { personLabel } from '../shared/labels';
+import { classLabel, personLabel } from '../shared/labels';
 import {
   BLOOD_GROUP_OPTIONS,
   ENROLLMENT_TYPE_OPTIONS,
@@ -28,10 +28,13 @@ import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { CredentialReveal } from '../../../shared/ui/credential-reveal';
 import { DateField } from '../../../shared/ui/date-field';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { PhoneField } from '../../../shared/ui/phone-field';
 import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge } from '../../../shared/ui/status-badge';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
+import { SkeletonCard } from '../../../shared/skeleton/skeleton-card';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
 type FieldType = 'text' | 'email' | 'tel' | 'date' | 'select' | 'phone' | 'province';
@@ -130,21 +133,24 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
   selector: 'panga-student-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
     RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatProgressSpinnerModule,
     MatSelectModule,
     Avatar,
     CredentialReveal,
     DateField,
+    EmptyState,
     PhoneField,
     ProvinceField,
     SectionHeader,
     StatusBadge,
+    Skeleton,
+    SkeletonCard,
   ],
   template: `
     <a
@@ -167,7 +173,30 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
     }
 
     @if (loading()) {
-      <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      <div class="mb-5">
+        <panga-skeleton width="100%" height="8rem" radius="1.5rem" />
+      </div>
+      <div class="flex gap-2 mb-4">
+        @for (_ of [1, 2, 3, 4]; track $index) {
+          <panga-skeleton width="7rem" height="2.25rem" radius="0.75rem" />
+        }
+      </div>
+      <panga-skeleton-card />
+      <div class="grid gap-4 sm:grid-cols-3 mt-4">
+        <panga-skeleton-card />
+        <panga-skeleton-card />
+        <panga-skeleton-card />
+      </div>
+    } @else if (loadError()) {
+      <div class="panga-card p-6">
+        <panga-empty-state
+          icon="error"
+          title="Impossible de charger l'élève"
+          description="Vérifiez votre connexion puis réessayez."
+          actionLabel="Réessayer"
+          (action)="reload()"
+        />
+      </div>
     } @else {
       <div
         class="relative overflow-hidden rounded-3xl p-6 mb-5 text-white"
@@ -177,103 +206,169 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           class="absolute -right-8 -bottom-10 h-40 w-40 rounded-full opacity-15"
           style="background:#fff"
         ></div>
-        <div class="relative flex flex-wrap items-center gap-4">
-          <panga-avatar [name]="fullName()" [size]="64" />
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
-              {{ fullName() || 'Élève' }}
-            </h1>
-            <p class="text-sm opacity-90">
-              {{ ro('studentNumber') }}
-              @if (className()) {
-                · {{ className() }}
-              }
-            </p>
+        <div class="relative flex flex-col sm:flex-row sm:items-center gap-4">
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <panga-avatar [name]="fullName()" [size]="64" class="shrink-0" />
+            <div class="min-w-0 flex-1">
+              <h1 class="text-2xl font-semibold truncate" style="font-family: Urbanist, sans-serif">
+                {{ fullName() || 'Élève' }}
+              </h1>
+              <p class="text-sm opacity-90">
+                @if (ro('studentNumber') || ro('matricule')) {
+                  {{ ro('studentNumber') || ro('matricule') }}
+                }
+                @if (className()) {
+                  · {{ className() }}
+                }
+              </p>
+              <div class="flex flex-wrap items-center gap-2 mt-2.5 text-xs">
+                @if (genderLabel()) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                    {{ genderLabel() }}
+                  </span>
+                }
+                @if (statusLabel(ro('status'))) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                    {{ statusLabel(ro('status')) }}
+                  </span>
+                }
+                @if (schoolYear()) {
+                  <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1">
+                    <span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                    Année {{ schoolYear() }}
+                  </span>
+                }
+                @if (updatedAt()) {
+                  <span class="opacity-85">
+                    Mis à jour {{ updatedAt() | date: 'dd/MM/yyyy HH:mm' }}
+                  </span>
+                }
+              </div>
+            </div>
           </div>
-          <div class="flex flex-col items-end gap-2">
-            @if (ro('status'); as st) {
-              <panga-status-badge [label]="st" tone="success" />
-            }
-            <button
-              mat-stroked-button
-              class="rounded-xl! text-white! border-white/40!"
-              [disabled]="resetting() || !userId()"
-              (click)="resetPassword()"
-            >
-              <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
-              Réinitialiser le mot de passe
-            </button>
-          </div>
+          <button
+            mat-flat-button
+            class="rounded-xl! hero-cta self-start sm:self-center shrink-0"
+            [disabled]="resetting() || !userId()"
+            (click)="resetPassword()"
+          >
+            <mat-icon fontSet="material-symbols-outlined">key</mat-icon>
+            Réinitialiser le mot de passe
+          </button>
         </div>
       </div>
 
       <form [formGroup]="form" (ngSubmit)="save()">
-        @for (group of groups; track group.title) {
-          <div class="panga-card p-5 mb-4">
-            <panga-section-header [icon]="group.icon" [title]="group.title" />
-            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              @for (f of group.fields; track f.key) {
-                <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
-                  @if (f.type === 'date') {
-                    <panga-date-field
-                      class="block w-full"
-                      [label]="f.label"
-                      [formControlName]="f.key"
-                    />
-                  } @else if (f.type === 'phone') {
-                    <panga-phone-field
-                      class="block w-full"
-                      [label]="f.label"
-                      [formControlName]="f.key"
-                    />
-                  } @else if (f.type === 'province') {
-                    <panga-province-field
-                      class="block w-full"
-                      [label]="f.label"
-                      [formControlName]="f.key"
-                    />
-                  } @else {
-                    <mat-form-field appearance="outline" class="w-full">
-                      <mat-label>{{ f.label }}</mat-label>
-                      @switch (f.type) {
-                        @case ('select') {
-                          <mat-select [formControlName]="f.key">
-                            <mat-option [value]="''">—</mat-option>
-                            @if (f.fromClasses) {
-                              @for (c of classes(); track c.id) {
-                                <mat-option [value]="c.id">{{
-                                  c.template?.name || c.id
-                                }}</mat-option>
+        <div
+          class="flex gap-2 overflow-x-auto pb-3 mb-2 -mx-1 px-1"
+          role="tablist"
+          aria-label="Sections du dossier élève"
+        >
+          @for (group of groups; track group.title; let i = $index) {
+            <button
+              type="button"
+              role="tab"
+              class="shrink-0 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors border"
+              [attr.aria-selected]="formTab() === i"
+              [class.tab-active]="formTab() === i"
+              [class.tab-idle]="formTab() !== i"
+              (click)="formTab.set(i)"
+            >
+              <span class="inline-flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">{{ group.icon }}</span>
+                {{ group.title }}
+              </span>
+            </button>
+          }
+        </div>
+
+        @for (group of groups; track group.title; let i = $index) {
+          @if (formTab() === i) {
+            <div class="panga-card p-5 mb-4">
+              <panga-section-header [icon]="group.icon" [title]="group.title" />
+              <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                @for (f of group.fields; track f.key) {
+                  <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
+                    @if (f.type === 'date') {
+                      <panga-date-field
+                        class="block w-full"
+                        [label]="f.label"
+                        [formControlName]="f.key"
+                      />
+                    } @else if (f.type === 'phone') {
+                      <panga-phone-field
+                        class="block w-full"
+                        [label]="f.label"
+                        [formControlName]="f.key"
+                      />
+                    } @else if (f.type === 'province') {
+                      <panga-province-field
+                        class="block w-full"
+                        [label]="f.label"
+                        [formControlName]="f.key"
+                      />
+                    } @else {
+                      <mat-form-field appearance="outline" class="w-full">
+                        <mat-label>{{ f.label }}</mat-label>
+                        @switch (f.type) {
+                          @case ('select') {
+                            <mat-select [formControlName]="f.key">
+                              <mat-option [value]="''">—</mat-option>
+                              @if (f.fromClasses) {
+                                @for (c of classes(); track c.id) {
+                                  <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                                }
+                              } @else {
+                                @for (o of f.options ?? []; track o.value) {
+                                  <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                                }
                               }
-                            } @else {
-                              @for (o of f.options ?? []; track o.value) {
-                                <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                              }
-                            }
-                          </mat-select>
+                            </mat-select>
+                          }
+                          @default {
+                            <input
+                              matInput
+                              [type]="
+                                f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                              "
+                              [formControlName]="f.key"
+                            />
+                          }
                         }
-                        @default {
-                          <input
-                            matInput
-                            [type]="
-                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
-                            "
-                            [formControlName]="f.key"
-                          />
-                        }
-                      }
-                    </mat-form-field>
-                  }
-                </div>
-              }
+                      </mat-form-field>
+                    }
+                  </div>
+                }
+              </div>
             </div>
-          </div>
+          }
         }
 
-        <div class="sticky bottom-4 z-10 flex justify-end mb-6">
+        <div class="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div class="flex gap-2">
+            <button
+              mat-stroked-button
+              type="button"
+              class="rounded-xl!"
+              [disabled]="formTab() === 0"
+              (click)="formTab.set(formTab() - 1)"
+            >
+              Précédent
+            </button>
+            @if (formTab() < groups.length - 1) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="rounded-xl!"
+                (click)="formTab.set(formTab() + 1)"
+              >
+                Suivant
+              </button>
+            }
+          </div>
           <button
             mat-flat-button
-            class="rounded-xl! shadow-lg"
+            class="rounded-xl! shadow-lg save-cta"
             type="submit"
             [disabled]="saving() || form.pristine"
           >
@@ -283,7 +378,6 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </div>
       </form>
 
-      <!-- Parents liés -->
       <section class="panga-card p-5 mb-4">
         <panga-section-header
           icon="family_restroom"
@@ -291,30 +385,43 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           [count]="linkedParents().length"
         />
         @if (linkedParents().length) {
-          <div class="flex flex-wrap gap-2 mb-4">
+          <div class="grid gap-3 sm:grid-cols-2 mb-4">
             @for (p of linkedParents(); track p.id) {
-              <span
-                class="inline-flex items-center gap-2 rounded-full border border-(--border) pl-1.5 pr-1.5 py-1"
+              <div
+                class="parent-card flex items-center gap-3 rounded-2xl border border-(--border) p-3"
               >
-                <panga-avatar [name]="label(p)" [size]="24" />
-                <span class="text-sm text-(--text)">{{ label(p) }}</span>
+                <a
+                  [routerLink]="['/', 'parents', p.id]"
+                  class="flex items-center gap-3 min-w-0 flex-1 no-underline"
+                >
+                  <panga-avatar [name]="label(p)" [size]="40" class="shrink-0" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-(--text) truncate">{{ label(p) }}</p>
+                    @if (parentEmail(p)) {
+                      <p class="text-xs text-(--text-muted) truncate">{{ parentEmail(p) }}</p>
+                    }
+                  </div>
+                </a>
                 <button
                   type="button"
-                  class="appearance-none border-0 bg-transparent p-0 ml-0.5 shrink-0 leading-none text-(--text-muted) outline-none transition-colors hover:text-(--danger)"
+                  class="appearance-none border-0 bg-transparent p-1.5 rounded-lg shrink-0 text-(--text-muted) hover:text-(--danger) hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] transition-colors"
                   (click)="removeParent(p.id)"
                   aria-label="Retirer"
                 >
-                  <span class="material-symbols-outlined align-middle text-[18px] leading-none"
-                    >close</span
-                  >
+                  <span class="material-symbols-outlined text-[18px]">close</span>
                 </button>
-              </span>
+              </div>
             }
           </div>
         } @else {
-          <p class="text-sm text-(--text-muted) mb-4">Aucun parent lié.</p>
+          <panga-empty-state
+            [compact]="true"
+            icon="family_restroom"
+            title="Aucun parent lié"
+            description="Associez un parent pour les communications et le suivi."
+          />
         }
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3 mt-2">
           <mat-form-field appearance="outline" subscriptSizing="dynamic" class="flex-1 min-w-55">
             <mat-label>Lier un parent</mat-label>
             <mat-select [formControl]="parentCtrl">
@@ -325,7 +432,7 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
           </mat-form-field>
           <button
             mat-flat-button
-            class="rounded-xl!"
+            class="rounded-xl! link-cta"
             (click)="addParent()"
             [disabled]="!parentCtrl.value || linking()"
           >
@@ -334,30 +441,40 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </div>
       </section>
 
-      <!-- Dossier scolaire -->
       <section class="grid gap-4 sm:grid-cols-3 mb-4">
-        <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-(--brand-500)">grade</span>
+        <a
+          [routerLink]="['/', 'grades']"
+          [queryParams]="dossierParams()"
+          class="dossier-card panga-card p-5 text-center no-underline block"
+        >
+          <span class="material-symbols-outlined" style="color: var(--brand-deep)">grade</span>
           <p class="text-2xl font-semibold text-(--text) mt-1">{{ gradesCount() }}</p>
           <p class="text-xs text-(--text-muted)">Notes</p>
-        </div>
-        <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-(--brand-500)">payments</span>
+        </a>
+        <a
+          [routerLink]="['/', 'payments']"
+          [queryParams]="dossierParams()"
+          class="dossier-card panga-card p-5 text-center no-underline block"
+        >
+          <span class="material-symbols-outlined" style="color: var(--brand-deep)">payments</span>
           <p class="text-2xl font-semibold text-(--text) mt-1">{{ paymentsCount() }}</p>
           <p class="text-xs text-(--text-muted)">Paiements</p>
-        </div>
-        <div class="panga-card p-5 text-center">
-          <span class="material-symbols-outlined text-(--brand-500)">fact_check</span>
+        </a>
+        <a
+          [routerLink]="['/', 'attendance']"
+          [queryParams]="dossierParams()"
+          class="dossier-card panga-card p-5 text-center no-underline block"
+        >
+          <span class="material-symbols-outlined" style="color: var(--brand-deep)">fact_check</span>
           <p class="text-2xl font-semibold text-(--text) mt-1">{{ attendanceCount() }}</p>
           <p class="text-xs text-(--text-muted)">Présences</p>
-        </div>
+        </a>
       </section>
 
-      <!-- Bulletin de moyennes (année) -->
       <section class="panga-card p-5">
         <panga-section-header
           icon="leaderboard"
-          [title]="'Moyennes ' + schoolYear"
+          [title]="'Moyennes ' + (schoolYear() || '')"
           [count]="subjectAverages().length"
         >
           @if (overallPercent() !== null) {
@@ -370,11 +487,18 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
         </panga-section-header>
 
         @if (loadingAverages()) {
-          <p class="text-sm text-(--text-muted) py-6 text-center">Calcul des moyennes…</p>
+          <div class="space-y-3 py-2">
+            @for (_ of [1, 2, 3]; track $index) {
+              <panga-skeleton width="100%" height="0.5rem" radius="999px" />
+            }
+          </div>
         } @else if (subjectAverages().length === 0) {
-          <p class="text-sm text-(--text-muted) py-4 text-center">
-            Aucune moyenne disponible pour cette année.
-          </p>
+          <panga-empty-state
+            [compact]="true"
+            icon="leaderboard"
+            title="Aucune moyenne"
+            description="Les moyennes de l'année s'afficheront dès que des notes seront saisies."
+          />
         } @else {
           <div class="space-y-3">
             @for (a of subjectAverages(); track $index) {
@@ -399,6 +523,63 @@ const ALL_KEYS = GROUPS.flatMap((g) => g.fields.map((f) => f.key));
       </section>
     }
   `,
+  styles: [
+    `
+      button.hero-cta {
+        background: #ffffff !important;
+        color: #222026 !important;
+      }
+      button.hero-cta .mat-icon,
+      button.hero-cta .material-symbols-outlined {
+        color: #222026 !important;
+      }
+      button.hero-cta:disabled {
+        opacity: 0.55;
+      }
+      button.save-cta,
+      button.link-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.save-cta .mat-icon,
+      button.save-cta .material-symbols-outlined,
+      button.link-cta .mat-icon,
+      button.link-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.save-cta:disabled,
+      button.link-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+      .dossier-card {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          transform 0.15s ease;
+      }
+      .dossier-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+      .parent-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+    `,
+  ],
 })
 export class StudentDetail {
   private readonly route = inject(ActivatedRoute);
@@ -412,15 +593,18 @@ export class StudentDetail {
 
   private readonly id = this.route.snapshot.paramMap.get('id') ?? '';
 
-  protected readonly schoolYear = this.sy.selected();
   protected readonly groups = GROUPS;
   protected readonly label = personLabel;
+  protected readonly classLabel = classLabel;
+  protected readonly schoolYear = computed(() => this.sy.selected());
   protected readonly student = signal<Student | null>(null);
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly parents = signal<Parent[]>([]);
   protected readonly loading = signal(true);
+  protected readonly loadError = signal(false);
   protected readonly saving = signal(false);
   protected readonly linking = signal(false);
+  protected readonly formTab = signal(0);
   protected readonly gradesCount = signal(0);
   protected readonly paymentsCount = signal(0);
   protected readonly attendanceCount = signal(0);
@@ -434,6 +618,33 @@ export class StudentDetail {
     () => (this.student() as Record<string, unknown> | null)?.['userId'] as string | undefined,
   );
 
+  protected readonly updatedAt = computed(() => {
+    const v = (this.student() as Record<string, unknown> | null)?.['updatedAt'];
+    return typeof v === 'string' && v ? v : null;
+  });
+
+  protected readonly genderLabel = computed(() => {
+    const g = this.ro('gender');
+    if (g === 'F') return 'Fille';
+    if (g === 'M') return 'Garçon';
+    if (g === 'O') return 'Autre';
+    return '';
+  });
+
+  protected readonly classInstanceId = computed(() => {
+    const raw = this.student() as Record<string, unknown> | null;
+    return String(raw?.['classInstanceId'] ?? raw?.['classId'] ?? '');
+  });
+
+  protected dossierParams(): Record<string, string> {
+    const params: Record<string, string> = { studentId: this.id };
+    const classId = this.classInstanceId();
+    if (classId) {
+      params['classId'] = classId;
+    }
+    return params;
+  }
+
   resetPassword(): void {
     const uid = this.userId();
     if (!uid || this.resetting()) {
@@ -445,10 +656,8 @@ export class StudentDetail {
         this.resetting.set(false);
         if (r.temporaryPassword) {
           this.credential.set(r.temporaryPassword);
-          this.notify.success('Mot de passe réinitialisé.');
-        } else {
-          this.notify.success('Mot de passe réinitialisé.');
         }
+        this.notify.success('Mot de passe réinitialisé.');
       },
       error: () => this.resetting.set(false),
     });
@@ -473,7 +682,7 @@ export class StudentDetail {
   constructor() {
     this.classesApi.list(this.sy.filter()).subscribe({ next: (r) => this.classes.set(r.items) });
     this.parentsApi.list().subscribe({ next: (r) => this.parents.set(r.items) });
-    this.reloadStudent();
+    this.reload();
     this.studentsApi.grades(this.id).subscribe({ next: (d) => this.gradesCount.set(toCount(d)) });
     this.studentsApi
       .payments(this.id)
@@ -483,7 +692,9 @@ export class StudentDetail {
       .subscribe({ next: (d) => this.attendanceCount.set(toCount(d)) });
   }
 
-  private reloadStudent(): void {
+  protected reload(): void {
+    this.loading.set(true);
+    this.loadError.set(false);
     this.studentsApi.get(this.id).subscribe({
       next: (s) => {
         this.student.set(s);
@@ -491,7 +702,11 @@ export class StudentDetail {
         this.loading.set(false);
         this.loadAverages(s);
       },
-      error: () => this.loading.set(false),
+      error: () => {
+        this.student.set(null);
+        this.loadError.set(true);
+        this.loading.set(false);
+      },
     });
   }
 
@@ -535,13 +750,18 @@ export class StudentDetail {
     return Math.round(Math.max(0, Math.min(100, v)));
   }
   protected avgColor(p: number): string {
-    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-700)' : 'var(--danger)';
+    return p >= 75 ? 'var(--success)' : p >= 50 ? 'var(--brand-deep)' : 'var(--danger)';
   }
   protected averageTone(p: number | null): 'success' | 'brand' | 'danger' | 'neutral' {
     if (p === null) {
       return 'neutral';
     }
     return p >= 75 ? 'success' : p >= 50 ? 'brand' : 'danger';
+  }
+
+  protected parentEmail(p: Record<string, unknown>): string {
+    const user = (p['user'] ?? {}) as Record<string, unknown>;
+    return String(p['email'] ?? user['email'] ?? '');
   }
 
   addParent(): void {
@@ -555,7 +775,7 @@ export class StudentDetail {
         this.linking.set(false);
         this.notify.success('Parent lié.');
         this.parentCtrl.reset('');
-        this.reloadStudent();
+        this.reload();
       },
       error: () => this.linking.set(false),
     });
@@ -565,14 +785,14 @@ export class StudentDetail {
     this.studentsApi.unlinkParent(this.id, parentId).subscribe({
       next: () => {
         this.notify.success('Parent retiré.');
-        this.reloadStudent();
+        this.reload();
       },
     });
   }
 
   protected fullName(): string {
     const s = this.student();
-    return s ? `${s.firstName || ''} ${s.lastName || ''}`.trim() : '';
+    return s ? personLabel(s as Record<string, unknown>) : '';
   }
   protected className(): string {
     const s = this.student();
@@ -581,6 +801,10 @@ export class StudentDetail {
   protected ro(key: string): string {
     const v = (this.student() as Record<string, unknown> | null)?.[key];
     return v === null || v === undefined ? '' : String(v);
+  }
+  protected statusLabel(value: string): string {
+    if (!value) return '';
+    return STUDENT_STATUS_OPTIONS.find((o) => o.value === value)?.label ?? value;
   }
 
   private patch(s: Student): void {
@@ -623,6 +847,7 @@ export class StudentDetail {
         this.student.set(s);
         this.patch(s);
         this.notify.success('Élève mis à jour.');
+        this.loadAverages(s);
       },
       error: () => this.saving.set(false),
     });

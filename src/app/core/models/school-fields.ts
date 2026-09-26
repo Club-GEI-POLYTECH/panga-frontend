@@ -41,6 +41,8 @@ export interface SchoolFieldGroup {
   title: string;
   icon: string;
   fields: SchoolField[];
+  /** Précision affichée sous le titre (ex. distinguer contacts et autorités). */
+  hint?: string;
 }
 
 /** Groupes éditables (mêmes sections que la fiche admin). */
@@ -87,6 +89,7 @@ export const SCHOOL_EDITABLE_GROUPS: SchoolFieldGroup[] = [
   {
     title: 'Direction & contacts',
     icon: 'groups',
+    hint: 'Coordonnées affichées sur documents et annuaire. Les nominations officielles (préfet, directeur) et droits admin se gèrent dans Autorités.',
     fields: [
       { key: 'principalName', label: 'Directeur — nom' },
       { key: 'principalEmail', label: 'Directeur — e-mail', type: 'email' },

@@ -30,29 +30,20 @@ import { AuthLayout } from './auth-layout';
         <div class="panga-brand">
           <div class="badge">P</div>
           <div>
-            <h1
-              class="text-lg font-semibold tracking-tight"
-              style="font-family: Urbanist, sans-serif"
-            >
-              {{ t('app.name') }}
-            </h1>
-            <p class="text-xs text-(--text-muted) m-0">{{ t('app.tagline') }}</p>
+            <h1 class="panga-auth-title" style="font-size: 1.25rem">{{ t('app.name') }}</h1>
+            <p class="panga-auth-subtitle" style="margin: 0.1rem 0 0; font-size: 0.8rem">
+              {{ t('app.tagline') }}
+            </p>
           </div>
         </div>
 
         @if (!sent()) {
-          <h2
-            class="text-2xl font-semibold tracking-tight text-(--text)"
-            style="font-family: Urbanist, sans-serif"
-          >
-            {{ t('auth.forgot.title') }}
-          </h2>
-          <p class="text-sm text-(--text-muted) mt-1 mb-6 leading-relaxed">
-            {{ t('auth.forgot.subtitle') }}
-          </p>
+          <h2 class="panga-auth-title">{{ t('auth.forgot.title') }}</h2>
+          <p class="panga-auth-subtitle">{{ t('auth.forgot.subtitle') }}</p>
+          <div class="panga-auth-rule" aria-hidden="true"></div>
 
-          <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
-            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+          <form [formGroup]="form" (ngSubmit)="submit()" class="panga-auth-form">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.forgot.email') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">mail</mat-icon>
               <input matInput type="email" formControlName="email" autocomplete="email" />
@@ -64,7 +55,7 @@ import { AuthLayout } from './auth-layout';
             <button
               type="submit"
               mat-flat-button
-              class="panga-auth-submit mt-2"
+              class="panga-auth-submit mt-1"
               [disabled]="submitting()"
             >
               @if (submitting()) {
@@ -74,19 +65,14 @@ import { AuthLayout } from './auth-layout';
             </button>
           </form>
         } @else {
-          <div class="text-center py-4">
-            <div
-              class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl"
-              style="background: color-mix(in srgb, var(--success) 14%, transparent)"
-            >
-              <mat-icon fontSet="material-symbols-outlined" style="color: var(--success)">
-                mark_email_read
-              </mat-icon>
+          <div class="panga-auth-status">
+            <div class="ico ok">
+              <mat-icon fontSet="material-symbols-outlined">mark_email_read</mat-icon>
             </div>
-            <h2 class="text-xl font-semibold text-(--text)">
+            <h2 class="panga-auth-title" style="font-size: 1.25rem">
               {{ t('auth.forgot.sentTitle') }}
             </h2>
-            <p class="text-sm text-(--text-muted) mt-2">{{ t('auth.forgot.sentBody') }}</p>
+            <p class="panga-auth-subtitle">{{ t('auth.forgot.sentBody') }}</p>
           </div>
         }
 

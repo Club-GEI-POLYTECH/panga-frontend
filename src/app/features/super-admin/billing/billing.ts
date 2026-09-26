@@ -1,4 +1,3 @@
-import { DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -26,6 +25,7 @@ import { Paginator } from '../../../shared/ui/paginator';
 import { SectionHeader } from '../../../shared/ui/section-header';
 import { StatusBadge, type BadgeTone } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
+import { fmtMoney } from '../../../shared/utils/format';
 
 function isPaid(inv: SaasInvoice): boolean {
   return inv.status === 'paid' || inv.status === 'payée' || !!inv.paidAt;
@@ -36,7 +36,6 @@ function isPaid(inv: SaasInvoice): boolean {
   selector: 'panga-billing',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DecimalPipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -64,7 +63,7 @@ function isPaid(inv: SaasInvoice): boolean {
       <panga-kpi-card label="Factures" [value]="invoices().length" icon="receipt_long" />
       <panga-kpi-card label="Payées" [value]="paidCount()" icon="task_alt" />
       <panga-kpi-card label="En attente" [value]="pendingCount()" icon="hourglass_top" />
-      <panga-kpi-card label="Encaissé (USD)" [value]="paidRevenue()" icon="payments" />
+      <panga-kpi-card label="Encaissé" [value]="paidRevenueLabel()" icon="payments" />
     </section>
 
     <div class="grid gap-4 lg:grid-cols-2 mb-6">
@@ -128,7 +127,7 @@ function isPaid(inv: SaasInvoice): boolean {
                 Montant calculé pour {{ studentsSig() }} élèves
               </p>
               <p class="text-2xl font-bold text-(--text) tabular-nums">
-                {{ computedAmount() | number: '1.0-2' }} {{ currency()
+                {{ money(computedAmount())
                 }}<span class="text-sm font-normal text-(--text-muted)">/mois</span>
               </p>
               @if (planRow(); as p) {
@@ -169,8 +168,7 @@ function isPaid(inv: SaasInvoice): boolean {
             <panga-avatar [name]="schoolName(inv.schoolId) || 'SA'" [size]="40" />
             <div class="min-w-0 flex-1">
               <p class="font-medium text-(--text)">
-                {{ inv.amount ?? '—' }}
-                <span class="text-sm text-(--text-muted)">{{ inv.currency }}</span>
+                {{ money(inv.amount, inv.currency) }}
               </p>
               <p class="text-xs text-(--text-muted) truncate">
                 {{ inv.subscriptionPlanOffered || '—' }}
@@ -241,9 +239,15 @@ export class Billing {
   protected readonly paidRevenue = computed(() =>
     this.invoices()
       .filter(isPaid)
-      .reduce((sum, i) => sum + (Number(i.amount) || 0), 0)
-      .toFixed(2),
+      .reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
   );
+  protected readonly paidRevenueLabel = computed(() =>
+    fmtMoney(this.paidRevenue(), this.currency()),
+  );
+
+  protected money(n: number | null | undefined, currency?: string): string {
+    return fmtMoney(n, currency || this.currency());
+  }
 
   protected readonly subForm = this.fb.nonNullable.group({ schoolId: ['', Validators.required] });
 

@@ -7,6 +7,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -31,8 +32,8 @@ import { personLabel } from '../shared/labels';
 import { NotificationService } from '../../../shared/ui/notification.service';
 import { Avatar } from '../../../shared/ui/avatar';
 import { DateField } from '../../../shared/ui/date-field';
+import { EmptyState } from '../../../shared/ui/empty-state';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { StatusBadge } from '../../../shared/ui/status-badge';
 
 /**
  * Gestion des autorités d'une école (préfet, directeur…) — liste + formulaire de
@@ -44,6 +45,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
   selector: 'panga-authorities-manager',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -54,62 +56,122 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
     MatTooltipModule,
     Avatar,
     DateField,
+    EmptyState,
     SectionHeader,
-    StatusBadge,
   ],
   template: `
     <section class="panga-card p-5">
       <panga-section-header icon="shield_person" title="Autorités" [count]="authorities().length" />
+      <p class="text-xs text-(--text-muted) -mt-2 mb-4 leading-relaxed">
+        Nominations officielles (préfet, directeur…) et droits d'administration. Les simples
+        coordonnées de contact se renseignent dans « Direction & contacts ».
+      </p>
 
       @if (authorities().length) {
         <div class="grid gap-3 sm:grid-cols-2 mb-6">
           @for (a of authorities(); track a.id) {
-            <div class="flex items-center gap-3 rounded-2xl border border-(--border) p-3">
-              <panga-avatar [name]="a.displayName || roleLabel(a.roleCode) || '?'" [size]="40" />
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-(--text) truncate">
-                  {{ a.displayName || roleLabel(a.roleCode) }}
-                </p>
-                <p class="text-xs text-(--text-muted) truncate">{{ a.email }}</p>
-                <div class="mt-1 flex flex-wrap gap-1.5">
-                  @if (a.roleCode) {
-                    <panga-status-badge
-                      [label]="roleLabel(a.roleCode)"
-                      tone="brand"
-                      [dot]="false"
-                    />
+            <article
+              class="authority-card relative overflow-hidden rounded-2xl p-4"
+              [class.authority-card--inactive]="a.isActive === false"
+            >
+              <div class="relative flex gap-3">
+                <panga-avatar
+                  [name]="a.displayName || roleLabel(a.roleCode) || '?'"
+                  [size]="48"
+                  class="shrink-0"
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                      <p
+                        class="text-[11px] font-semibold uppercase tracking-wide truncate"
+                        style="color: var(--brand-deep)"
+                      >
+                        {{ roleLabel(a.roleCode) || 'Autorité' }}
+                      </p>
+                      <h3
+                        class="text-sm font-semibold text-(--text) truncate mt-0.5"
+                        style="font-family: Urbanist, sans-serif"
+                      >
+                        {{ a.displayName || '—' }}
+                      </h3>
+                    </div>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="authority-card__delete shrink-0!"
+                      matTooltip="Retirer cette autorité"
+                      [disabled]="deletingId() === a.id"
+                      (click)="removeAuthority(a)"
+                    >
+                      <mat-icon fontSet="material-symbols-outlined">delete</mat-icon>
+                    </button>
+                  </div>
+
+                  @if (a.email) {
+                    <p class="mt-1.5 flex items-center gap-1.5 text-xs text-(--text-muted) min-w-0">
+                      <span class="material-symbols-outlined text-[14px] shrink-0 opacity-70"
+                        >mail</span
+                      >
+                      <span class="truncate">{{ a.email }}</span>
+                    </p>
                   }
-                  @if (a.educationLevel) {
-                    <panga-status-badge
-                      [label]="levelLabel(a.educationLevel)"
-                      tone="info"
-                      [dot]="false"
-                    />
-                  }
-                  @if (a.teacherId) {
-                    <panga-status-badge label="Accès administrateur" tone="warning" [dot]="false" />
-                  }
-                  @if (a.isActive === false) {
-                    <panga-status-badge label="Inactive" tone="neutral" [dot]="false" />
+
+                  <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                    @if (a.educationLevel) {
+                      <span class="chip chip--info">
+                        <span class="material-symbols-outlined text-[13px]">school</span>
+                        {{ levelLabel(a.educationLevel) }}
+                      </span>
+                    }
+                    @if (a.teacherId) {
+                      <span class="chip chip--warning">
+                        <span class="material-symbols-outlined text-[13px]"
+                          >admin_panel_settings</span
+                        >
+                        Accès admin
+                      </span>
+                    }
+                    @if (a.isActive === false) {
+                      <span class="chip chip--neutral">Inactive</span>
+                    } @else {
+                      <span class="chip chip--success">
+                        <span class="chip__dot"></span>
+                        Active
+                      </span>
+                    }
+                  </div>
+
+                  @if (a.activeFrom || a.activeTo) {
+                    <p class="mt-2.5 flex items-center gap-1.5 text-[11px] text-(--text-muted)">
+                      <span class="material-symbols-outlined text-[13px] shrink-0">event</span>
+                      <span>
+                        @if (a.activeFrom) {
+                          {{ a.activeFrom | date: 'dd/MM/yyyy' }}
+                        } @else {
+                          …
+                        }
+                        →
+                        @if (a.activeTo) {
+                          {{ a.activeTo | date: 'dd/MM/yyyy' }}
+                        } @else {
+                          en cours
+                        }
+                      </span>
+                    </p>
                   }
                 </div>
               </div>
-              <button
-                mat-icon-button
-                type="button"
-                matTooltip="Retirer cette autorité"
-                [disabled]="deletingId() === a.id"
-                (click)="removeAuthority(a)"
-              >
-                <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)"
-                  >delete</mat-icon
-                >
-              </button>
-            </div>
+            </article>
           }
         </div>
       } @else {
-        <p class="text-sm text-(--text-muted) mb-6">Aucune autorité enregistrée.</p>
+        <panga-empty-state
+          [compact]="true"
+          icon="shield_person"
+          title="Aucune autorité"
+          description="Nommez un préfet ou un directeur ci-dessous pour lui attribuer un mandat officiel."
+        />
       }
 
       <div class="rounded-2xl bg-[color-mix(in_srgb,var(--brand-500)_5%,transparent)] p-4">
@@ -168,7 +230,7 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
             <mat-slide-toggle formControlName="isActive">Autorité active</mat-slide-toggle>
             <button
               mat-flat-button
-              class="rounded-xl!"
+              class="rounded-xl! authority-cta"
               type="submit"
               [disabled]="addingAuthority()"
             >
@@ -201,6 +263,90 @@ import { StatusBadge } from '../../../shared/ui/status-badge';
       </div>
     </section>
   `,
+  styles: [
+    `
+      .authority-card {
+        border: 1px solid var(--border);
+        background: color-mix(in srgb, var(--brand-500) 6%, var(--surface));
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease,
+          transform 0.15s ease;
+      }
+      .authority-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+      .authority-card--inactive {
+        opacity: 0.72;
+        background: color-mix(in srgb, var(--text-muted) 6%, var(--surface));
+      }
+      .authority-card__delete {
+        width: 36px !important;
+        height: 36px !important;
+        color: var(--text-muted) !important;
+      }
+      .authority-card__delete:hover:not(:disabled) {
+        color: var(--danger) !important;
+        background: color-mix(in srgb, var(--danger) 12%, transparent) !important;
+      }
+      .authority-card__delete .mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border-radius: 999px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1.2;
+        border: 1px solid transparent;
+      }
+      .chip__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+      .chip--info {
+        color: #5ba3d4;
+        background: color-mix(in srgb, #5ba3d4 14%, transparent);
+        border-color: color-mix(in srgb, #5ba3d4 28%, transparent);
+      }
+      .chip--warning {
+        color: var(--warning);
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        border-color: color-mix(in srgb, var(--warning) 28%, transparent);
+      }
+      .chip--success {
+        color: var(--success);
+        background: color-mix(in srgb, var(--success) 14%, transparent);
+        border-color: color-mix(in srgb, var(--success) 28%, transparent);
+      }
+      .chip--neutral {
+        color: var(--text-muted);
+        background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+        border-color: color-mix(in srgb, var(--text-muted) 22%, transparent);
+      }
+
+      button.authority-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.authority-cta .mat-icon,
+      button.authority-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.authority-cta:disabled {
+        opacity: 0.55;
+      }
+    `,
+  ],
 })
 export class AuthoritiesManager implements OnInit {
   /** École ciblée (école de l'admin, ou n'importe laquelle pour le super_admin). */

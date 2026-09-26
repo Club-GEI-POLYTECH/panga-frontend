@@ -43,52 +43,44 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
         <div class="panga-brand">
           <div class="badge">P</div>
           <div>
-            <h1
-              class="text-lg font-semibold tracking-tight"
-              style="font-family: Urbanist, sans-serif"
-            >
-              {{ t('app.name') }}
-            </h1>
-            <p class="text-xs text-(--text-muted) m-0">{{ t('app.tagline') }}</p>
+            <h1 class="panga-auth-title" style="font-size: 1.25rem">{{ t('app.name') }}</h1>
+            <p class="panga-auth-subtitle" style="margin: 0.1rem 0 0; font-size: 0.8rem">
+              {{ t('app.tagline') }}
+            </p>
           </div>
         </div>
 
-        <h2
-          class="text-2xl font-semibold tracking-tight text-(--text)"
-          style="font-family: Urbanist, sans-serif"
-        >
-          {{ t('auth.reset.title') }}
-        </h2>
-        <p class="text-sm text-(--text-muted) mt-1 mb-6 leading-relaxed">
-          {{ t('auth.reset.subtitle') }}
-        </p>
+        <h2 class="panga-auth-title">{{ t('auth.reset.title') }}</h2>
+        <p class="panga-auth-subtitle">{{ t('auth.reset.subtitle') }}</p>
+        <div class="panga-auth-rule" aria-hidden="true"></div>
 
         @if (!token()) {
-          <div class="text-center py-4">
-            <div
-              class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl"
-              style="background: color-mix(in srgb, var(--danger) 14%, transparent)"
-            >
-              <mat-icon fontSet="material-symbols-outlined" style="color: var(--danger)">
-                link_off
-              </mat-icon>
+          <div class="panga-auth-status">
+            <div class="ico err">
+              <mat-icon fontSet="material-symbols-outlined">link_off</mat-icon>
             </div>
-            <p class="text-sm text-(--text-muted)">{{ t('auth.reset.invalidToken') }}</p>
+            <p class="panga-auth-subtitle" style="margin: 0">{{ t('auth.reset.invalidToken') }}</p>
           </div>
         } @else {
-          <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col">
-            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+          <form [formGroup]="form" (ngSubmit)="submit()" class="panga-auth-form">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.reset.password') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">lock</mat-icon>
               <input
                 matInput
-                [type]="hide() ? 'password' : 'text'"
+                [type]="hidePwd() ? 'password' : 'text'"
                 formControlName="password"
                 autocomplete="new-password"
               />
-              <button type="button" mat-icon-button matSuffix (click)="hide.set(!hide())">
+              <button
+                type="button"
+                mat-icon-button
+                matSuffix
+                (click)="hidePwd.set(!hidePwd())"
+                [attr.aria-label]="hidePwd() ? 'Afficher' : 'Masquer'"
+              >
                 <mat-icon fontSet="material-symbols-outlined">
-                  {{ hide() ? 'visibility' : 'visibility_off' }}
+                  {{ hidePwd() ? 'visibility' : 'visibility_off' }}
                 </mat-icon>
               </button>
               @if (form.controls.password.touched && form.controls.password.invalid) {
@@ -96,15 +88,26 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
               }
             </mat-form-field>
 
-            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+            <mat-form-field appearance="outline" subscriptSizing="dynamic">
               <mat-label>{{ t('auth.reset.confirm') }}</mat-label>
               <mat-icon matPrefix fontSet="material-symbols-outlined">lock_reset</mat-icon>
               <input
                 matInput
-                [type]="hide() ? 'password' : 'text'"
+                [type]="hideConfirm() ? 'password' : 'text'"
                 formControlName="confirm"
                 autocomplete="new-password"
               />
+              <button
+                type="button"
+                mat-icon-button
+                matSuffix
+                (click)="hideConfirm.set(!hideConfirm())"
+                [attr.aria-label]="hideConfirm() ? 'Afficher' : 'Masquer'"
+              >
+                <mat-icon fontSet="material-symbols-outlined">
+                  {{ hideConfirm() ? 'visibility' : 'visibility_off' }}
+                </mat-icon>
+              </button>
               @if (form.errors?.['mismatch'] && form.controls.confirm.touched) {
                 <mat-error>{{ t('auth.reset.mismatch') }}</mat-error>
               }
@@ -113,7 +116,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
             <button
               type="submit"
               mat-flat-button
-              class="panga-auth-submit mt-2"
+              class="panga-auth-submit mt-1"
               [disabled]="submitting()"
             >
               @if (submitting()) {
@@ -140,7 +143,8 @@ export class ResetPassword {
   private readonly notify = inject(NotificationService);
 
   protected readonly submitting = signal(false);
-  protected readonly hide = signal(true);
+  protected readonly hidePwd = signal(true);
+  protected readonly hideConfirm = signal(true);
   protected readonly token = signal(this.route.snapshot.queryParamMap.get('token') ?? '');
 
   protected readonly form = this.fb.nonNullable.group(

@@ -12,7 +12,6 @@ import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, Observable, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthStore } from '../../../core/auth/auth.store';
 import { PlatformService } from '../../super-admin/services/platform.service';
 import { AuditService } from '../../super-admin/services/audit.service';
@@ -26,9 +25,13 @@ import { normalizeOverview, normalizeTrends } from '../../super-admin/models/das
 import { KpiCard } from '../../../shared/ui/kpi-card';
 import { KeyValue } from '../../../shared/ui/key-value';
 import { SectionHeader } from '../../../shared/ui/section-header';
+import { EmptyState } from '../../../shared/ui/empty-state';
+import { Skeleton } from '../../../shared/skeleton/skeleton';
+import { SkeletonCard } from '../../../shared/skeleton/skeleton-card';
 import { LineChart, type LineSeries } from '../../../shared/ui/charts/line-chart';
 import { auditView, type AuditView } from '../shared/audit-labels';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
+import { fmtMoney, fmtNumber } from '../../../shared/utils/format';
 
 const TONE_BG: Record<AuditView['tone'], string> = {
   success: 'color-mix(in srgb, var(--success) 14%, transparent)',
@@ -47,9 +50,8 @@ const TONE_FG: Record<AuditView['tone'], string> = {
   neutral: 'var(--text-muted)',
 };
 
-function fmt(n: number | null | undefined): string {
-  return n === null || n === undefined ? '—' : n.toLocaleString('fr-FR');
-}
+/** Devise par défaut des finances école (paiements admin). */
+const SCHOOL_CURRENCY = 'CDF';
 
 /** Tableau de bord d'un admin d'école (périmètre école). */
 @Component({
@@ -60,10 +62,12 @@ function fmt(n: number | null | undefined): string {
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
     KpiCard,
     KeyValue,
     SectionHeader,
+    EmptyState,
+    Skeleton,
+    SkeletonCard,
     LineChart,
   ],
   template: `
@@ -75,51 +79,136 @@ function fmt(n: number | null | undefined): string {
         class="absolute -right-10 -top-10 h-44 w-44 rounded-full opacity-20"
         style="background:#fff"
       ></div>
-      <p class="text-sm opacity-90">Bonjour,</p>
-      <h1
-        class="text-2xl sm:text-3xl font-semibold mt-0.5"
-        style="font-family: Urbanist, sans-serif"
-      >
-        {{ store.fullName() }}
-      </h1>
-      <p class="text-sm opacity-90 mt-1">
-        {{ store.activeSchool()?.name || 'Votre établissement' }}
-      </p>
+      <div
+        class="absolute -bottom-16 -left-8 h-40 w-40 rounded-full opacity-10"
+        style="background:#fff"
+      ></div>
+
+      <div class="relative flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="text-sm opacity-90">Bonjour,</p>
+          <h1
+            class="text-2xl sm:text-3xl font-semibold mt-0.5"
+            style="font-family: Urbanist, sans-serif"
+          >
+            {{ store.fullName() }}
+          </h1>
+          <p class="text-sm opacity-90 mt-1">
+            {{ store.activeSchool()?.name || 'Votre établissement' }}
+          </p>
+          <div class="flex flex-wrap items-center gap-3 mt-3 text-xs opacity-90">
+            @if (sy.selected()) {
+              <span class="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1">
+                <span class="material-symbols-outlined text-[14px]">calendar_month</span>
+                Année {{ sy.selected() }}
+              </span>
+            }
+            @if (sy.needsSetup()) {
+              <span
+                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                style="background: color-mix(in srgb, var(--warning) 35%, transparent)"
+              >
+                Configurer l'année scolaire
+              </span>
+            }
+            @if (refreshedAt()) {
+              <span class="opacity-80">Mis à jour {{ refreshedAt() | date: 'dd/MM HH:mm' }}</span>
+            }
+          </div>
+        </div>
+        <a mat-flat-button class="hero-cta rounded-xl! shadow-sm" routerLink="/students">
+          <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon>
+          Ajouter un élève
+        </a>
+      </div>
     </header>
 
     @if (loading()) {
-      <div class="flex justify-center py-20"><mat-spinner diameter="40" /></div>
+      <section class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-6">
+        @for (_ of [1, 2, 3, 4]; track $index) {
+          <div class="panga-card p-5 flex items-start gap-4">
+            <panga-skeleton width="48px" height="48px" radius="1rem" />
+            <div class="flex-1 space-y-2">
+              <panga-skeleton width="55%" height="0.75rem" />
+              <panga-skeleton width="40%" height="1.4rem" />
+            </div>
+          </div>
+        }
+      </section>
+      <div class="grid gap-4 lg:grid-cols-3 mb-6">
+        <div class="lg:col-span-2"><panga-skeleton-card /></div>
+        <panga-skeleton-card />
+      </div>
     } @else {
       <section class="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 mb-6">
-        <panga-kpi-card label="Élèves" [value]="fmt(overview()?.totalStudents)" icon="school" />
-        <panga-kpi-card label="Enseignants" [value]="fmt(overview()?.totalTeachers)" icon="badge" />
-        <panga-kpi-card label="Classes" [value]="fmt(classesCount())" icon="meeting_room" />
-        <panga-kpi-card
-          label="Revenus du mois"
-          [value]="fmt(overview()?.monthlyRevenue)"
-          icon="payments"
-          [trend]="overview()?.revenueDelta ?? null"
-          [trendLabel]="deltaLabel()"
-        />
+        <a routerLink="/students" class="block no-underline">
+          <panga-kpi-card label="Élèves" [value]="fmt(overview()?.totalStudents)" icon="school" />
+        </a>
+        <a routerLink="/teachers" class="block no-underline">
+          <panga-kpi-card
+            label="Enseignants"
+            [value]="fmt(overview()?.totalTeachers)"
+            icon="badge"
+          />
+        </a>
+        <a routerLink="/classes" class="block no-underline">
+          <panga-kpi-card label="Classes" [value]="fmt(classesCount())" icon="meeting_room" />
+        </a>
+        <a routerLink="/payments" class="block no-underline">
+          <panga-kpi-card
+            label="Revenus du mois"
+            [value]="money(overview()?.monthlyRevenue)"
+            icon="payments"
+            [trend]="overview()?.revenueDelta ?? null"
+            [trendLabel]="deltaLabel()"
+          />
+        </a>
       </section>
 
       <section class="panga-card p-5 mb-6">
-        <panga-section-header icon="show_chart" title="Croissance (12 mois)" />
+        <panga-section-header icon="show_chart" title="Croissance (12 mois)">
+          <span class="text-xs text-(--text-muted)">Nouveaux élèves et revenus</span>
+        </panga-section-header>
         @if (trends().length) {
           <panga-line-chart [categories]="trendMonths()" [series]="trendSeries()" [height]="280" />
         } @else {
-          <p class="text-sm text-(--text-muted) py-8 text-center">Aucune donnée de tendance.</p>
+          <panga-empty-state
+            [compact]="true"
+            icon="show_chart"
+            title="Aucune tendance"
+            description="Les séries mensuelles apparaîtront dès que des données seront disponibles."
+          />
         }
       </section>
 
       <section class="grid gap-4 grid-cols-1 lg:grid-cols-2 mb-6">
         <div class="panga-card p-5">
           <panga-section-header icon="menu_book" title="Académique" />
-          <panga-key-value [data]="academic()" />
+          @if (academic()) {
+            <panga-key-value [data]="academic()" />
+          } @else {
+            <panga-empty-state
+              [compact]="true"
+              icon="menu_book"
+              title="Pas de données"
+              description="Les indicateurs académiques de l'année s'afficheront ici."
+            />
+          }
         </div>
         <div class="panga-card p-5">
-          <panga-section-header icon="account_balance" title="Finances" />
-          <panga-key-value [data]="financial()" />
+          <panga-section-header icon="account_balance" title="Finances">
+            <a mat-button class="text-sm!" routerLink="/payments">Voir les paiements</a>
+          </panga-section-header>
+          @if (financial()) {
+            <panga-key-value [data]="financial()" />
+          } @else {
+            <panga-empty-state
+              [compact]="true"
+              icon="account_balance"
+              title="Pas de données"
+              description="Les indicateurs financiers s'afficheront ici."
+            />
+          }
         </div>
       </section>
 
@@ -153,45 +242,77 @@ function fmt(n: number | null | undefined): string {
               }
             </ul>
           } @else {
-            <p class="text-sm text-(--text-muted) py-8 text-center">Aucun événement récent.</p>
+            <panga-empty-state
+              [compact]="true"
+              icon="history"
+              title="Aucun événement"
+              description="L'activité récente de l'école s'affichera ici."
+            />
           }
         </div>
 
         <div class="panga-card p-5">
           <panga-section-header icon="bolt" title="Actions rapides" />
           <div class="flex flex-col gap-2">
-            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/students">
-              <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon> Ajouter un élève
+            <a mat-flat-button class="rounded-xl! justify-start!" routerLink="/students">
+              <mat-icon fontSet="material-symbols-outlined">person_add</mat-icon>
+              Ajouter un élève
             </a>
             <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/classes">
-              <mat-icon fontSet="material-symbols-outlined">add</mat-icon> Créer une classe
+              <mat-icon fontSet="material-symbols-outlined">add</mat-icon>
+              Créer une classe
             </a>
             <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/teachers">
-              <mat-icon fontSet="material-symbols-outlined">badge</mat-icon> Ajouter un enseignant
+              <mat-icon fontSet="material-symbols-outlined">badge</mat-icon>
+              Ajouter un enseignant
             </a>
             <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/communications">
-              <mat-icon fontSet="material-symbols-outlined">campaign</mat-icon> Publier une annonce
+              <mat-icon fontSet="material-symbols-outlined">campaign</mat-icon>
+              Publier une annonce
+            </a>
+            <a mat-stroked-button class="rounded-xl! justify-start!" routerLink="/payments">
+              <mat-icon fontSet="material-symbols-outlined">payments</mat-icon>
+              Enregistrer un paiement
             </a>
           </div>
         </div>
       </section>
     }
   `,
+  styles: [
+    `
+      a.hero-cta {
+        background: #ffffff !important;
+        color: #222026 !important;
+      }
+      a.hero-cta .mat-icon,
+      a.hero-cta .material-symbols-outlined {
+        color: #222026 !important;
+      }
+    `,
+  ],
 })
 export class AdminDashboard {
   protected readonly store = inject(AuthStore);
   private readonly platform = inject(PlatformService);
   private readonly auditApi = inject(AuditService);
-  private readonly sy = inject(SchoolYearStore);
+  protected readonly sy = inject(SchoolYearStore);
 
-  protected readonly fmt = fmt;
+  protected readonly fmt = fmtNumber;
   protected readonly auditView = auditView;
+  protected readonly refreshedAt = signal<Date | null>(null);
+
+  protected money(n: number | null | undefined): string {
+    return fmtMoney(n, SCHOOL_CURRENCY);
+  }
+
   protected toneBg(t: AuditView['tone']): string {
     return TONE_BG[t];
   }
   protected toneFg(t: AuditView['tone']): string {
     return TONE_FG[t];
   }
+
   protected readonly loading = signal(true);
   protected readonly overview = signal<OverviewData | null>(null);
   protected readonly trends = signal<TrendPoint[]>([]);
@@ -221,10 +342,7 @@ export class AdminDashboard {
   });
 
   constructor() {
-    // Données non annuelles (séries temporelles, finances, audit) : une seule fois.
     this.loadStatic();
-    // Données scopées à l'année (overview = comptes de classes, academic = notes) :
-    // rechargées dès que l'année sélectionnée change. L'effect s'exécute aussitôt.
     effect(() => {
       this.sy.selected();
       untracked(() => this.loadYearScoped());
@@ -245,10 +363,11 @@ export class AdminDashboard {
       this.trends.set(normalizeTrends(r.trends));
       this.financial.set(r.financial);
       this.audit.set(r.audit?.items ?? []);
+      this.refreshedAt.set(new Date());
     });
   }
 
-  /** `sy.filter()` : '' quand l'année courante est sélectionnée (→ backend la résout). */
+  /** `sy.filter()`: '' quand l'année courante est sélectionnée (backend la résout). */
   private loadYearScoped(): void {
     const safe = AdminDashboard.safe;
     const year = this.sy.filter();
@@ -258,6 +377,7 @@ export class AdminDashboard {
     }).subscribe((r) => {
       this.overview.set(normalizeOverview(r.overview));
       this.academic.set(r.academic);
+      this.refreshedAt.set(new Date());
       this.loading.set(false);
     });
   }

@@ -302,7 +302,7 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 
   .badge {
     display: grid;
@@ -325,13 +325,73 @@ html.dark {
   }
 }
 
+/* Typo / structure partagée des formulaires auth (login, forgot, reset). */
+.panga-auth-title {
+  font-family: 'Urbanist', sans-serif;
+  font-size: clamp(1.5rem, 2.6vh, 1.75rem);
+  font-weight: 700;
+  margin: 0;
+  color: var(--text);
+  letter-spacing: -0.025em;
+}
+
+.panga-auth-subtitle {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.panga-auth-rule {
+  width: 2.75rem;
+  height: 3px;
+  margin: 0.9rem 0 1.35rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brand-500), var(--accent-blue));
+}
+
+.panga-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  .mat-mdc-form-field {
+    width: 100%;
+    --mat-form-field-container-vertical-padding: 14px;
+    --mat-form-field-container-height: 56px;
+  }
+}
+
+.panga-auth-status {
+  text-align: center;
+  padding: 1rem 0 0.5rem;
+
+  .ico {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto 1rem;
+    border-radius: 1.25rem;
+  }
+  .ico.ok {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success);
+  }
+  .ico.err {
+    background: color-mix(in srgb, var(--danger) 14%, transparent);
+    color: var(--danger);
+  }
+}
+
 /* Lien « retour » des écrans auth. */
 .panga-auth-back {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   width: 100%;
   font-size: 0.85rem;
   font-weight: 500;
@@ -348,8 +408,8 @@ html.dark {
 
 /* CTA principal des formulaires auth — dégradé marque, relief au survol. */
 .panga-auth-submit {
-  height: 48px;
-  border-radius: 0.85rem !important;
+  height: 52px;
+  border-radius: 0.95rem !important;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: #fff !important;

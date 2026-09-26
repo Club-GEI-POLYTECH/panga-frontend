@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { debounceTime } from 'rxjs';
+import { catchError, debounceTime, forkJoin, of, type Observable } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
@@ -48,7 +48,6 @@ import { DateField } from '../../../shared/ui/date-field';
 import { PhoneField } from '../../../shared/ui/phone-field';
 import { ProvinceField } from '../../../shared/ui/province-field';
 import { SectionHeader } from '../../../shared/ui/section-header';
-import { StatusBadge } from '../../../shared/ui/status-badge';
 import { SkeletonTable } from '../../../shared/skeleton/skeleton-table';
 import { SchoolYearStore } from '../../../core/school-year/school-year.store';
 
@@ -170,11 +169,10 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     PhoneField,
     ProvinceField,
     SectionHeader,
-    StatusBadge,
     SkeletonTable,
   ],
   template: `
-    <panga-page-header icon="school" title="Élèves" subtitle="Effectifs de l'établissement">
+    <panga-page-header icon="school" title="Élèves" [subtitle]="headerSubtitle()">
       <button mat-stroked-button class="rounded-xl!" (click)="downloadTemplate()">
         <mat-icon fontSet="material-symbols-outlined">download</mat-icon> Modèle
       </button>
@@ -188,7 +186,7 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
         <mat-icon fontSet="material-symbols-outlined">upload_file</mat-icon>
         {{ importing() ? 'Import…' : 'Importer (Excel)' }}
       </button>
-      <button mat-flat-button class="rounded-xl!" (click)="showForm.set(!showForm())">
+      <button mat-flat-button class="rounded-xl! students-cta" (click)="toggleForm()">
         <mat-icon fontSet="material-symbols-outlined">{{
           showForm() ? 'close' : 'person_add'
         }}</mat-icon>
@@ -206,83 +204,129 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     }
 
     <section class="grid gap-4 grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 mb-6">
-      <panga-kpi-card label="Élèves" [value]="total()" icon="school" />
-      <panga-kpi-card label="Affichés" [value]="students().length" icon="visibility" />
-      <panga-kpi-card label="Garçons" [value]="boys()" icon="man" />
-      <panga-kpi-card label="Filles" [value]="girls()" icon="woman" />
+      <panga-kpi-card label="Élèves" [value]="statsTotal()" icon="school" />
+      <panga-kpi-card label="Actifs" [value]="statsActive()" icon="check_circle" />
+      <panga-kpi-card label="Garçons" [value]="statsBoys()" icon="man" />
+      <panga-kpi-card label="Filles" [value]="statsGirls()" icon="woman" />
     </section>
 
     @if (showForm()) {
       <form [formGroup]="form" (ngSubmit)="create()" class="panga-card p-6 mb-6">
         <panga-section-header icon="person_add" title="Nouvel élève" />
-        @for (group of groups; track group.title) {
-          <p class="text-sm font-semibold text-(--text) mt-3 mb-2 flex items-center gap-2">
-            <span class="material-symbols-outlined text-[18px] text-(--brand-500)">{{
-              group.icon
-            }}</span>
-            {{ group.title }}
-          </p>
-          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @for (f of group.fields; track f.key) {
-              <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
-                @if (f.type === 'date') {
-                  <panga-date-field
-                    class="block w-full"
-                    [label]="f.label"
-                    [formControlName]="f.key"
-                  />
-                } @else if (f.type === 'phone') {
-                  <panga-phone-field
-                    class="block w-full"
-                    [label]="f.label"
-                    [formControlName]="f.key"
-                  />
-                } @else if (f.type === 'province') {
-                  <panga-province-field
-                    class="block w-full"
-                    [label]="f.label"
-                    [formControlName]="f.key"
-                  />
-                } @else {
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ f.label }}</mat-label>
-                    @switch (f.type) {
-                      @case ('select') {
-                        <mat-select [formControlName]="f.key">
-                          @if (f.fromClasses) {
-                            <mat-option [value]="''">—</mat-option>
-                            @for (c of classes(); track c.id) {
-                              <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+        <div
+          class="flex gap-2 overflow-x-auto pb-3 mb-2 -mx-1 px-1"
+          role="tablist"
+          aria-label="Sections du formulaire élève"
+        >
+          @for (group of groups; track group.title; let i = $index) {
+            <button
+              type="button"
+              role="tab"
+              class="shrink-0 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors border"
+              [attr.aria-selected]="formTab() === i"
+              [class.tab-active]="formTab() === i"
+              [class.tab-idle]="formTab() !== i"
+              (click)="formTab.set(i)"
+            >
+              <span class="inline-flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">{{ group.icon }}</span>
+                {{ group.title }}
+              </span>
+            </button>
+          }
+        </div>
+        @for (group of groups; track group.title; let i = $index) {
+          @if (formTab() === i) {
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              @for (f of group.fields; track f.key) {
+                <div [class]="f.wide ? 'min-w-0 sm:col-span-2 lg:col-span-3' : 'min-w-0'">
+                  @if (f.type === 'date') {
+                    <panga-date-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'phone') {
+                    <panga-phone-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else if (f.type === 'province') {
+                    <panga-province-field
+                      class="block w-full"
+                      [label]="f.label"
+                      [formControlName]="f.key"
+                    />
+                  } @else {
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ f.label }}</mat-label>
+                      @switch (f.type) {
+                        @case ('select') {
+                          <mat-select [formControlName]="f.key">
+                            @if (f.fromClasses) {
+                              <mat-option [value]="''">—</mat-option>
+                              @for (c of classes(); track c.id) {
+                                <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+                              }
+                            } @else if (f.fromParents) {
+                              <mat-option [value]="''">—</mat-option>
+                              @for (p of parents(); track p.id) {
+                                <mat-option [value]="p.id">{{ personLabel(p) }}</mat-option>
+                              }
+                            } @else {
+                              @for (o of f.options ?? []; track o.value) {
+                                <mat-option [value]="o.value">{{ o.label }}</mat-option>
+                              }
                             }
-                          } @else if (f.fromParents) {
-                            <mat-option [value]="''">—</mat-option>
-                            @for (p of parents(); track p.id) {
-                              <mat-option [value]="p.id">{{ personLabel(p) }}</mat-option>
-                            }
-                          } @else {
-                            @for (o of f.options ?? []; track o.value) {
-                              <mat-option [value]="o.value">{{ o.label }}</mat-option>
-                            }
-                          }
-                        </mat-select>
+                          </mat-select>
+                        }
+                        @default {
+                          <input
+                            matInput
+                            [type]="
+                              f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'
+                            "
+                            [formControlName]="f.key"
+                          />
+                        }
                       }
-                      @default {
-                        <input
-                          matInput
-                          [type]="f.type === 'email' ? 'email' : f.type === 'tel' ? 'tel' : 'text'"
-                          [formControlName]="f.key"
-                        />
-                      }
-                    }
-                  </mat-form-field>
-                }
-              </div>
+                    </mat-form-field>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-4">
+          <div class="flex gap-2">
+            <button
+              mat-stroked-button
+              type="button"
+              class="rounded-xl!"
+              [disabled]="formTab() === 0"
+              (click)="formTab.set(formTab() - 1)"
+            >
+              Précédent
+            </button>
+            @if (formTab() < groups.length - 1) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="rounded-xl!"
+                (click)="formTab.set(formTab() + 1)"
+              >
+                Suivant
+              </button>
             }
           </div>
-        }
-        <div class="flex justify-end mt-2">
-          <button mat-flat-button class="rounded-xl!" type="submit" [disabled]="submitting()">
-            Inscrire l'élève
+          <button
+            mat-flat-button
+            class="rounded-xl! students-cta"
+            type="submit"
+            [disabled]="submitting()"
+          >
+            {{ submitting() ? 'Inscription…' : "Inscrire l'élève" }}
           </button>
         </div>
       </form>
@@ -299,14 +343,12 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
         <input matInput [formControl]="searchCtrl" placeholder="Nom, matricule…" />
       </mat-form-field>
 
-      <button
-        mat-stroked-button
-        class="rounded-xl! shrink-0 sm:hidden"
-        (click)="openFilters(filtersTpl)"
-      >
-        <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
-        Filtrer
-      </button>
+      <div class="sm:hidden shrink-0">
+        <button mat-stroked-button class="rounded-xl!" (click)="openFilters(filtersTpl)">
+          <mat-icon fontSet="material-symbols-outlined">filter_list</mat-icon>
+          Filtrer
+        </button>
+      </div>
 
       <div class="hidden sm:flex sm:flex-1 sm:flex-wrap items-center gap-3">
         <ng-container [ngTemplateOutlet]="filtersTpl" />
@@ -314,6 +356,19 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
     </div>
 
     <ng-template #filtersTpl>
+      <mat-form-field
+        appearance="outline"
+        class="w-full sm:flex-1 sm:min-w-36"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>Classe</mat-label>
+        <mat-select [value]="activeClassId()" (selectionChange)="filterByClass($event.value)">
+          <mat-option value="">Toutes</mat-option>
+          @for (c of classes(); track c.id) {
+            <mat-option [value]="c.id">{{ classLabel(c) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
       <mat-form-field
         appearance="outline"
         class="w-full sm:flex-1 sm:min-w-36"
@@ -343,102 +398,206 @@ const PAYLOAD_KEYS = GROUPS.flatMap((g) => g.fields.filter((f) => !f.external).m
 
     @if (loading()) {
       <panga-skeleton-table />
+    } @else if (loadError()) {
+      <div class="panga-card p-6">
+        <panga-empty-state
+          icon="error"
+          title="Impossible de charger les élèves"
+          description="Vérifiez votre connexion puis réessayez."
+          actionLabel="Réessayer"
+          (action)="reload()"
+        />
+      </div>
     } @else if (students().length === 0) {
       <div class="panga-card">
         <panga-empty-state
           icon="school"
           title="Aucun élève"
-          description="Inscrivez votre premier élève."
+          description="Inscrivez votre premier élève ou élargissez les filtres."
           actionLabel="Nouvel élève"
-          (action)="showForm.set(true)"
+          (action)="openCreateForm()"
         />
       </div>
     } @else {
-      <div class="panga-card divide-y divide-(--border)">
+      <div class="grid gap-3 mb-2">
         @for (s of students(); track s.id) {
-          <div
-            class="flex items-center gap-4 px-4 sm:px-5 py-3.5 hover:bg-[color-mix(in_srgb,var(--brand-500)_6%,transparent)] transition-colors"
-          >
-            <a
-              [routerLink]="['/', 'students', s.id]"
-              class="flex items-center gap-4 min-w-0 flex-1"
-            >
-              <panga-avatar [name]="fullName(s)" [size]="44" />
-              <div class="min-w-0 flex-1">
-                <p class="font-medium text-(--text) truncate">{{ fullName(s) || '—' }}</p>
-                <div
-                  class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-(--text-muted)"
-                >
-                  @if (s.matricule || s.studentNumber) {
-                    <span class="inline-flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">badge</span>
-                      {{ s.matricule || s.studentNumber }}
-                    </span>
-                  }
+          <article class="student-card panga-card p-4">
+            <div class="flex gap-3 items-start">
+              <a
+                [routerLink]="['/', 'students', s.id]"
+                class="flex items-start gap-3 min-w-0 flex-1 no-underline"
+              >
+                <panga-avatar [name]="fullName(s)" [size]="48" class="shrink-0" />
+                <div class="min-w-0 flex-1">
                   @if (s.className) {
-                    <span class="inline-flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">meeting_room</span>
+                    <p
+                      class="text-[11px] font-semibold uppercase tracking-wide truncate"
+                      style="color: var(--brand-deep)"
+                    >
                       {{ s.className }}
-                    </span>
+                    </p>
                   }
-                  @if (s.dateOfBirth) {
-                    <span class="inline-flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">cake</span>
-                      {{ s.dateOfBirth | date: 'dd/MM/yyyy' }}
-                    </span>
-                  }
+                  <h3
+                    class="text-sm font-semibold text-(--text) truncate"
+                    [class.mt-0.5]="!!s.className"
+                    style="font-family: Urbanist, sans-serif"
+                  >
+                    {{ fullName(s) || '—' }}
+                  </h3>
+                  <div
+                    class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-(--text-muted)"
+                  >
+                    @if (s.matricule || s.studentNumber) {
+                      <span class="inline-flex items-center gap-1 min-w-0">
+                        <span class="material-symbols-outlined text-[14px] shrink-0">badge</span>
+                        <span class="truncate">{{ s.matricule || s.studentNumber }}</span>
+                      </span>
+                    }
+                    @if (s.dateOfBirth) {
+                      <span class="inline-flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">cake</span>
+                        {{ s.dateOfBirth | date: 'dd/MM/yyyy' }}
+                      </span>
+                    }
+                  </div>
+                  <div class="mt-2.5 flex flex-wrap items-center gap-1.5">
+                    @if (s.gender) {
+                      <span
+                        class="chip"
+                        [class.chip--brand]="s.gender === 'F'"
+                        [class.chip--info]="s.gender !== 'F'"
+                      >
+                        {{ s.gender === 'F' ? 'Fille' : s.gender === 'M' ? 'Garçon' : 'Autre' }}
+                      </span>
+                    }
+                    @if (s.status) {
+                      <span
+                        class="chip"
+                        [class.chip--success]="s.status === 'active'"
+                        [class.chip--neutral]="s.status !== 'active'"
+                      >
+                        @if (s.status === 'active') {
+                          <span class="chip__dot"></span>
+                        }
+                        {{ statusLabel(s.status) }}
+                      </span>
+                    }
+                  </div>
                 </div>
-              </div>
-            </a>
-            @if (s.gender) {
-              <panga-status-badge
-                [label]="s.gender === 'F' ? 'Fille' : s.gender === 'M' ? 'Garçon' : 'Autre'"
-                [tone]="s.gender === 'F' ? 'brand' : 'info'"
-                [dot]="false"
-                class="hidden sm:inline-flex"
-              />
-            }
-            @if (s.status) {
-              <panga-status-badge
-                [label]="statusLabel(s.status)"
-                [tone]="s.status === 'active' ? 'success' : 'neutral'"
-                class="hidden sm:inline-flex"
-              />
-            }
-            <button
-              mat-icon-button
-              [matMenuTriggerFor]="statusMenu"
-              matTooltip="Changer le statut"
-              aria-label="Changer le statut"
-              class="shrink-0"
-            >
-              <mat-icon fontSet="material-symbols-outlined" class="text-(--text-muted)">
-                more_vert
-              </mat-icon>
-            </button>
-            <mat-menu #statusMenu="matMenu" class="panga-menu">
-              <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
-              @for (st of statusOptions; track st.value) {
-                <button
-                  mat-menu-item
-                  (click)="changeStatus(s, st.value)"
-                  [disabled]="s.status === st.value"
-                >
-                  <mat-icon fontSet="material-symbols-outlined">
-                    {{ s.status === st.value ? 'check' : 'radio_button_unchecked' }}
-                  </mat-icon>
-                  <span>{{ st.label }}</span>
-                </button>
-              }
-            </mat-menu>
-          </div>
-        }
-        @if (pagination()) {
-          <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
+              </a>
+              <button
+                mat-icon-button
+                [matMenuTriggerFor]="statusMenu"
+                matTooltip="Changer le statut"
+                aria-label="Changer le statut"
+                class="student-card__menu shrink-0"
+              >
+                <mat-icon fontSet="material-symbols-outlined">more_vert</mat-icon>
+              </button>
+              <mat-menu #statusMenu="matMenu" class="panga-menu">
+                <p class="px-4 pt-2 pb-1 text-xs text-(--text-muted)">Changer le statut</p>
+                @for (st of statusOptions; track st.value) {
+                  <button
+                    mat-menu-item
+                    (click)="changeStatus(s, st.value)"
+                    [disabled]="s.status === st.value"
+                  >
+                    <mat-icon fontSet="material-symbols-outlined">
+                      {{ s.status === st.value ? 'check' : 'radio_button_unchecked' }}
+                    </mat-icon>
+                    <span>{{ st.label }}</span>
+                  </button>
+                }
+              </mat-menu>
+            </div>
+          </article>
         }
       </div>
+      @if (pagination()) {
+        <div class="panga-card mt-3">
+          <panga-paginator [meta]="pagination()" (pageChange)="onPage($event)" />
+        </div>
+      }
     }
   `,
+  styles: [
+    `
+      button.students-cta {
+        background: var(--brand-gradient) !important;
+        color: #ffffff !important;
+      }
+      button.students-cta .mat-icon,
+      button.students-cta .material-symbols-outlined {
+        color: #ffffff !important;
+      }
+      button.students-cta:disabled {
+        opacity: 0.55;
+      }
+      .tab-active {
+        background: var(--brand-gradient);
+        color: #fff;
+        border-color: transparent;
+      }
+      .tab-idle {
+        background: color-mix(in srgb, var(--text) 4%, transparent);
+        color: var(--text);
+        border-color: var(--border);
+      }
+      .tab-idle:hover {
+        background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+        border-color: color-mix(in srgb, var(--brand-500) 35%, var(--border));
+      }
+      .student-card {
+        transition:
+          border-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+      .student-card:hover {
+        border-color: color-mix(in srgb, var(--brand-500) 40%, var(--border));
+        box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--brand-700) 55%, transparent);
+      }
+      .student-card__menu {
+        color: var(--text-muted) !important;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border-radius: 999px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1.2;
+        border: 1px solid transparent;
+      }
+      .chip__dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+      .chip--info {
+        color: #5ba3d4;
+        background: color-mix(in srgb, #5ba3d4 14%, transparent);
+        border-color: color-mix(in srgb, #5ba3d4 28%, transparent);
+      }
+      .chip--brand {
+        color: var(--brand-deep);
+        background: color-mix(in srgb, var(--brand-500) 16%, transparent);
+        border-color: color-mix(in srgb, var(--brand-500) 30%, transparent);
+      }
+      .chip--success {
+        color: var(--success);
+        background: color-mix(in srgb, var(--success) 14%, transparent);
+        border-color: color-mix(in srgb, var(--success) 28%, transparent);
+      }
+      .chip--neutral {
+        color: var(--text-muted);
+        background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+        border-color: color-mix(in srgb, var(--text-muted) 22%, transparent);
+      }
+    `,
+  ],
 })
 export class StudentsList {
   private readonly studentsApi = inject(StudentsService);
@@ -456,7 +615,6 @@ export class StudentsList {
   protected readonly students = signal<Student[]>([]);
   protected readonly classes = signal<ClassInstance[]>([]);
   protected readonly parents = signal<Parent[]>([]);
-  protected readonly total = signal(0);
   protected readonly pagination = signal<PaginationMeta | null>(null);
   protected readonly page = signal(1);
   protected readonly limit = signal(20);
@@ -464,15 +622,26 @@ export class StudentsList {
   protected readonly searchCtrl = new FormControl('', { nonNullable: true });
   protected readonly search = signal('');
   protected readonly activeStatus = signal('');
+  protected readonly activeClassId = signal('');
   protected readonly loading = signal(true);
+  protected readonly loadError = signal(false);
   protected readonly submitting = signal(false);
   protected readonly importing = signal(false);
   protected readonly showForm = signal(false);
+  protected readonly formTab = signal(0);
   /** Mot de passe temporaire renvoyé une seule fois à la création d'un compte. */
   protected readonly credential = signal<{ identifier: string; password: string } | null>(null);
 
-  protected readonly boys = computed(() => this.students().filter((s) => s.gender === 'M').length);
-  protected readonly girls = computed(() => this.students().filter((s) => s.gender === 'F').length);
+  /** KPI année scolaire (hors filtres liste). */
+  protected readonly statsTotal = signal(0);
+  protected readonly statsActive = signal(0);
+  protected readonly statsBoys = signal(0);
+  protected readonly statsGirls = signal(0);
+
+  protected readonly headerSubtitle = computed(() => {
+    const year = this.sy.selected();
+    return year ? `Effectifs de l'établissement · Année ${year}` : "Effectifs de l'établissement";
+  });
 
   protected readonly form = new FormGroup(
     Object.fromEntries(
@@ -499,6 +668,7 @@ export class StudentsList {
       untracked(() => {
         this.page.set(1);
         this.load();
+        this.loadStats();
         this.classesApi
           .list(this.sy.filter())
           .subscribe({ next: (r) => this.classes.set(r.items) });
@@ -517,6 +687,12 @@ export class StudentsList {
     this.load();
   }
 
+  filterByClass(classId: string): void {
+    this.activeClassId.set(classId);
+    this.page.set(1);
+    this.load();
+  }
+
   changeLimit(limit: number): void {
     this.limit.set(limit);
     this.page.set(1);
@@ -527,12 +703,48 @@ export class StudentsList {
     this.bottomSheet.open(FilterSheetContent, { data: { title: 'Filtrer', template } });
   }
 
+  protected toggleForm(): void {
+    const next = !this.showForm();
+    this.showForm.set(next);
+    if (next) {
+      this.formTab.set(0);
+    }
+  }
+
+  protected openCreateForm(): void {
+    this.showForm.set(true);
+    this.formTab.set(0);
+  }
+
   protected fullName(s: Student): string {
-    return `${s.firstName || ''} ${s.lastName || ''}`.trim();
+    return personLabel(s as Record<string, unknown>);
+  }
+
+  protected reload(): void {
+    this.load();
+    this.loadStats();
+  }
+
+  private loadStats(): void {
+    const year = this.sy.filter();
+    const base = { page: 1, limit: 1, schoolYear: year };
+    const safe = <T>(o: Observable<T>) => o.pipe(catchError(() => of(null)));
+    forkJoin({
+      all: safe(this.studentsApi.list(base)),
+      active: safe(this.studentsApi.list({ ...base, status: 'active' })),
+      boys: safe(this.studentsApi.list({ ...base, gender: 'M' })),
+      girls: safe(this.studentsApi.list({ ...base, gender: 'F' })),
+    }).subscribe((r) => {
+      this.statsTotal.set(r.all?.pagination?.total ?? r.all?.items.length ?? 0);
+      this.statsActive.set(r.active?.pagination?.total ?? r.active?.items.length ?? 0);
+      this.statsBoys.set(r.boys?.pagination?.total ?? r.boys?.items.length ?? 0);
+      this.statsGirls.set(r.girls?.pagination?.total ?? r.girls?.items.length ?? 0);
+    });
   }
 
   private load(): void {
     this.loading.set(true);
+    this.loadError.set(false);
     this.studentsApi
       .list({
         page: this.page(),
@@ -540,15 +752,20 @@ export class StudentsList {
         schoolYear: this.sy.filter(),
         search: this.search() || undefined,
         status: this.activeStatus() || undefined,
+        classId: this.activeClassId() || undefined,
       })
       .subscribe({
         next: (res) => {
           this.students.set(res.items);
           this.pagination.set(res.pagination ?? null);
-          this.total.set(res.pagination?.total ?? res.items.length);
           this.loading.set(false);
         },
-        error: () => this.loading.set(false),
+        error: () => {
+          this.students.set([]);
+          this.pagination.set(null);
+          this.loadError.set(true);
+          this.loading.set(false);
+        },
       });
   }
 
@@ -571,7 +788,7 @@ export class StudentsList {
         this.notify.success(count ? `${count} élève(s) importé(s).` : 'Import terminé.');
         input.value = '';
         this.page.set(1);
-        this.load();
+        this.reload();
       },
       error: () => {
         this.importing.set(false);
@@ -604,7 +821,7 @@ export class StudentsList {
     this.studentsApi.update(student.id, { status }).subscribe({
       next: () => {
         this.notify.success('Statut mis à jour.');
-        this.load();
+        this.reload();
       },
     });
   }
@@ -612,6 +829,14 @@ export class StudentsList {
   create(): void {
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
+      // Revenir à l'onglet du premier champ invalide.
+      for (let i = 0; i < this.groups.length; i++) {
+        const keys = this.groups[i].fields.map((f) => f.key);
+        if (keys.some((k) => this.form.get(k)?.invalid)) {
+          this.formTab.set(i);
+          break;
+        }
+      }
       return;
     }
     this.submitting.set(true);
@@ -634,8 +859,9 @@ export class StudentsList {
           this.notify.success('Élève inscrit.');
           this.form.reset({ gender: 'M', status: 'active', enrollmentType: 'new' });
           this.showForm.set(false);
+          this.formTab.set(0);
           this.page.set(1);
-          this.load();
+          this.reload();
         };
         // Liaison parent via la route dédiée (hors create).
         if (parentId && student?.id) {

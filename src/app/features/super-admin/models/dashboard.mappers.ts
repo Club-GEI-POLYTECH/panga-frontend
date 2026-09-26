@@ -140,5 +140,6 @@ export function normalizeBillingMetrics(raw: unknown): BillingMetrics {
     invoicesByStatus: toNamedValues(
       prop(raw, 'invoicesByStatus') ?? prop(raw, 'byStatus') ?? prop(raw, 'invoices_by_status'),
     ),
+    currency: str(raw, 'currency', 'Currency') ?? 'USD',
   };
 }
