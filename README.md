@@ -18,7 +18,7 @@ i18n FR/EN, signals partout.
 | UI             | **Angular Material 3** (M3 theming) + CDK              |
 | Utilitaires    | **Tailwind CSS v4** (couches theme+utilities, no reset)|
 | État           | **@ngrx/signals** (signalStore)                        |
-| i18n           | **@jsverse/transloco** (FR/EN à chaud)                 |
+| i18n           | **@jsverse/transloco** (fr/en à chaud)                 |
 | Graphiques     | **ngx-echarts** + ECharts (P5)                         |
 | Animations     | CSS + API `animate.enter/leave` Angular 21             |
 | PWA            | `@angular/service-worker` (Workbox)                    |
